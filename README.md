@@ -34,7 +34,7 @@ Landing → /start (player info) → Stripe Checkout (hosted)
 Stripe webhook  (checkout.session.completed) → create Airtable row + "payment received" email
 Mux webhook     (video.asset.ready)          → row → "In Review" + "video received" email
 Client (manual) → assigns coach, adds Feedback Link, sets Status = Complete
-Make.com (or webhook)                        → "feedback ready" email to customer
+Airtable automation → POST /api/webhooks/airtable → "feedback ready" email to customer
 /status         → customer enters email → sees status + feedback link
 ```
 
@@ -81,6 +81,7 @@ Create a base with one table (default name **`Submissions`**, override with
 | `Mux Playback ID` | Single line text | |
 | `Feedback Link` | URL | Loom/PDF link the client pastes in |
 | `Created At` | Single line text | ISO timestamp set by the app |
+| `Feedback Emailed` | Checkbox | Optional. Set by the notify webhook to avoid double-sending the "feedback ready" email |
 
 Suggested views for day-to-day operation: **New** (`Status = Awaiting Upload` or
 `In Review`), **Complete**, plus per-coach filtered views once a coach-assignment
@@ -121,9 +122,31 @@ Mux webhook can map a ready asset back to its row.
 
 Optional. Set `RESEND_API_KEY` and a verified `EMAIL_FROM`. If the key is unset,
 emails are skipped with a log line and never break a webhook. Templates live in
-[src/lib/email.ts](src/lib/email.ts). The "feedback ready" email is intended to
-be sent by Make.com (or a Resend send) when the client sets `Status = Complete`
-and fills in `Feedback Link`.
+[src/lib/email.ts](src/lib/email.ts). The "payment received" and "video
+received" emails fire from the Stripe and Mux webhooks; the "feedback ready"
+email fires from the Airtable automation below.
+
+## Feedback-ready notification
+
+When a coach finishes a review and sets `Status = Complete` (with a
+`Feedback Link`) in Airtable, an **Airtable automation** calls
+`POST /api/webhooks/airtable` and the app emails the customer their link.
+
+Set it up once in the Airtable base → **Automations**:
+
+1. **Trigger:** *When a record matches conditions* → `Status` is `Complete` and
+   `Feedback Link` is not empty. (This fires once per record, when it first
+   matches.)
+2. **Action:** *Send request* (webhook):
+   - **Method:** `POST`
+   - **URL:** `https://<your-site>/api/webhooks/airtable`
+   - **Header:** `x-webhook-secret: <AIRTABLE_WEBHOOK_SECRET>`
+   - **Body (JSON):** `{ "recordId": "<record id from the trigger>" }`
+
+Set `AIRTABLE_WEBHOOK_SECRET` in the host env to the same value used in the
+header. Add a **`Feedback Emailed`** checkbox column (see schema) so a re-fired
+automation can't email the customer twice — the endpoint works without it but
+then relies solely on the trigger firing once.
 
 ## Deploying
 

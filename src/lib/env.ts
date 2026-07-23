@@ -62,6 +62,11 @@ export const env = {
   get airtableTable() {
     return process.env.AIRTABLE_TABLE_NAME || "Submissions";
   },
+  // Shared secret guarding the /api/webhooks/airtable notify endpoint, sent by
+  // the Airtable automation as an `x-webhook-secret` header.
+  get airtableWebhookSecret() {
+    return required("AIRTABLE_WEBHOOK_SECRET");
+  },
 
   // Email (Resend). Optional — email failures should never break the flow.
   get resendApiKey() {

@@ -27,6 +27,10 @@ export interface SubmissionFields {
   "Mux Playback ID"?: string;
   "Feedback Link"?: string;
   "Created At"?: string;
+  // Set true once the "feedback ready" email has been sent, so a re-fired
+  // Airtable automation doesn't email the customer twice. Optional: if the
+  // column doesn't exist, the notify webhook still works (see its route).
+  "Feedback Emailed"?: boolean;
 }
 
 export interface SubmissionRecord {
