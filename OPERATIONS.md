@@ -30,10 +30,11 @@ the flow silently breaks — no errors, just submissions that never progress.
 8. [Verify the email domain](#8-verify-the-email-domain)
 9. [End-to-end test (test mode)](#9-end-to-end-test-test-mode)
 10. [Flip to live](#10-flip-to-live)
-11. [Yuta's daily workflow](#11-yutas-daily-workflow)
-12. [Endpoint reference](#12-endpoint-reference)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Pending changes](#pending-changes)
+11. [Decommission the dev setup](#11-decommission-the-dev-setup)
+12. [Yuta's daily workflow](#12-yutas-daily-workflow)
+13. [Endpoint reference](#13-endpoint-reference)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Pending changes](#pending-changes)
 
 ---
 
@@ -270,7 +271,24 @@ Run the whole thing on **Stripe test keys** before going live.
 
 ---
 
-## 11. Yuta's daily workflow
+## 11. Decommission the dev setup
+
+Once the client's site is live and verified, tear down the old dev deployment so
+nothing keeps firing against test data or duplicating work.
+
+- [ ] Delete (or pause) the **dev Vercel project** so its deployment and any
+      `*.vercel.app` URL stop serving
+- [ ] Disable/delete the **dev Stripe webhook** (test mode) so it no longer fires
+- [ ] Disable/delete the **dev Mux webhook**
+- [ ] Turn off the **dev Airtable automation**, and archive the dev base if it
+      held only test rows
+- [ ] Revoke any **dev-only API keys and tokens** no longer in use
+- [ ] Re-run the [step 9 test](#9-end-to-end-test-test-mode) against production
+      after teardown — confirming nothing live depended on a dev resource
+
+---
+
+## 12. Yuta's daily workflow
 
 The whole operation runs from Airtable. Budget ~10–15 minutes per submission.
 
@@ -302,7 +320,7 @@ That last step is the trigger. The automation fires, the customer gets their
 
 ---
 
-## 12. Endpoint reference
+## 13. Endpoint reference
 
 | Route | Trigger | What it does |
 | --- | --- | --- |
@@ -320,7 +338,7 @@ email.
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 **Payment succeeds but no Airtable row appears.**
 Check Stripe → Webhooks → the endpoint's recent deliveries. A 400 means the
