@@ -1,11 +1,11 @@
-import { mux } from "@/lib/mux";
+import { mux } from "@/shared/mux/client";
 import {
   getSubmission,
   findByMuxUploadId,
   updateSubmission,
-} from "@/integrations/airtable/submissions";
-import type { Submission, SubmissionPatch } from "@/types/submission";
-import { sendUploadReceived } from "@/lib/email";
+} from "@/domains/submission";
+import type { Submission, SubmissionPatch } from "@/domains/submission";
+import { sendVideoReceived } from "@/domains/upload";
 
 /**
  * Mux → Airtable glue. When an uploaded asset becomes ready we move the
@@ -86,7 +86,7 @@ async function handleAssetReady(data: AssetData) {
   await updateSubmission(submission.id, patch);
 
   if (isFirstTransition && submission.customerEmail) {
-    await sendUploadReceived(submission.customerEmail, submission.playerName);
+    await sendVideoReceived(submission.customerEmail, submission.playerName);
   }
 }
 

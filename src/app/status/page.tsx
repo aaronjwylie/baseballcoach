@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/ui";
-import { StatusForm } from "./status-form";
+import { Container } from "@/shared/ui";
+import { StatusLookup } from "@/domains/submission";
 
 export const metadata: Metadata = {
   title: "Check your status",
@@ -23,7 +23,7 @@ export default function StatusPage() {
         </div>
 
         <div className="mt-10">
-          <StatusForm />
+          <StatusLookup />
         </div>
       </Container>
     </section>

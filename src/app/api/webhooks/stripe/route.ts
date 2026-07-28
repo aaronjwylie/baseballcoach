@@ -1,8 +1,8 @@
 import type Stripe from "stripe";
-import { stripe } from "@/lib/stripe";
-import { env } from "@/lib/env";
-import { ensureSubmission } from "@/lib/fulfillment";
-import { sendPaymentConfirmation } from "@/lib/email";
+import { stripe } from "@/shared/stripe/client";
+import { env } from "@/shared/config/env";
+import { ensureSubmission } from "@/domains/payment";
+import { sendPaymentConfirmation } from "@/domains/payment";
 
 /**
  * Stripe → Airtable glue. On `checkout.session.completed` we create the

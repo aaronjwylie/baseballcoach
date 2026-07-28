@@ -2,9 +2,9 @@ import { timingSafeEqual } from "node:crypto";
 import {
   getSubmission,
   updateSubmission,
-} from "@/integrations/airtable/submissions";
-import { env } from "@/lib/env";
-import { sendFeedbackReady } from "@/lib/email";
+} from "@/domains/submission";
+import { env } from "@/shared/config/env";
+import { sendFeedbackReady } from "@/domains/feedback";
 
 /**
  * Notify-on-complete hook. An Airtable automation ("Send request" action)

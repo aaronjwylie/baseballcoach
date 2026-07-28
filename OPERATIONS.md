@@ -224,7 +224,7 @@ Preview, with test-mode keys, if you want branch previews to work).
 | `NEXT_PUBLIC_SITE_URL` | Live URL, **no trailing slash** (e.g. `https://diamondpath.com`) | Yes |
 | `STRIPE_SECRET_KEY` | Stripe live key `sk_live_…` | Yes |
 | `STRIPE_WEBHOOK_SECRET` | From the Stripe webhook in step 6 (`whsec_…`) | Yes |
-| `STRIPE_PRICE_ID` | A pre-created Stripe Price. Leave unset to price inline from `src/lib/site.ts` | No |
+| `STRIPE_PRICE_ID` | A pre-created Stripe Price. Leave unset to price inline from `src/shared/config/site.ts` | No |
 | `MUX_TOKEN_ID` | Mux access token ID | Yes |
 | `MUX_TOKEN_SECRET` | Mux access token secret | Yes |
 | `MUX_WEBHOOK_SECRET` | From the Mux webhook in step 6 | Yes |
@@ -237,11 +237,11 @@ Preview, with test-mode keys, if you want branch previews to work).
 
 - [ ] All required vars set for **Production**.
 - [ ] Update the customer-facing content in
-      [src/lib/site.ts](src/lib/site.ts) — business name, price, coach bios,
+      [src/shared/config/site.ts](src/shared/config/site.ts) — business name, price, coach bios,
       contact email. This is the only file that needs editing for content.
 - [ ] **Redeploy.** Env changes only take effect on a new build.
 
-Env vars are read in exactly one place — [src/lib/env.ts](src/lib/env.ts).
+Env vars are read in exactly one place — [src/shared/config/env.ts](src/shared/config/env.ts).
 Required values throw at point of use with a message naming the variable, so a
 misconfiguration surfaces as a clear error rather than a silent failure.
 

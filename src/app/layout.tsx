@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { site } from "@/lib/site";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
+import { env } from "@/shared/config/env";
+import { site } from "@/shared/config/site";
+import { SiteHeader } from "@/shared/layout/SiteHeader";
+import { SiteFooter } from "@/shared/layout/SiteFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,9 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  ),
+  metadataBase: new URL(env.siteUrl),
   title: {
     default: `${site.name} — ${site.tagline}`,
     template: `%s · ${site.name}`,

@@ -11,19 +11,28 @@ Built with **Next.js 16 (App Router, Turbopack)**, React 19, and Tailwind CSS v4
 
 | Area | Path |
 | --- | --- |
-| Landing page | [src/app/page.tsx](src/app/page.tsx) |
-| Start (player info) form | [src/app/start/](src/app/start/) |
-| Video upload page (Mux) | [src/app/upload/](src/app/upload/) |
-| Status lookup | [src/app/status/](src/app/status/) |
+| Landing page | [src/domains/landing/](src/domains/landing/) |
+| Paying for a review | [src/domains/payment/](src/domains/payment/) |
+| Getting the video to us | [src/domains/upload/](src/domains/upload/) |
+| The submission record + status lookup | [src/domains/submission/](src/domains/submission/) |
+| The coach's response | [src/domains/feedback/](src/domains/feedback/) |
 | Checkout API | [src/app/api/checkout/route.ts](src/app/api/checkout/route.ts) |
 | Mux direct-upload API | [src/app/api/mux/upload/route.ts](src/app/api/mux/upload/route.ts) |
 | Status lookup API | [src/app/api/status/route.ts](src/app/api/status/route.ts) |
 | Stripe webhook | [src/app/api/webhooks/stripe/route.ts](src/app/api/webhooks/stripe/route.ts) |
 | Mux webhook | [src/app/api/webhooks/mux/route.ts](src/app/api/webhooks/mux/route.ts) |
-| Tool clients & content | [src/lib/](src/lib/) |
+| Domain slices | [src/domains/](src/domains/) |
+| Domain-less foundation | [src/shared/](src/shared/) |
 
-All customer-editable copy (name, tagline, pricing, coach bios, FAQ) lives in
-**[src/lib/site.ts](src/lib/site.ts)** — change content there, not in components.
+Customer-editable copy lives in two files, split by scope: app-wide brand facts
+(name, price, turnaround) in **[src/shared/config/site.ts](src/shared/config/site.ts)**,
+landing-page section copy in
+**[src/domains/landing/model/copy.ts](src/domains/landing/model/copy.ts)**. Change
+content there, never in components.
+
+**The codebase is domain-first** — see [PRINCIPLES.md](PRINCIPLES.md) for the rules and
+[docs/design/structure.md](docs/design/structure.md) for the layout. Each domain carries a
+`_XxxDocumentation.md`; read a slice's doc before changing the slice.
 
 ## The flow
 
@@ -69,7 +78,7 @@ runbook. This file deliberately doesn't repeat them; two copies of a schema
 means one of them is wrong.
 
 Env vars are documented in [.env.example](.env.example) and read in exactly one
-place, [src/lib/env.ts](src/lib/env.ts). Required values throw at point of use
+place, [src/shared/config/env.ts](src/shared/config/env.ts). Required values throw at point of use
 with a message naming the variable.
 
 ### Local webhook testing

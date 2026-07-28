@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container, ButtonLink } from "@/components/ui";
-import { site } from "@/lib/site";
-import { UploadClient } from "./upload-client";
+import { Container, ButtonLink } from "@/shared/ui";
+import { site } from "@/shared/config/site";
+import { UploadPanel } from "@/domains/upload";
 
 export const metadata: Metadata = {
   title: "Upload your video",
@@ -31,7 +31,7 @@ export default async function UploadPage(props: PageProps<"/upload">) {
               </p>
             </div>
             <div className="mt-10">
-              <UploadClient sessionId={sessionId} />
+              <UploadPanel sessionId={sessionId} />
             </div>
           </>
         ) : (

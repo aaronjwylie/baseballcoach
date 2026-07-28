@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Container } from "@/components/ui";
-import { site } from "@/lib/site";
-import { StartForm } from "./start-form";
+import { Container } from "@/shared/ui";
+import { site } from "@/shared/config/site";
+import { StartForm } from "@/domains/payment";
 
 export const metadata: Metadata = {
   title: "Get started",

@@ -64,7 +64,7 @@ the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
 | --- | --- |
 | Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) |
 | ~~**3 statuses** instead of 5 (§8)~~ | ✅ Step 1 — five statuses, with the middle three owned by Yuta |
-| Flat `src/lib/` + `src/components/` instead of FSD (§5) | Move to the §5 structure (Step 2) |
+| ~~Flat `src/lib/` + `src/components/` instead of FSD (§5)~~ | ✅ Step 2 — domain-first, see [PRINCIPLES.md](PRINCIPLES.md) |
 | Hand-rolled validation instead of **Zod** (§11) | Replace; share one schema between client and server |
 | No rate limit on the status lookup (Sprint 5) | Add — 5 requests per IP per minute |
 | No `/feedback/[id]` viewer (Sprint 5) | Build, once the wireframe lands |
@@ -80,10 +80,10 @@ six files, so a rename in the base broke the app silently in six places.
 
 **The rule now: one name per concept, declared once.**
 
-- [`src/types/submission.ts`](src/types/submission.ts) — the domain vocabulary.
-  Knows nothing about Airtable. A property here is spelled the same way in the
-  form, the API, and the UI.
-- [`src/integrations/airtable/schema.ts`](src/integrations/airtable/schema.ts) —
+- [`domains/submission/model/submission.ts`](src/domains/submission/model/submission.ts) —
+  the domain vocabulary. Knows nothing about Airtable. A property here is spelled
+  the same way in the form, the API, and the UI.
+- [`domains/submission/api/submissionSchema.ts`](src/domains/submission/api/submissionSchema.ts) —
   the **only** file containing Airtable column names, plus the codec between the
   two. If storage ever moves off Airtable, this is what changes.
 
@@ -95,7 +95,7 @@ wrong file.
 
 0. ✅ **Reconcile the docs** so the source of truth is true
 1. ✅ **One name per concept** — schema, codec, 5 statuses, notes split
-2. **FSD move** — mechanical, guarded by `tsc`
+2. ✅ **Domain-first move** — `domains/` + `shared/`, per-slice docs
 3. **Zod** + the status-lookup rate limit
 4. **Sprint 1** — landing page, against Audrey's wireframe
 5. **Sprint 2 redo** — Stripe Elements
@@ -266,164 +266,31 @@ If any of these feels needed, the scope is wrong. Stop and flag it.
 
 ## 5. Repository Structure (FSD)
 
-This is a Feature-Sliced Design–inspired structure, adapted for a Next.js App Router project of this size. The core idea: organize by feature (submission, feedback, admin) rather than by file type, keeping related code co-located.
+**The layout is specified in [`docs/design/structure.md`](docs/design/structure.md); the reasoning behind it is in [PRINCIPLES.md](PRINCIPLES.md).** This section used to hold a full tree; it was superseded on 2026-07-28 and reduced to a pointer, because two descriptions of one layout is exactly the drift Step 0 existed to kill.
 
-> **This is the target, not the current layout.** Today the code sits in a flat
-> `src/lib/` + `src/components/`, with routes at `/start`, `/upload`, `/status`.
-> Step 2 of the realignment moves it here. See [§0](#0-where-this-project-actually-is).
+The 30-second version:
 
 ```
-/
-├── README.md                        # Quick start for humans
-├── CLAUDE.md                        # This file (source of truth)
-├── OPERATIONS.md                    # Manual setup runbook (Airtable, Stripe, Mux, Make.com, Resend, Vercel, DNS)
-├── .env.example                     # All required env vars, documented
-├── .env.local                       # Not committed — actual dev secrets
-├── package.json
-├── tsconfig.json                    # Strict mode enabled
-├── tailwind.config.ts
-├── next.config.mjs
-├── components.json                  # shadcn/ui config
-├── .prettierrc                      # Prettier + Tailwind plugin
-├── .eslintrc.json
-│
-├── public/                          # Static assets (logo, og-image, favicon)
-│
-├── src/
-│   ├── app/                         # Next.js App Router (routes only)
-│   │   ├── layout.tsx               # Root layout, metadata, fonts
-│   │   ├── page.tsx                 # Landing page composition
-│   │   ├── globals.css              # Tailwind directives + design tokens
-│   │   ├── not-found.tsx            # 404 page
-│   │   │
-│   │   ├── submit/                  # Submission flow
-│   │   │   ├── page.tsx             # Step 1: email + player info form
-│   │   │   ├── payment/page.tsx     # Step 2: Stripe Elements
-│   │   │   ├── upload/page.tsx      # Step 3: Mux upload
-│   │   │   └── confirmation/page.tsx # Step 4: thank you
-│   │   │
-│   │   ├── status/                  # Status lookup (email → results)
-│   │   │   └── page.tsx
-│   │   │
-│   │   ├── feedback/                # Customer feedback viewer
-│   │   │   └── [id]/
-│   │   │       └── page.tsx         # View feedback by submission ID
-│   │   │
-│   │   └── api/                     # Server-side routes
-│   │       ├── stripe/
-│   │       │   ├── create-intent/route.ts
-│   │       │   └── webhook/route.ts
-│   │       ├── mux/
-│   │       │   ├── upload-url/route.ts
-│   │       │   └── webhook/route.ts
-│   │       ├── submissions/
-│   │       │   ├── lookup/route.ts  # email → submissions
-│   │       │   └── [id]/route.ts    # single submission by ID
-│   │       └── emails/
-│   │           └── send/route.ts    # Optional — mostly Make.com does this
-│   │
-│   ├── features/                    # Feature-scoped code (FSD principle)
-│   │   ├── landing/                 # Landing page sections
-│   │   │   ├── components/
-│   │   │   │   ├── hero.tsx
-│   │   │   │   ├── how-it-works.tsx
-│   │   │   │   ├── coaches.tsx
-│   │   │   │   ├── pricing.tsx
-│   │   │   │   ├── faq.tsx
-│   │   │   │   └── footer-cta.tsx
-│   │   │   └── copy.ts              # Marketing copy constants (easy to edit)
-│   │   │
-│   │   ├── submission/              # Submission flow logic
-│   │   │   ├── components/
-│   │   │   │   ├── info-form.tsx    # Email + player info
-│   │   │   │   ├── payment-form.tsx # Stripe Elements wrapper
-│   │   │   │   ├── upload-form.tsx  # Mux uploader wrapper
-│   │   │   │   └── progress-indicator.tsx
-│   │   │   ├── hooks/
-│   │   │   │   ├── use-payment.ts
-│   │   │   │   └── use-upload.ts
-│   │   │   └── schemas.ts           # Zod schemas for form validation
-│   │   │
-│   │   ├── status/                  # Status lookup + display
-│   │   │   ├── components/
-│   │   │   │   ├── lookup-form.tsx
-│   │   │   │   ├── submission-list.tsx
-│   │   │   │   └── status-badge.tsx
-│   │   │   └── schemas.ts
-│   │   │
-│   │   └── feedback/                # Feedback viewer
-│   │       └── components/
-│   │           ├── feedback-viewer.tsx
-│   │           ├── video-player.tsx
-│   │           └── coach-notes.tsx
-│   │
-│   ├── shared/                      # Cross-feature building blocks
-│   │   ├── ui/                      # shadcn/ui components (copied in)
-│   │   │   ├── button.tsx
-│   │   │   ├── input.tsx
-│   │   │   ├── card.tsx
-│   │   │   └── ...
-│   │   ├── layout/                  # Header, Footer, page shells
-│   │   │   ├── header.tsx
-│   │   │   ├── footer.tsx
-│   │   │   └── page-shell.tsx
-│   │   ├── lib/                     # Pure utilities, no React
-│   │   │   ├── cn.ts                # Tailwind class merger
-│   │   │   ├── format.ts            # Currency, date formatters
-│   │   │   └── constants.ts         # App-wide constants
-│   │   └── hooks/                   # Cross-feature React hooks
-│   │       └── use-mounted.ts
-│   │
-│   ├── integrations/                # Third-party service clients
-│   │   ├── stripe/
-│   │   │   ├── client.ts            # Server-side Stripe SDK client
-│   │   │   ├── webhook.ts           # Signature verification, event handling
-│   │   │   └── types.ts
-│   │   ├── mux/
-│   │   │   ├── client.ts
-│   │   │   ├── webhook.ts
-│   │   │   └── types.ts
-│   │   ├── airtable/
-│   │   │   ├── client.ts            # REST client with rate limiting
-│   │   │   ├── submissions.ts       # CRUD helpers for Submissions table
-│   │   │   ├── coaches.ts           # Helpers for Coaches table
-│   │   │   └── types.ts
-│   │   └── resend/
-│   │       ├── client.ts
-│   │       └── send.ts
-│   │
-│   ├── emails/                      # React Email templates
-│   │   ├── payment-confirmation.tsx
-│   │   ├── video-received.tsx
-│   │   ├── feedback-ready.tsx
-│   │   └── shared/                  # Header, footer, brand primitives
-│   │       ├── layout.tsx
-│   │       └── theme.ts
-│   │
-│   ├── config/                      # Configuration
-│   │   ├── env.ts                   # Validated env var loader (Zod)
-│   │   └── site.ts                  # Site metadata, URLs, brand tokens
-│   │
-│   └── types/                       # Global TypeScript types
-│       ├── submission.ts            # Submission type + status enum
-│       ├── coach.ts
-│       └── api.ts                   # API request/response types
-│
-├── scripts/                         # Development utilities
-│   ├── seed-airtable.ts             # Populate test data
-│   └── test-webhook.ts              # Local webhook testing helper
-│
-└── docs/                            # Optional deep-dive docs
-    └── decisions/                   # Architecture Decision Records (ADRs)
-        └── 001-airtable-as-db.md
+src/
+├── app/        Next.js routes + API handlers — thin
+├── domains/    submission · payment · upload · feedback · landing
+└── shared/     the domain-less floor
 ```
 
-### FSD principles applied here
+**Domain-first, not layer-first.** A concept's data and its behavior live in *one* folder —
+what a Submission *is* and what you *do* with it, together. The earlier plan here split them
+across `features/` and `integrations/`; that was retired after reading the WRLD sandbox,
+which had run the same experiment at larger scale and retired its own `entities/`-vs-`features/`
+split.
 
-- **Routes are thin.** `app/submit/payment/page.tsx` is a composition — it imports from `features/submission/` and renders. Business logic lives in `features/`, not routes.
-- **Features own their concerns.** `features/submission/` contains its components, hooks, and schemas. Cross-feature primitives live in `shared/`.
-- **Integrations are isolated.** Every third-party SDK is wrapped in `integrations/`. If Mux ever gets swapped for Cloudflare Stream, only `integrations/mux/` changes.
-- **Types are shared upward.** Global domain types live in `types/`. Feature-specific types live inside the feature folder.
+The two invariants worth memorizing:
+
+- **Every Airtable column name lives in one file** — `domains/submission/api/submissionSchema.ts`.
+- **Every `process.env` read lives in one file** — `shared/config/env.ts`.
+
+Each domain carries a `_XxxDocumentation.md` — its northstar, its honest current state, and
+the dated trail of decisions that shaped it. **Read the slice's doc before changing the
+slice.** They are kept true in the same commit as the code.
 
 ---
 
@@ -597,7 +464,7 @@ Airtable is the database. The schema lives in one base with two tables.
 
 ### Submissions table
 
-**Field names are load-bearing.** They are declared in exactly one place — [`src/integrations/airtable/schema.ts`](src/integrations/airtable/schema.ts) — and nowhere else in the codebase may contain a quoted Airtable column name. A rename is that one file plus a migration on the client's base.
+**Field names are load-bearing.** They are declared in exactly one place — [`src/domains/submission/api/submissionSchema.ts`](src/domains/submission/api/submissionSchema.ts) — and nowhere else in the codebase may contain a quoted Airtable column name. A rename is that one file plus a migration on the client's base.
 
 | Field Name          | Type                        | Written by                                  |
 | ------------------- | --------------------------- | ------------------------------------------- |
@@ -968,11 +835,16 @@ Tasks:
 
 ### Naming
 
-- **Files:** kebab-case (`payment-form.tsx`, `stripe-webhook.ts`)
-- **Components:** PascalCase (`PaymentForm`)
-- **Functions:** camelCase (`createPaymentIntent`)
-- **Constants:** SCREAMING_SNAKE_CASE (`MAX_VIDEO_SIZE_MB`)
-- **Types:** PascalCase (`Submission`, `SubmissionStatus`)
+**Specified in [`docs/design/structure.md` §6](docs/design/structure.md).** Adopted from the
+WRLD sandbox's `Nomenclature.md` on 2026-07-28 so the two codebases read alike — this
+superseded the kebab-case convention previously specified here.
+
+The short version: `PascalCase` types and components, `camelCase` modules and folders, no
+hyphens in folder names, `xApi` for API clients, `_<Slice>Documentation.md` for slice docs.
+`src/app/` follows Next.js instead, because the router reserves those filenames.
+
+**One stem per concept** — a domain folder and everything in it use one word, never two forms
+of the same idea.
 
 ### Comments
 
@@ -1078,6 +950,9 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 ## Related Documents
 
 - **[OPERATIONS.md](OPERATIONS.md)** — Account setup, the Airtable base, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and Yuta's daily workflow
+- **[PRINCIPLES.md](PRINCIPLES.md)** — how this codebase is built: the rules the structure rests on
+- **[docs/design/structure.md](docs/design/structure.md)** — the layout, segments, dependency rules, and naming
+- **`src/domains/*/_XxxDocumentation.md`** — per-slice: northstar, honest current state, and the dated decision trail. Read the slice's doc before changing the slice
 - **[docs/decisions/](docs/decisions/)** — ADRs recording where and why the implementation departs from this document
 - **[README.md](README.md)** — Quick start for a new developer joining
 - **Proposal v4** — Scope, budget, timeline as agreed with the client. Defer to this if a stakeholder claims something is "in scope"

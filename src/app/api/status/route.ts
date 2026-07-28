@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { findByCustomerEmail } from "@/integrations/airtable/submissions";
-import type { SubmissionStatus } from "@/types/submission";
+import { findByCustomerEmail } from "@/domains/submission";
+import type { SubmissionStatus } from "@/domains/submission";
 
 /**
  * Email-as-identity status lookup.
