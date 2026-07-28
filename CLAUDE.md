@@ -62,38 +62,49 @@ the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
 
 | Divergence | Resolution |
 | --- | --- |
-| Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site |
-| **3 statuses** instead of 5 (§8) | **Go to 5.** Yuta needs an explicit "needs a coach" queue state |
-| Flat `src/lib/` + `src/components/` instead of FSD (§5) | Move to the §5 structure |
+| Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) |
+| ~~**3 statuses** instead of 5 (§8)~~ | ✅ Step 1 — five statuses, with the middle three owned by Yuta |
+| Flat `src/lib/` + `src/components/` instead of FSD (§5) | Move to the §5 structure (Step 2) |
 | Hand-rolled validation instead of **Zod** (§11) | Replace; share one schema between client and server |
 | No rate limit on the status lookup (Sprint 5) | Add — 5 requests per IP per minute |
 | No `/feedback/[id]` viewer (Sprint 5) | Build, once the wireframe lands |
 | Raw-HTML email strings instead of **React Email** (§4) | Open — decide during the email pass |
 | Hand-rolled `ui.tsx` primitives instead of **shadcn/ui** (§4) | Open — decide when the wireframe lands |
 
-### Nomenclature is the live problem
+### Nomenclature — the spine
 
-One concept currently carries three names across the stack. The worst offender:
-the coaching focus is `focus` in code, `Sport` in Airtable (holding values like
-`"Hitting"`), and `Skill Focus` in this document. Airtable column names also
-appear as bare string literals in six files, so a rename in the base breaks the
-app silently in six places.
+One concept used to carry three names across the stack: the coaching focus was
+`focus` in code, `Sport` in Airtable (holding values like `"Hitting"`), and
+`Skill Focus` in this document. Column names appeared as bare string literals in
+six files, so a rename in the base broke the app silently in six places.
 
-**The fix — the spine of the realignment — is one name per concept, declared
-once.** Every Airtable column string gets exactly one home in `src/config/`;
-everything else touches typed properties. This is what "one source of truth"
-means for this codebase, and it lands before the FSD move.
+**The rule now: one name per concept, declared once.**
+
+- [`src/types/submission.ts`](src/types/submission.ts) — the domain vocabulary.
+  Knows nothing about Airtable. A property here is spelled the same way in the
+  form, the API, and the UI.
+- [`src/integrations/airtable/schema.ts`](src/integrations/airtable/schema.ts) —
+  the **only** file containing Airtable column names, plus the codec between the
+  two. If storage ever moves off Airtable, this is what changes.
+
+**No other file may contain a quoted Airtable column name.** That's the
+invariant the whole architecture rests on — if you're typing one, you're in the
+wrong file.
 
 ### Sequencing
 
-0. **Reconcile the docs** so the source of truth is true ← *this section*
-1. **One name per concept** — the schema/naming sweep
+0. ✅ **Reconcile the docs** so the source of truth is true
+1. ✅ **One name per concept** — schema, codec, 5 statuses, notes split
 2. **FSD move** — mechanical, guarded by `tsc`
 3. **Zod** + the status-lookup rate limit
 4. **Sprint 1** — landing page, against Audrey's wireframe
 5. **Sprint 2 redo** — Stripe Elements
 
 Steps 0–3 are wireframe-independent, so they run while design is in flight.
+
+> **Step 1 is written but not deployed.** It renames columns, so it can't ship
+> until the client's base is migrated — the code and the base have to move
+> together. Runbook: [OPERATIONS.md §4b](OPERATIONS.md#4b-migrating-an-existing-base).
 
 > **The Airtable base is live in the client's workspace.** Any field rename or
 > status change is a data migration on Yuta's base, not just a code change. Do
@@ -584,35 +595,35 @@ If Make.com does stay, Claude Code never touches it directly — it only keeps t
 
 Airtable is the database. The schema lives in one base with two tables.
 
-### Submissions table — as it exists today
+### Submissions table
 
-**Field names are load-bearing** — code references them by exact string. Do not rename without updating the code *and* migrating the client's live base.
+**Field names are load-bearing.** They are declared in exactly one place — [`src/integrations/airtable/schema.ts`](src/integrations/airtable/schema.ts) — and nowhere else in the codebase may contain a quoted Airtable column name. A rename is that one file plus a migration on the client's base.
 
-| Field Name        | Type             | Written by                                    |
-| ----------------- | ---------------- | --------------------------------------------- |
-| Email             | Single line text | App — always lowercased before write and read |
-| Player Name       | Single line text | App                                           |
-| Player Age        | Single line text | App — currently a string, should be a number  |
-| Sport             | Single line text | App — **misnamed**; holds the coaching focus  |
-| Notes             | Long text        | App, then Yuta                                |
-| Status            | Single select    | App, then Yuta — see below                    |
-| Stripe Session ID | Single line text | App                                           |
-| Mux Upload ID     | Single line text | App                                           |
-| Mux Asset ID      | Single line text | App (Mux webhook)                             |
-| Mux Playback ID   | Single line text | App (Mux webhook)                             |
-| Feedback Link     | URL              | **Yuta** — the coach's Loom/video link         |
-| Created At        | Single line text | App — an ISO string, *not* an Airtable created-time field |
-| Feedback Emailed  | Checkbox         | App — idempotency guard on the feedback email |
+| Field Name          | Type                        | Written by                                  |
+| ------------------- | --------------------------- | ------------------------------------------- |
+| Submission ID       | Autonumber (primary)        | Airtable — read-only to the app             |
+| Customer Email      | Single line text            | App — always lowercased on write and read   |
+| Player Name         | Single line text            | App                                         |
+| Player Age          | Number (integer)            | App                                         |
+| Focus               | Single select               | App — Hitting / Pitching / Fielding / Catching / Other |
+| Customer Notes      | Long text                   | App — the customer's words, never overwritten |
+| Internal Notes      | Long text                   | App (system messages) + Yuta                |
+| Status              | Single select               | App, then Yuta — see below                  |
+| Submitted At        | Created time                | Airtable — read-only to the app             |
+| Stripe Payment ID   | Single line text            | App                                         |
+| Stripe Amount       | Currency (CAD)              | App                                         |
+| Mux Upload ID       | Single line text            | App                                         |
+| Mux Asset ID        | Single line text            | App (Mux webhook)                           |
+| Mux Playback ID     | Single line text            | App (Mux webhook)                           |
+| Assigned Coach      | Single line text            | **Yuta** — app reads only                   |
+| Feedback Video URL  | URL                         | **Yuta** — the coach's Loom/video link      |
+| Feedback Emailed At | Date (with time)            | App — idempotency guard on the feedback email |
 
-**Known problems with this schema, to be resolved in the Step 1 naming sweep:**
+Three columns are **read-only to the app** and the codec refuses to write them even if a caller asks: `Submission ID` and `Submitted At` are computed by Airtable, and `Assigned Coach` is Yuta's to set.
 
-- `Sport` holds values like `"Hitting"` — it's the coaching **focus**, not a sport. Nobody reading the base can tell what the column means. → rename to `Focus`
-- `Player Age` is a string. → number
-- `Created At` is written by app code and sorted on by the status lookup. If Yuta clears the cell, ordering breaks. → replace with a real Airtable created-time field
-- No `Stripe Amount`, no `Internal Notes`, no denormalized `Video URL` formula
-- The Elements rebuild replaces `Stripe Session ID` with a payment-intent ID
+`Stripe Payment ID` holds a Checkout Session ID today and a PaymentIntent ID once the Elements rebuild lands. The name describes the role, not the Stripe object, so that change needs no second migration.
 
-The target schema is **not yet settled** — it lands with the Step 1 proposal, and every rename is a migration on Yuta's live base, so they go in one batch.
+**Splitting `Customer Notes` from `Internal Notes` is deliberate.** They were one column, which meant system messages (`[system] Mux reported an error…`) interleaved with what the parent wrote — so nothing could be forwarded to a coach without being cleaned by hand first.
 
 ### Status values (exact strings, in order)
 
@@ -622,15 +633,19 @@ The target schema is **not yet settled** — it lands with the Step 1 proposal, 
 4. `"In Review"` — Coach is working on feedback
 5. `"Complete"` — Feedback delivered
 
-**Currently the base has only three** — `Awaiting Upload`, `In Review`, `Complete`. Moving to the five above is approved: without `New` and `Assigned`, Yuta has no way to distinguish "needs a coach" from "a coach has it," which is the queue he actually operates from. Migration lands with the Step 1 batch.
+The app only ever writes the first two. `Assigned` and `In Review` are Yuta's to set as he works the queue, and `Complete` is what triggers the feedback email. That split is expressed in the type system as `AppWrittenStatus`.
+
+The status lookup collapses `New`, `Assigned`, and `In Review` into calm customer-facing language — a parent doesn't benefit from knowing their video is "unassigned."
 
 **Never invent new status values in code without updating Airtable and the automations that watch it.**
 
-### Coaches table — not built
+### Coaches table — not built, deliberately
 
-Specified below, but **no Coaches table exists** and nothing in the code reads one. Coach assignment currently happens in Yuta's head and his email outbox.
+**No Coaches table exists.** `Assigned Coach` is a plain text field Yuta types into.
 
-Build it when the `Assigned` status lands — that's the point at which "which coach?" becomes a field the system needs to answer rather than a note Yuta keeps himself. Until then it would be an empty table.
+The table below is the upgrade path, not a to-do. A linked record buys referential integrity, per-coach filtered views, and specialty-based routing — none of which matter while there are three coaches Yuta knows by name. Build it when he's routing enough volume that typing a name is error-prone, or when something in the app needs to *answer questions about coaches* rather than just display one. Until then it's an empty table and a join.
+
+When it does get built, `Assigned Coach` changes from text to a linked record, and the pitfall in §12 applies — linked fields return arrays of record IDs, so denormalize the name into a formula field rather than doing a second fetch per row.
 
 | Field Name         | Type                | Notes                     |
 | ------------------ | ------------------- | ------------------------- |

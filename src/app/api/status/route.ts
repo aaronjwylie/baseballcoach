@@ -1,32 +1,40 @@
 import { NextResponse } from "next/server";
-import { findByEmail } from "@/lib/airtable";
+import { findByCustomerEmail } from "@/integrations/airtable/submissions";
+import type { SubmissionStatus } from "@/types/submission";
 
 /**
- * Email-as-identity status lookup. Returns a sanitized list of the caller's
- * submissions — never internal fields (Stripe/Mux IDs, coach assignment).
- * Email is not verified, so we only ever expose non-sensitive, self-authored
- * data keyed on the exact address entered.
+ * Email-as-identity status lookup.
+ *
+ * The email is never verified, so this returns only non-sensitive, customer-
+ * authored data keyed on the exact address entered. Internal fields — Stripe
+ * and Mux IDs, internal notes, the amount paid — are deliberately not mapped
+ * across. Adding a field to `PublicSubmission` means deciding it's safe to hand
+ * to anyone who can guess an email address.
+ *
+ * TODO(2026-07-28, Ben): rate limit to 5 requests per IP per minute
+ * (CLAUDE.md Sprint 5). Without it this endpoint enumerates customers.
  */
 export interface PublicSubmission {
+  submissionId?: number;
   playerName: string;
   focus?: string;
-  status: "Awaiting Upload" | "In Review" | "Complete";
-  createdAt?: string;
-  feedbackLink?: string;
+  status: SubmissionStatus;
+  submittedAt?: string;
+  feedbackVideoUrl?: string;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {
-  let body: { email?: string };
+  let body: { customerEmail?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const email = (body.email ?? "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) {
+  const customerEmail = (body.customerEmail ?? "").trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(customerEmail)) {
     return NextResponse.json(
       { error: "Please enter a valid email address." },
       { status: 400 },
@@ -34,20 +42,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    const records = await findByEmail(email);
-    const submissions: PublicSubmission[] = records.map((record) => {
-      const f = record.fields;
-      return {
-        playerName: f["Player Name"] ?? "Player",
-        focus: f.Sport,
-        status: f.Status ?? "Awaiting Upload",
-        createdAt: f["Created At"],
-        // Only expose the feedback link once the review is complete.
-        feedbackLink:
-          f.Status === "Complete" ? f["Feedback Link"] : undefined,
-      };
-    });
-    return NextResponse.json({ submissions });
+    const submissions = await findByCustomerEmail(customerEmail);
+
+    const publicSubmissions: PublicSubmission[] = submissions.map(
+      (submission) => ({
+        submissionId: submission.submissionId,
+        playerName: submission.playerName || "Player",
+        focus: submission.focus,
+        status: submission.status,
+        submittedAt: submission.submittedAt,
+        // The feedback link is only theirs to see once the review is finished.
+        feedbackVideoUrl:
+          submission.status === "Complete"
+            ? submission.feedbackVideoUrl
+            : undefined,
+      }),
+    );
+
+    return NextResponse.json({ submissions: publicSubmissions });
   } catch (err) {
     console.error("[status] lookup failed:", err);
     return NextResponse.json(

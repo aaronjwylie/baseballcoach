@@ -24,6 +24,7 @@ the flow silently breaks — no errors, just submissions that never progress.
 2. [Move the code](#2-move-the-code)
 3. [Create the service accounts](#3-create-the-service-accounts)
 4. [Build the Airtable base](#4-build-the-airtable-base)
+   · [4b. Migrating an existing base](#4b-migrating-an-existing-base)
 5. [Environment variables](#5-environment-variables)
 6. [Configure the webhooks](#6-configure-the-webhooks)
 7. [Domain & DNS](#7-domain--dns)
@@ -95,34 +96,121 @@ Create a table named `Submissions` (or set `AIRTABLE_TABLE_NAME` to match).
 
 | Field | Type | Written by |
 | --- | --- | --- |
-| `Email` | Single line text | App (Stripe webhook) |
+| `Submission ID` | **Autonumber** — make this the primary field | Airtable |
+| `Customer Email` | Single line text | App |
 | `Player Name` | Single line text | App |
-| `Player Age` | Single line text | App |
-| `Sport` | Single line text | App — holds the coaching focus |
-| `Notes` | Long text | App, then the client |
-| `Status` | Single select — `Awaiting Upload`, `In Review`, `Complete` | App, then the client |
-| `Stripe Session ID` | Single line text | App |
+| `Player Age` | Number (integer, no decimals) | App |
+| `Focus` | Single select — `Hitting`, `Pitching`, `Fielding`, `Catching`, `Other` | App |
+| `Customer Notes` | Long text | App — **what the customer wrote; don't edit** |
+| `Internal Notes` | Long text | App + you — system messages and your own |
+| `Status` | Single select — see below | App, then you |
+| `Submitted At` | **Created time** | Airtable |
+| `Stripe Payment ID` | Single line text | App |
+| `Stripe Amount` | Currency (CAD) | App |
 | `Mux Upload ID` | Single line text | App |
 | `Mux Asset ID` | Single line text | App (Mux webhook) |
 | `Mux Playback ID` | Single line text | App (Mux webhook) |
-| `Feedback Link` | URL | **The client** — the coach's Loom/video link |
-| `Created At` | Single line text | App (ISO timestamp) |
-| `Feedback Emailed` | Checkbox | App (feedback webhook) |
+| `Assigned Coach` | Single line text | **You** — the app only reads it |
+| `Feedback Video URL` | URL | **You** — the coach's Loom/video link |
+| `Feedback Emailed At` | Date (include time) | App (feedback webhook) |
+
+`Status` options, in this order:
+
+`Awaiting Upload` · `New` · `Assigned` · `In Review` · `Complete`
 
 - [ ] Table and all fields created, names matching **exactly** (including case).
-- [ ] `Status` single-select options created with those exact three labels.
+- [ ] `Submission ID` is an autonumber **and** the primary field.
+- [ ] `Submitted At` is a **created-time** field, not text.
+- [ ] `Status` options created with those five exact labels, in that order.
 - [ ] Create a **Personal Access Token** with scopes `data.records:read` and
       `data.records:write`, scoped to this base → `AIRTABLE_API_KEY`.
 - [ ] Note the **Base ID** (`app…`) from the API docs → `AIRTABLE_BASE_ID`.
 
-**Two field-name warnings:**
+**Three things to know:**
 
-- `Sport` actually holds the *coaching focus* (`Hitting`, `Pitching`,
-  `Fielding`, `Catching`, `Other`) — not a sport. It is being renamed to
-  `Focus`; see [Pending changes](#pending-changes).
-- `Created At` is an ISO string written by the app, **not** an Airtable
-  "Created time" field, and the status lookup sorts on it. If the client clears
-  that cell, ordering breaks. Don't edit it by hand.
+- `Submitted At` and `Submission ID` are computed by Airtable. The app is
+  blocked from writing them, so they can't be corrupted.
+- `Customer Notes` holds what the parent typed, verbatim. System messages go to
+  `Internal Notes` instead, so anything you forward to a coach is clean.
+- `Assigned Coach` is plain text for now — type the coach's name. It becomes a
+  link to a Coaches table if and when one is worth building.
+
+### Suggested views
+
+Worth setting up once; they're how the daily workflow in §12 is meant to be run.
+
+| View | Filter | Purpose |
+| --- | --- | --- |
+| **Needs a coach** | `Status` is `New` | Your main queue |
+| **In flight** | `Status` is `Assigned` or `In Review` | Waiting on a coach |
+| **Stalled uploads** | `Status` is `Awaiting Upload` **and** `Submitted At` is before *1 day ago* | Paid but never uploaded — chase these |
+| **Done** | `Status` is `Complete` | Archive |
+
+---
+
+## 4b. Migrating an existing base
+
+**Only if a base already exists** with the old schema. Building fresh? Skip to
+§5 — §4 above is already the target.
+
+> **Deploy order matters.** The app breaks between the first rename and the
+> deploy that matches it. Do this during a quiet window, and do the whole thing
+> in one sitting. Renaming a column in Airtable **preserves its data** — the
+> renames below are safe; only the two splits move data.
+
+**1. Renames** (Airtable → double-click the column header → rename):
+
+| From | To |
+| --- | --- |
+| `Email` | `Customer Email` |
+| `Sport` | `Focus` |
+| `Stripe Session ID` | `Stripe Payment ID` |
+| `Feedback Link` | `Feedback Video URL` |
+| `Notes` | `Customer Notes` |
+
+**2. Type changes:**
+
+- [ ] `Player Age` → Number, integer, no decimals. Airtable coerces existing
+      text; check for any row that doesn't convert cleanly.
+- [ ] `Focus` → Single select, options `Hitting`, `Pitching`, `Fielding`,
+      `Catching`, `Other`. Airtable offers to create options from existing
+      values — take it, then delete any stragglers.
+- [ ] `Status` → add `New` and `Assigned` to the existing options. Order them
+      `Awaiting Upload`, `New`, `Assigned`, `In Review`, `Complete`.
+
+**3. New columns:**
+
+- [ ] `Submission ID` — autonumber. Set it as the **primary field**.
+- [ ] `Internal Notes` — long text.
+- [ ] `Stripe Amount` — currency, CAD.
+- [ ] `Assigned Coach` — single line text.
+- [ ] `Submitted At` — **created time**. Note this reflects when the *row* was
+      created, which for existing rows is when the app wrote it — close enough
+      to the old `Created At` for ordering.
+- [ ] `Feedback Emailed At` — date, with time.
+
+**4. Data moves:**
+
+- [ ] Any `Customer Notes` cell containing `[system]` lines: cut those lines
+      into `Internal Notes`. Usually a handful of rows, if any.
+- [ ] Rows where the old `Feedback Emailed` checkbox was ticked: put any
+      plausible past timestamp in `Feedback Emailed At`. The value only needs to
+      be non-empty — it's read as "already sent."
+- [ ] Delete the old `Created At` and `Feedback Emailed` columns **last**, once
+      everything else is verified.
+
+**5. Status backfill:**
+
+- [ ] Existing rows on `In Review` that have a video but no coach working on
+      them yet should move to `New`. If you can't tell, leave them — `In Review`
+      is still a valid status and nothing breaks.
+
+**6. Deploy and verify:**
+
+- [ ] Merge and deploy the matching code, then redeploy.
+- [ ] Run the [§9 end-to-end test](#9-end-to-end-test-test-mode).
+- [ ] Check `/status` with an email from a pre-existing row — this is what
+      catches a missed rename, because the lookup reads nearly every column.
 
 ---
 
@@ -292,31 +380,53 @@ nothing keeps firing against test data or duplicating work.
 
 The whole operation runs from Airtable. Budget ~10–15 minutes per submission.
 
-**Once or twice a day, open the Submissions table:**
+The app sets the first two statuses. **The middle three are yours** — they're
+how you tell at a glance what's waiting on you versus waiting on a coach.
 
-1. **Look for rows with `Status = In Review`.** These are paid submissions with
-   a video ready to go. (Rows still on `Awaiting Upload` are customers who paid
-   but haven't uploaded — leave them; they get a reminder.)
-2. **Pick a coach** for the submission based on the `Sport` / focus field.
-3. **Email the coach** the video link. Get it from `Mux Playback ID`:
-   `https://stream.mux.com/<Mux Playback ID>.m3u8`, or open the asset in the
-   Mux dashboard. Include the player's name, age, and anything in `Notes`.
-4. **Wait for the coach** to send back their feedback video (usually a Loom).
-5. **Paste that link into `Feedback Link`.**
+| Status | Means | Who moves it |
+| --- | --- | --- |
+| `Awaiting Upload` | Paid, no video yet | App |
+| `New` | Video's in, **needs a coach** | App |
+| `Assigned` | Coach has it, hasn't started | You |
+| `In Review` | Coach is working on it | You |
+| `Complete` | Feedback delivered | You — **this sends the email** |
+
+**Once or twice a day, open the "Needs a coach" view:**
+
+1. **Pick a coach** based on the `Focus` field and read `Customer Notes` for
+   anything the parent asked for specifically.
+2. **Email the coach** the video: `https://stream.mux.com/<Mux Playback ID>.m3u8`,
+   or open the asset in the Mux dashboard. Include the player's name, age, and
+   the customer's notes.
+3. **Type the coach's name into `Assigned Coach`** and set `Status` to
+   `Assigned`. The row leaves your queue.
+4. **When the coach starts**, set `Status` to `In Review`. Optional — it only
+   exists so you can tell a slow coach from one who hasn't begun.
+5. **When their feedback video arrives** (usually a Loom), paste the link into
+   `Feedback Video URL`.
 6. **Set `Status` to `Complete`.**
 
 That last step is the trigger. The automation fires, the customer gets their
-"feedback ready" email, and `Feedback Emailed` ticks. Nothing else to do.
+"feedback ready" email, and `Feedback Emailed At` stamps itself. Nothing else
+to do.
 
 **Things to watch for:**
 
-- A row stuck on `Awaiting Upload` for days → the customer paid and never
-  uploaded. Their confirmation email has the upload link; resend it or reach out.
-- A `[system]` line appended to `Notes` → Mux failed to process the video. The
-  status is reset to `Awaiting Upload`; ask the customer to re-upload.
-- **Never edit `Created At`, or any `Stripe`/`Mux` ID field.** The app uses
-  those to find rows. `Notes`, `Feedback Link`, `Status`, and `Internal Notes`
-  are yours to edit freely.
+- The **Stalled uploads** view → customers who paid and never uploaded. Their
+  confirmation email has the upload link; resend it or reach out.
+- A `[system]` line in `Internal Notes` → Mux failed to process the video. The
+  status goes back to `Awaiting Upload`; ask the customer to re-upload.
+- Setting `Complete` **without** a `Feedback Video URL` sends nothing. That's
+  deliberate — an email with no link would be worse than none. Fill the URL in,
+  and the automation fires on the next check.
+
+**Safe to edit:** `Status`, `Assigned Coach`, `Feedback Video URL`,
+`Internal Notes`.
+
+**Don't edit:** any `Stripe` or `Mux` ID — the app uses those to find rows —
+or `Customer Notes`, which is the customer's own words and should stay as they
+wrote them. `Submission ID` and `Submitted At` are computed by Airtable and
+can't be edited anyway.
 
 ---
 
@@ -327,7 +437,7 @@ That last step is the trigger. The automation fires, the customer gets their
 | `POST /api/checkout` | `/start` form submit | Creates the Stripe Checkout session, returns its URL |
 | `POST /api/webhooks/stripe` | Stripe, on `checkout.session.completed` | Creates the Airtable row (`Awaiting Upload`) + payment email |
 | `POST /api/mux/upload` | `/upload` page load | Verifies the session is paid, issues a Mux direct-upload URL |
-| `POST /api/webhooks/mux` | Mux, on `video.asset.ready` | Stores asset + playback IDs, → `In Review`, video-received email |
+| `POST /api/webhooks/mux` | Mux, on `video.asset.ready` | Stores asset + playback IDs, → `New`, video-received email |
 | `POST /api/webhooks/airtable` | Airtable automation, on `Complete` | Feedback-ready email, ticks `Feedback Emailed` |
 | `POST /api/status` | `/status` form submit | Email-keyed lookup of the customer's own submissions |
 
@@ -373,11 +483,11 @@ customer data lands is far cheaper than after.
 
 | Change | Impact on this document | Status |
 | --- | --- | --- |
-| **Stripe Elements** replaces hosted Checkout | `Stripe Session ID` → payment-intent ID; the Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit` | Approved |
-| **5 statuses** replace 3 | `Status` options become `Awaiting Upload`, `New`, `Assigned`, `In Review`, `Complete`. Yuta's workflow gains an explicit "needs a coach" queue | Approved |
-| **Naming sweep** | `Sport` → `Focus`; other columns renamed for consistency. Exact mapping TBD | Proposal pending |
+| **Naming sweep** + **5 statuses** | §4 and §4b above — the schema here is already the target | **Done in code, base migration pending** |
+| **Stripe Elements** replaces hosted Checkout | The Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit`. **No further schema change** — `Stripe Payment ID` already holds the right thing under the right name | Approved, not started |
 | **Rate limit on `/api/status`** | None operationally | Not started |
 | **Drop Make.com** | Section 7 of CLAUDE.md becomes moot; the two remaining scenarios become Airtable automations | Recommended, awaiting Ben |
+| **Coaches table** | `Assigned Coach` becomes a linked record instead of text | Deferred until it earns its place |
 
 ---
 

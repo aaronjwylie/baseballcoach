@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui";
-import { FOCUS_OPTIONS } from "@/lib/submission";
+import { FOCUS_OPTIONS } from "@/types/submission";
 
 export function StartForm() {
   const searchParams = useSearchParams();
@@ -51,7 +51,7 @@ export function StartForm() {
 
       <Field label="Your email" hint="We'll send confirmations and feedback here.">
         <input
-          name="email"
+          name="customerEmail"
           type="email"
           required
           autoComplete="email"
@@ -80,7 +80,7 @@ export function StartForm() {
             name="playerAge"
             type="text"
             inputMode="numeric"
-            maxLength={20}
+            maxLength={2}
             placeholder="e.g. 14"
             className={inputClass}
           />
@@ -104,7 +104,7 @@ export function StartForm() {
         hint="Optional — a specific issue, a recent change, a goal."
       >
         <textarea
-          name="notes"
+          name="customerNotes"
           rows={3}
           maxLength={500}
           placeholder="e.g. Trying to fix an early bat drop on inside pitches."

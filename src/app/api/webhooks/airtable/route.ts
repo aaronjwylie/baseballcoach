@@ -1,5 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
-import { getSubmission, updateSubmission } from "@/lib/airtable";
+import {
+  getSubmission,
+  updateSubmission,
+} from "@/integrations/airtable/submissions";
 import { env } from "@/lib/env";
 import { sendFeedbackReady } from "@/lib/email";
 
@@ -37,45 +40,53 @@ export async function POST(request: Request) {
     return new Response("Missing recordId", { status: 400 });
   }
 
-  let record;
+  let submission;
   try {
-    record = await getSubmission(recordId);
+    submission = await getSubmission(recordId);
   } catch (err) {
     console.error("[airtable webhook] lookup failed:", err);
     // 500 so Airtable retries a transient failure.
     return new Response("Lookup failed", { status: 500 });
   }
-  if (!record) {
+  if (!submission) {
     return new Response("Not found", { status: 404 });
   }
 
-  const f = record.fields;
-
   // Only fire for genuinely-complete rows that have a link and an address.
   // Anything else is a no-op (200) so a mistimed automation run isn't retried.
-  if (f.Status !== "Complete" || !f["Feedback Link"] || !f.Email) {
+  if (
+    submission.status !== "Complete" ||
+    !submission.feedbackVideoUrl ||
+    !submission.customerEmail
+  ) {
     return new Response("Not ready", { status: 200 });
   }
 
   // Idempotency: skip if we've already emailed this row. Relies on the
-  // "Feedback Emailed" checkbox; if that column doesn't exist the field is just
+  // "Feedback Emailed At" column; if it doesn't exist the field is just
   // undefined and we fall back to Airtable's fire-once-per-record trigger.
-  if (f["Feedback Emailed"]) {
+  if (submission.feedbackEmailedAt) {
     return new Response("Already sent", { status: 200 });
   }
 
-  // sendFeedbackReady is best-effort and never throws, so a mail failure won't
-  // trigger an Airtable retry (which would risk a duplicate send).
-  await sendFeedbackReady(f.Email, f["Feedback Link"], f["Player Name"]);
+  // sendFeedbackReady is best-effort and never throws (ADR 004), so a mail
+  // failure won't trigger an Airtable retry and risk a duplicate send.
+  await sendFeedbackReady(
+    submission.customerEmail,
+    submission.feedbackVideoUrl,
+    submission.playerName,
+  );
 
-  // Best-effort: mark the row so a re-fire won't double-send. Never fatal — if
+  // Best-effort: stamp the row so a re-fire won't double-send. Never fatal — if
   // the column is missing, log and move on rather than 500 (a 500 would make
   // Airtable retry and re-send the email).
   try {
-    await updateSubmission(record.id, { "Feedback Emailed": true });
+    await updateSubmission(submission.id, {
+      feedbackEmailedAt: new Date().toISOString(),
+    });
   } catch (err) {
     console.warn(
-      "[airtable webhook] could not set Feedback Emailed (add the column to make sends idempotent):",
+      "[airtable webhook] could not stamp Feedback Emailed At (add the column to make sends idempotent):",
       err,
     );
   }

@@ -1,22 +1,22 @@
 import { mux } from "@/lib/mux";
 import {
   getSubmission,
-  findByUploadId,
+  findByMuxUploadId,
   updateSubmission,
-  type SubmissionRecord,
-  type SubmissionFields,
-} from "@/lib/airtable";
+} from "@/integrations/airtable/submissions";
+import type { Submission, SubmissionPatch } from "@/types/submission";
 import { sendUploadReceived } from "@/lib/email";
 
 /**
  * Mux → Airtable glue. When an uploaded asset becomes ready we move the
- * submission to "In Review", stash the asset + playback IDs, and email the
- * customer that their video was received. Errored assets flip status so the
- * client can spot them in Airtable.
+ * submission to "New" — uploaded, needs a coach — stash the asset and playback
+ * IDs, and email the customer that their video arrived. Errored assets go back
+ * to "Awaiting Upload" with a note, so Yuta can spot them in the base.
  *
- * The submission is located via the asset `passthrough` (its Airtable record
- * ID), falling back to the Mux upload ID. Handlers are idempotent — the
- * received email only fires on the first transition out of "Awaiting Upload".
+ * The submission is located via the asset `passthrough`, which holds its
+ * Airtable record ID (ADR 002), falling back to the Mux upload ID. Handlers are
+ * idempotent — the received email only fires on the first transition out of
+ * "Awaiting Upload".
  */
 export async function POST(request: Request) {
   const body = await request.text();
@@ -56,47 +56,50 @@ interface AssetData {
   playback_ids?: Array<{ id: string }>;
 }
 
-async function locate(data: AssetData): Promise<SubmissionRecord | null> {
+async function locate(data: AssetData): Promise<Submission | null> {
   if (data.passthrough) {
     const byId = await getSubmission(data.passthrough);
     if (byId) return byId;
   }
   if (data.upload_id) {
-    return findByUploadId(data.upload_id);
+    return findByMuxUploadId(data.upload_id);
   }
   return null;
 }
 
 async function handleAssetReady(data: AssetData) {
-  const record = await locate(data);
-  if (!record) {
+  const submission = await locate(data);
+  if (!submission) {
     console.warn(`[mux webhook] no submission for asset ${data.id}`);
     return;
   }
 
-  const isFirstTransition = record.fields.Status === "Awaiting Upload";
+  const isFirstTransition = submission.status === "Awaiting Upload";
 
-  const fields: Partial<SubmissionFields> = {
-    Status: "In Review",
-    "Mux Asset ID": data.id,
+  const patch: SubmissionPatch = {
+    status: "New",
+    muxAssetId: data.id,
   };
   const playbackId = data.playback_ids?.[0]?.id;
-  if (playbackId) fields["Mux Playback ID"] = playbackId;
+  if (playbackId) patch.muxPlaybackId = playbackId;
 
-  await updateSubmission(record.id, fields);
+  await updateSubmission(submission.id, patch);
 
-  if (isFirstTransition && record.fields.Email) {
-    await sendUploadReceived(record.fields.Email, record.fields["Player Name"]);
+  if (isFirstTransition && submission.customerEmail) {
+    await sendUploadReceived(submission.customerEmail, submission.playerName);
   }
 }
 
 async function handleAssetErrored(data: AssetData) {
-  const record = await locate(data);
-  if (!record) return;
-  await updateSubmission(record.id, {
-    Status: "Awaiting Upload",
-    Notes: appendNote(
-      record.fields.Notes,
+  const submission = await locate(data);
+  if (!submission) return;
+
+  // System messages go to Internal Notes, never Customer Notes — the customer's
+  // own words stay untouched so they can be forwarded to a coach as written.
+  await updateSubmission(submission.id, {
+    status: "Awaiting Upload",
+    internalNotes: appendNote(
+      submission.internalNotes,
       `[system] Mux reported an error processing asset ${data.id}.`,
     ),
   });

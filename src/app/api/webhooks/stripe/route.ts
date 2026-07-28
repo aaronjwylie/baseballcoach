@@ -48,15 +48,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   // Only fulfil paid sessions.
   if (session.payment_status !== "paid") return;
 
-  const { record, created } = await ensureSubmission(session);
+  const { submission, created } = await ensureSubmission(session);
   if (!created) {
     console.log(`[stripe webhook] row already exists for ${session.id}`);
     return;
   }
 
-  const email = record.fields.Email;
-  if (email) {
+  if (submission.customerEmail) {
     const uploadUrl = `${env.siteUrl}/upload?session_id=${encodeURIComponent(session.id)}`;
-    await sendPaymentConfirmation(email, uploadUrl);
+    await sendPaymentConfirmation(submission.customerEmail, uploadUrl);
   }
 }

@@ -3,7 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { mux } from "@/lib/mux";
 import { env } from "@/lib/env";
 import { ensureSubmission } from "@/lib/fulfillment";
-import { updateSubmission } from "@/lib/airtable";
+import { updateSubmission } from "@/integrations/airtable/submissions";
 
 /**
  * Creates a Mux direct-upload URL for a paid submission and returns it to the
@@ -45,20 +45,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { record } = await ensureSubmission(session);
+    const { submission } = await ensureSubmission(session);
 
     const upload = await mux().video.uploads.create({
       cors_origin: env.siteUrl,
       timeout: 3600,
       new_asset_settings: {
         playback_policies: ["public"],
-        // Ties the resulting asset back to this submission row.
-        passthrough: record.id,
+        // Ties the resulting asset back to this submission row (ADR 002).
+        passthrough: submission.id,
       },
     });
 
-    // Record the upload id so status lookups can reflect "uploading".
-    await updateSubmission(record.id, { "Mux Upload ID": upload.id });
+    // Record the upload id so the webhook has a fallback route to this row.
+    await updateSubmission(submission.id, { muxUploadId: upload.id });
 
     if (!upload.url) {
       throw new Error("Mux did not return an upload URL");

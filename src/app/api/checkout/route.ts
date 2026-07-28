@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { env } from "@/lib/env";
 import { site } from "@/lib/site";
-import { parseSubmission } from "@/lib/submission";
+import { parseSubmissionInput } from "@/lib/submission-input";
 
 /**
  * Creates a Stripe Checkout session for a single video review and returns its
@@ -17,11 +17,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const parsed = parseSubmission(body);
+  const parsed = parseSubmissionInput(body);
   if (!parsed.ok) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  const { email, playerName, playerAge, focus, notes } = parsed.value;
+  const { customerEmail, playerName, playerAge, focus, customerNotes } =
+    parsed.value;
 
   // Prefer a pre-created Price if configured; otherwise price inline from
   // site.ts so the client doesn't need to set up a Stripe Product first.
@@ -44,16 +45,17 @@ export async function POST(request: Request) {
     const session = await stripe().checkout.sessions.create({
       mode: "payment",
       line_items: [lineItem],
-      customer_email: email,
+      customer_email: customerEmail,
       success_url: `${env.siteUrl}/upload?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${env.siteUrl}/start?canceled=1`,
-      // Surfaced back to us in the checkout.session.completed webhook.
+      // Surfaced back to us in the checkout.session.completed webhook. Keys are
+      // domain property names, so the webhook reads them straight across.
       metadata: {
-        email,
+        customerEmail,
         playerName,
-        playerAge: playerAge ?? "",
+        playerAge: playerAge?.toString() ?? "",
         focus: focus ?? "",
-        notes: notes ?? "",
+        customerNotes: customerNotes ?? "",
       },
     });
 

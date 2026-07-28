@@ -24,7 +24,7 @@ export function StatusForm() {
       const res = await fetch("/api/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ customerEmail: trimmed }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         submissions?: PublicSubmission[];
@@ -114,6 +114,13 @@ export function StatusForm() {
   );
 }
 
+/**
+ * Customer-facing labels for each status.
+ *
+ * "New" and "Assigned" are queue states that exist for Yuta, not the customer —
+ * telling a parent their video is "unassigned" is alarming and not actionable.
+ * They collapse into honest, calm language about where the video actually is.
+ */
 const STATUS_META: Record<
   PublicSubmission["status"],
   { label: string; className: string }
@@ -122,8 +129,16 @@ const STATUS_META: Record<
     label: "Awaiting your video",
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
+  New: {
+    label: "Video received",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  Assigned: {
+    label: "With your coach",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
   "In Review": {
-    label: "In review",
+    label: "With your coach",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
   Complete: {
@@ -140,7 +155,7 @@ function StatusRow({ submission }: { submission: PublicSubmission }) {
         <div className="font-semibold text-ink">{submission.playerName}</div>
         <div className="mt-0.5 text-sm text-ink-muted">
           {submission.focus ? `${submission.focus} · ` : ""}
-          {formatDate(submission.createdAt)}
+          {formatDate(submission.submittedAt)}
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -149,9 +164,9 @@ function StatusRow({ submission }: { submission: PublicSubmission }) {
         >
           {meta.label}
         </span>
-        {submission.status === "Complete" && submission.feedbackLink && (
+        {submission.status === "Complete" && submission.feedbackVideoUrl && (
           <ButtonLink
-            href={submission.feedbackLink}
+            href={submission.feedbackVideoUrl}
             size="md"
             target="_blank"
             rel="noopener noreferrer"
