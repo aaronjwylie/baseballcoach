@@ -1,30 +1,16 @@
 import { NextResponse } from "next/server";
-import { findByCustomerEmail } from "@/domains/submission";
-import type { SubmissionStatus } from "@/domains/submission";
+import { isValidEmail, lookupPublicSubmissions } from "@/domains/submission";
 
 /**
  * Email-as-identity status lookup.
  *
- * The email is never verified, so this returns only non-sensitive, customer-
- * authored data keyed on the exact address entered. Internal fields — Stripe
- * and Mux IDs, internal notes, the amount paid — are deliberately not mapped
- * across. Adding a field to `PublicSubmission` means deciding it's safe to hand
- * to anyone who can guess an email address.
+ * HTTP only. What's safe to expose is decided by `PublicSubmission` in the
+ * submission domain — deliberately not here, because that's a security
+ * decision rather than a serialization one.
  *
  * TODO(2026-07-28, Ben): rate limit to 5 requests per IP per minute
  * (CLAUDE.md Sprint 5). Without it this endpoint enumerates customers.
  */
-export interface PublicSubmission {
-  submissionId?: number;
-  playerName: string;
-  focus?: string;
-  status: SubmissionStatus;
-  submittedAt?: string;
-  feedbackVideoUrl?: string;
-}
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export async function POST(request: Request) {
   let body: { customerEmail?: string };
   try {
@@ -34,7 +20,7 @@ export async function POST(request: Request) {
   }
 
   const customerEmail = (body.customerEmail ?? "").trim().toLowerCase();
-  if (!EMAIL_PATTERN.test(customerEmail)) {
+  if (!isValidEmail(customerEmail)) {
     return NextResponse.json(
       { error: "Please enter a valid email address." },
       { status: 400 },
@@ -42,24 +28,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const submissions = await findByCustomerEmail(customerEmail);
-
-    const publicSubmissions: PublicSubmission[] = submissions.map(
-      (submission) => ({
-        submissionId: submission.submissionId,
-        playerName: submission.playerName || "Player",
-        focus: submission.focus,
-        status: submission.status,
-        submittedAt: submission.submittedAt,
-        // The feedback link is only theirs to see once the review is finished.
-        feedbackVideoUrl:
-          submission.status === "Complete"
-            ? submission.feedbackVideoUrl
-            : undefined,
-      }),
-    );
-
-    return NextResponse.json({ submissions: publicSubmissions });
+    const submissions = await lookupPublicSubmissions(customerEmail);
+    return NextResponse.json({ submissions });
   } catch (err) {
     console.error("[status] lookup failed:", err);
     return NextResponse.json(

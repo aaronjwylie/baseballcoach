@@ -39,8 +39,9 @@ flowchart LR
 
 ### The pieces
 
-- **the VERB** — `api/uploadApi.ts` (mint the direct upload) · `ui/UploadPanel.tsx` (the
-  browser uploader) · `api/uploadEmail.ts` ("your video is in").
+- **the VERB** — `api/uploadApi.ts` (mint the direct upload) ·
+  `api/uploadWebhook.ts` (verify Mux's events, move the status, send the email) ·
+  `ui/UploadPanel.tsx` (the browser uploader) · `api/uploadEmail.ts` ("your video is in").
 - No `model/`: **there is no Upload record.** The upload's facts live on the submission
   (`muxUploadId`, `muxAssetId`, `muxPlaybackId`).
 
@@ -78,6 +79,10 @@ Decisions taken, with their reasoning:
   customer's next action is identical to someone who never uploaded — try again — so a new
   status would have added a queue state with no distinct handling. The `[system]` note
   carries the detail instead.
+- **The whole webhook handler moved out of the route (Step 2b).** This was the fattest route
+  in the codebase — 111 lines holding the asset-ready status transition, the errored-asset
+  note append, and the passthrough lookup. All of that is what an upload *means*, not HTTP.
+  The route is 26 lines now.
 - **`UploadClient` renamed `UploadPanel` (Step 2).** "Client" collided with the other
   meaning of the word all over this codebase — Stripe client, Airtable client, the customer.
   One stem per concept.

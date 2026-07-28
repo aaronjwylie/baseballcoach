@@ -43,6 +43,7 @@ flowchart LR
 ### The pieces
 
 - **the VERB** — `api/checkoutApi.ts` (create the session, verify a paid one) ·
+  `api/paymentWebhook.ts` (verify Stripe's events, act on them) ·
   `model/fulfillment.ts` (session → submission, idempotently) · `ui/StartForm.tsx` (the
   player-info form) · `api/paymentEmail.ts` ("we took your money, here's what's next").
 - No `model/` type: **the noun lives in Stripe.** A slice that's all verb is legitimate
@@ -86,6 +87,10 @@ Decisions taken, with their reasoning:
   layout, the surrounding copy, nor the URL bar. For a service asking a parent to pay $149
   up front to strangers overseas, the moment of payment is where trust is won or lost.
   Rebuild pending. *(Full reasoning: [ADR 005](../../../docs/decisions/005-stripe-elements-over-checkout.md).)*
+- **Webhook verification and handling moved out of the route (Step 2b).** The route had been
+  holding signature verification and `handleCheckoutCompleted` — what a completed checkout
+  *means*, sitting in the app layer. `app/api/` can't move (Next.js makes the path the URL),
+  but its contents can: it's the composition root now, and the route is 30 lines.
 - **Checkout logic lifted out of the route handler (Step 2).** The route now owns HTTP —
   parsing, status codes — and the domain owns what it means to charge for a review. Routes
   are compositions, not homes.

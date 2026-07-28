@@ -23,6 +23,16 @@ const MAX_PLAYER_AGE = 99;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * Is this a plausible email address?
+ *
+ * One home for the question — the checkout form and the status lookup both ask
+ * it, and two regexes would drift into accepting different things.
+ */
+export function isValidEmail(value: string): boolean {
+  return EMAIL_PATTERN.test(value) && value.length <= MAX_EMAIL_LENGTH;
+}
+
 export interface SubmissionInput {
   customerEmail: string;
   playerName: string;
@@ -42,11 +52,8 @@ export function parseSubmissionInput(
     typeof value === "string" ? value.trim() : "";
 
   const customerEmail = text(raw.customerEmail).toLowerCase();
-  if (!EMAIL_PATTERN.test(customerEmail)) {
+  if (!isValidEmail(customerEmail)) {
     return { ok: false, error: "Please enter a valid email address." };
-  }
-  if (customerEmail.length > MAX_EMAIL_LENGTH) {
-    return { ok: false, error: "That email address is too long." };
   }
 
   const playerName = text(raw.playerName);

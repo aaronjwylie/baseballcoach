@@ -7,6 +7,10 @@
  */
 import type { Submission, SubmissionPatch } from "../model/submission";
 import {
+  toPublicSubmission,
+  type PublicSubmission,
+} from "../model/publicSubmission";
+import {
   createRecord,
   escapeFormulaValue,
   getRecord,
@@ -83,4 +87,16 @@ export async function findByCustomerEmail(
     NEWEST_FIRST,
   );
   return records.map(fromAirtableRecord);
+}
+
+/**
+ * The status-lookup read: a customer's submissions, trimmed to what's safe to
+ * expose. Returns the projection rather than the record so a caller can't
+ * accidentally serialize an internal field.
+ */
+export async function lookupPublicSubmissions(
+  email: string,
+): Promise<PublicSubmission[]> {
+  const submissions = await findByCustomerEmail(email);
+  return submissions.map(toPublicSubmission);
 }

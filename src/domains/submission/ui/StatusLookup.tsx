@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button, ButtonLink } from "@/shared/ui";
-import type { PublicSubmission } from "@/app/api/status/route";
+import type { PublicSubmission } from "@/domains/submission";
 
 type Result =
   | { state: "idle" }

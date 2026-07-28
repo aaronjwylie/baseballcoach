@@ -33,6 +33,10 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
   Yuta's. Enforced at runtime, not just in types — a cast can slip past the compiler.
 - **Email is normalized to lowercase on write and on read.** Airtable's formula comparison
   is case-sensitive and customers don't type their address the same way twice.
+- **`PublicSubmission` is the only shape that leaves the building.** The lookup identifies
+  customers by an *unverified* email, so anything on that type is visible to anyone who
+  guesses an address. Adding a field to it is a security decision, which is why it lives
+  here rather than in the route that serializes it.
 - **Malformed stored data degrades, never crashes.** An unrecognized `Status` or `Focus` —
   a typo'd select option in the base — is dropped rather than trusted into a bad type.
 - **The app writes only `Awaiting Upload` and `New`.** The other three statuses are Yuta's,
@@ -44,7 +48,8 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
   `FOCUS_OPTIONS`) · `api/submissionSchema.ts` (the codec — the storage seam) ·
   `api/submissionApi.ts` (the queries).
 - **the VERB** — `ui/StatusLookup.tsx` (email in, your submissions out) ·
-  `model/submissionInput.ts` (validating what a customer types before they pay).
+  `model/submissionInput.ts` (validating what a customer types before they pay) ·
+  `model/publicSubmission.ts` (the trim-to-safe projection).
 - `index.ts` — the barrel. Consumers import `@/domains/submission`.
 
 The status lookup lives here rather than in its own domain because *checking your
@@ -101,6 +106,14 @@ Decisions taken, with their reasoning:
 - **`Stripe Session ID` → `Stripe Payment ID`** — named for the *role*, not the Stripe
   object, so the pending Elements rebuild changes what it holds without another migration of
   the client's live base. *(See [ADR 005](../../../docs/decisions/005-stripe-elements-over-checkout.md).)*
+
+**2026-07-28 · Step 2b — the routes got thin.** The status route had been holding the
+`PublicSubmission` type and its projection inline. That put "what is safe to show a stranger"
+in the app layer, where it read as serialization rather than as the security decision it is.
+Moved to `model/publicSubmission.ts`, and the route now calls `lookupPublicSubmissions()`.
+The email-validation regex was also duplicated between the route and `submissionInput.ts` —
+two copies of one question, free to drift into accepting different things. Now one
+`isValidEmail`.
 
 **2026-07-28 · Step 2 — domain-first.** The slice moved here from three separate homes:
 `src/types/submission.ts` (the type), `src/integrations/airtable/` (schema + queries), and

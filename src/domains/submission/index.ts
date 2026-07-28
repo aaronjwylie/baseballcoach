@@ -16,6 +16,12 @@ export {
 } from "./model/submission";
 
 export {
+  toPublicSubmission,
+  type PublicSubmission,
+} from "./model/publicSubmission";
+
+export {
+  isValidEmail,
   parseSubmissionInput,
   type ParseResult,
   type SubmissionInput,
@@ -28,6 +34,7 @@ export {
   findByMuxUploadId,
   findByStripePaymentId,
   getSubmission,
+  lookupPublicSubmissions,
   updateSubmission,
 } from "./api/submissionApi";
 

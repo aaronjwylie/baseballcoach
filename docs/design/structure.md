@@ -82,6 +82,45 @@ load-bearing split — logic stays testable and reusable without dragging compon
 
 ---
 
+## 3b · Why `app/api/` exists — and what belongs in it
+
+**The question this answers:** wrld-backend puts its HTTP surface *inside* the slice
+(`domains/safety/report/routes.ts`), registered by a `server.ts` composition root. Why doesn't
+ours?
+
+**Because Next.js makes the file path the URL.** `app/api/webhooks/stripe/route.ts` *is*
+`POST /api/webhooks/stripe` — there's no registration step to point elsewhere. Fastify lets
+wrld choose where routes live; the App Router doesn't. So the folder stays where the
+framework demands, and `app/api/` plays the part `server.ts` plays over there: **the
+composition root, not a home for logic.**
+
+That makes the rule about *contents* the important one, and it's wrld's rule verbatim — their
+`routes.ts` is *"the HTTP surface: zod shape + the auth gate + status codes, thin."*
+
+A route file may contain:
+
+- reading the body (`.text()` for webhooks — signatures are computed over raw bytes)
+- validating shape, and rejecting with 400
+- calling **one or two domain functions**
+- mapping the outcome to a status code
+
+A route file may **not** contain:
+
+- an SDK call, or an import from `shared/` — if a route needs Stripe, the domain needed it
+- a decision about what data is safe to expose *(that's `PublicSubmission`)*
+- a status transition, or anything about what an event *means*
+
+**The test:** if you can't tell what the endpoint does from the domain function names it
+calls, the logic is in the wrong file. Every route here is under 55 lines and none imports an
+SDK — that's the invariant, and it's greppable.
+
+**The URL paths are a wire contract, not a naming choice.** `/api/webhooks/stripe` and
+friends are configured in the Stripe, Mux, and Airtable dashboards. CLAUDE.md §5 once
+proposed different paths (`/api/stripe/webhook`); renaming them now would mean re-pointing
+every webhook — the single failure this project has already hit. They stay as they are.
+
+---
+
 ## 4 · Dependency rules
 
 Enforced by convention and review, not lint — five domains is small enough to police by eye.

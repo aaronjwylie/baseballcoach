@@ -39,7 +39,8 @@ flowchart LR
 ### The pieces
 
 - `api/feedbackEmail.ts` — the payoff message.
-- That's it. No model, no UI, **and that's the honest shape** — see below.
+- `api/feedbackWebhook.ts` — the shared-secret check and the notify flow.
+- No model, no UI, **and that's the honest shape** — see below.
 
 ---
 
@@ -78,6 +79,11 @@ Decisions taken, with their reasoning:
   Make.com entirely is now recommended in OPERATIONS.md.
 - **`Feedback Emailed` checkbox → `Feedback Emailed At` timestamp** (Step 1). Same
   truthiness, but it tells Yuta *when* — useful when a customer says they never got it.
+- **The notify flow moved out of the route (Step 2b).** The constant-time secret check lives
+  beside what it guards rather than in a general-purpose helper — this is the one webhook
+  without an SDK signature to verify, so that comparison *is* the endpoint's defence, and it
+  shouldn't be somewhere it could drift out of use. The route now maps a `NotifyResult` to a
+  status code and nothing else.
 - **The slice was created even though it holds one file.** The alternative was leaving the
   email in a shared bucket, which would have left "what happens when feedback is ready" with
   no home to document. Naming the domain is what surfaced the missing viewer page.

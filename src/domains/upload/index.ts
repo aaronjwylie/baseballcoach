@@ -6,4 +6,5 @@
  */
 export { createDirectUpload } from "./api/uploadApi";
 export { sendVideoReceived } from "./api/uploadEmail";
+export { handleMuxEvent, verifyMuxWebhook, type MuxEvent } from "./api/uploadWebhook";
 export { UploadPanel } from "./ui/UploadPanel";

@@ -6,3 +6,8 @@
  * feedback viewer page (CLAUDE.md Sprint 5) is the part still to build.
  */
 export { sendFeedbackReady } from "./api/feedbackEmail";
+export {
+  isAuthorizedFeedbackWebhook,
+  notifyFeedbackReady,
+  type NotifyResult,
+} from "./api/feedbackWebhook";
