@@ -1,82 +1,94 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Button, ButtonLink } from "@/shared/ui";
-import type { PublicSubmission } from "@/domains/submission";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, ButtonLink, Field, inputClass } from "@/shared/ui";
+import {
+  lookupSchema,
+  type LookupInput,
+  type PublicSubmission,
+} from "@/domains/submission";
 
 type Result =
   | { state: "idle" }
-  | { state: "loading" }
   | { state: "error"; message: string }
   | { state: "loaded"; email: string; submissions: PublicSubmission[] };
 
+/**
+ * Email-as-identity status lookup.
+ *
+ * Validates with the same schema the API re-validates with, so a typo is caught
+ * before it spends one of the caller's five-per-minute lookups.
+ */
 export function StatusLookup() {
-  const [email, setEmail] = useState("");
   const [result, setResult] = useState<Result>({ state: "idle" });
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed) return;
-    setResult({ state: "loading" });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LookupInput, unknown, { customerEmail: string }>({
+    resolver: zodResolver(lookupSchema),
+    mode: "onBlur",
+  });
 
+  const onSubmit = handleSubmit(async ({ customerEmail }) => {
     try {
       const res = await fetch("/api/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerEmail: trimmed }),
+        body: JSON.stringify({ customerEmail }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         submissions?: PublicSubmission[];
         error?: string;
       };
+
       if (!res.ok) {
+        // 429 carries its own message about waiting; anything else is generic.
         setResult({
           state: "error",
           message: json.error ?? "Something went wrong.",
         });
         return;
       }
+
       setResult({
         state: "loaded",
-        email: trimmed,
+        email: customerEmail,
         submissions: json.submissions ?? [],
       });
     } catch {
-      setResult({
-        state: "error",
-        message: "Network error. Please try again.",
-      });
+      setResult({ state: "error", message: "Network error. Please try again." });
     }
-  }
+  });
 
   return (
     <div>
       <form
         onSubmit={onSubmit}
-        className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-6 sm:flex-row sm:items-end"
+        className="flex flex-col gap-3 rounded-2xl border border-line bg-white p-6 sm:flex-row sm:items-start"
+        noValidate
       >
-        <label className="flex-1">
-          <span className="mb-1.5 block text-sm font-medium text-ink">
-            Email address
-          </span>
-          <input
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm outline-none transition-colors placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent/30"
-          />
-        </label>
+        <div className="flex-1">
+          <Field label="Email address" error={errors.customerEmail?.message}>
+            <input
+              {...register("customerEmail")}
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              className={inputClass}
+            />
+          </Field>
+        </div>
         <Button
           type="submit"
           size="lg"
-          disabled={result.state === "loading"}
-          className="shrink-0"
+          disabled={isSubmitting}
+          className="shrink-0 sm:mt-7"
         >
-          {result.state === "loading" ? "Checking…" : "Check status"}
+          {isSubmitting ? "Checking…" : "Check status"}
         </Button>
       </form>
 

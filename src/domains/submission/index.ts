@@ -21,10 +21,15 @@ export {
 } from "./model/publicSubmission";
 
 export {
-  isValidEmail,
+  customerEmailSchema,
+  lookupSchema,
+  parseLookupInput,
   parseSubmissionInput,
+  submissionInputSchema,
+  type LookupInput,
   type ParseResult,
   type SubmissionInput,
+  type SubmissionInputDraft,
 } from "./model/submissionInput";
 
 export {

@@ -17,6 +17,7 @@ shared/
   stripe/     the SDK singleton
   mux/        the SDK singleton
   email/      the Resend transport + the brand shell every message wears
+  lib/        rateLimit — the domain-less request throttle
   ui/         Button · ButtonLink · Container · Field · Pill
   layout/     SiteHeader · SiteFooter · Logo
   config/     env (the only process.env reader) · site (brand facts)
@@ -50,6 +51,10 @@ shared/
   can't drift.
 - ✅ **`config/env.ts`** — the only `process.env` reader.
 - ✅ **`config/site.ts`** — brand facts used by landing, emails, and checkout alike.
+- 🔶 **`lib/rateLimit.ts` is in-memory and therefore partial.** State lives in one serverless
+  instance, so the effective limit scales with instance count and resets on a cold start.
+  Documented in the module itself rather than papered over — it's a real speed bump against
+  a script in a loop and nothing more. Upstash Redis is the upgrade, and a scope decision.
 - 🔶 **No shadcn/ui.** CLAUDE.md §4 specifies it; these are hand-rolled. Deferred until the
   wireframe lands, since the design will decide whether shadcn's primitives fit.
 - 🔶 **No React Email.** CLAUDE.md §4 specifies it; `email/shell.ts` builds HTML strings.
@@ -81,6 +86,11 @@ Decisions taken, with their reasoning:
   `buttonStyles.ts` rather than duplicated. `Button` and `ButtonLink` render different
   elements for different reasons but are one control to the eye; the shared part is written
   once. *(PRINCIPLES #8.)*
+- **`rateLimit` put in `shared/lib/`, not in the submission domain (Step 3).** Throttling a
+  request is true of any endpoint — it knows nothing about submissions. Only the *policy*
+  (five per minute, keyed on `status:`) lives with the route that sets it. *(PRINCIPLES #5.)*
+- **`Field` gained an `error` prop (Step 3)**, replacing the hint rather than stacking under
+  it — two lines of small text under one input is noise, and the error is the more urgent.
 - **`Field` and `inputClass` promoted here from the start form (Step 2).** Two forms already
   used the same input styling by copy-paste, which is exactly the drift PRINCIPLES #2 exists
   to stop.

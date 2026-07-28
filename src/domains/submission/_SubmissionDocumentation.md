@@ -33,6 +33,12 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
   Yuta's. Enforced at runtime, not just in types — a cast can slip past the compiler.
 - **Email is normalized to lowercase on write and on read.** Airtable's formula comparison
   is case-sensitive and customers don't type their address the same way twice.
+- **One schema validates on both sides.** `model/submissionInput.ts` holds the Zod schemas;
+  the client form and the API route use the same objects, so they cannot drift into
+  disagreeing about what's acceptable. **The server always re-validates** — client validation
+  is a courtesy to honest users, not a boundary.
+- **Email is normalized *before* it's validated**, not after. A trailing space from a mobile
+  keyboard's autocomplete would otherwise be rejected as an invalid address.
 - **`PublicSubmission` is the only shape that leaves the building.** The lookup identifies
   customers by an *unverified* email, so anything on that type is visible to anyone who
   guesses an address. Adding a field to it is a security decision, which is why it lives
@@ -64,12 +70,14 @@ its job.
 - ✅ **The codec** — bidirectional, with a runtime read-only guard and defensive reads.
   Covered by a 22-assertion round-trip check (run ad hoc; no test framework in the repo yet).
 - ✅ **The queries** — create, update, get, and four finders.
-- ✅ **The status lookup** — `/status` → `POST /api/status` → sanitized list.
-- 🔶 **No rate limit on the lookup.** `/api/status` enumerates customers by email at
-  unlimited rate. CLAUDE.md Sprint 5 calls for 5/IP/min. **This is the outstanding security
-  gap in this slice** — Step 3.
-- 🔶 **No Zod.** `model/submissionInput.ts` hand-rolls validation and the client form
-  validates with nothing but HTML `required`, so the two can drift. Step 3.
+- ✅ **The status lookup** — `/status` → `POST /api/status` → sanitized list, rate limited.
+- ✅ **Zod schemas**, shared by the form and the route, with per-field errors in the UI.
+  Covered by a 37-assertion check alongside the codec's.
+- 🔶 **The rate limit is per-instance.** Five per minute per IP, held in one serverless
+  instance's memory — so a caller spread across instances gets more, and a cold start resets
+  the window. It stops a script in a loop, which is the realistic threat here; it does not
+  stop a distributed one. Shared state (Upstash Redis) is the honest fix and is a scope
+  decision for Ben, since it's a new third-party service. See `shared/lib/rateLimit.ts`.
 - 🔶 **`Assigned Coach` is plain text.** Becomes a linked record if a Coaches table ever
   earns its place (CLAUDE.md §8).
 
@@ -106,6 +114,18 @@ Decisions taken, with their reasoning:
 - **`Stripe Session ID` → `Stripe Payment ID`** — named for the *role*, not the Stripe
   object, so the pending Elements rebuild changes what it holds without another migration of
   the client's live base. *(See [ADR 005](../../../docs/decisions/005-stripe-elements-over-checkout.md).)*
+
+**2026-07-28 · Step 3 — Zod and the rate limit.** The hand-rolled validator went; the schema
+is now one object both sides import. Writing the check suite caught a bug that would have
+shipped: `z.email()` runs *before* a trailing `.transform()`, so trimming there meant
+`"alex@x.com "` — what a mobile keyboard produces after autocomplete — was rejected as
+invalid. Fixed by normalizing first (`.trim().toLowerCase().pipe(z.email())`), and the
+regression is now a named assertion.
+
+React Hook Form came with it, per CLAUDE.md §4's locked stack. It earns its place beyond the
+spec: the form previously had no client-side validation at all beyond browser defaults, so
+every mistake cost a server round-trip to discover. Fields now show their own errors on blur
+— not on keystroke, since flagging a half-typed email is hostile.
 
 **2026-07-28 · Step 2b — the routes got thin.** The status route had been holding the
 `PublicSubmission` type and its projection inline. That put "what is safe to show a stranger"

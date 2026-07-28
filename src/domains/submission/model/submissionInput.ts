@@ -1,15 +1,20 @@
 /**
- * Validation for the player info collected before payment.
+ * The shapes a customer can type, and what counts as valid.
  *
- * Property names match the domain model in `src/types/submission.ts` — the form
- * field, this payload, the Stripe metadata key, and the Airtable column all use
- * the same word for the same thing.
+ * **These schemas are the single home for that question.** The client form
+ * validates with them and the API route re-validates with the same object, so
+ * the two cannot drift into disagreeing about what's acceptable — which is the
+ * whole reason for a shared schema rather than two hand-rolled checks.
  *
- * TODO(2026-07-28, Ben): replace with a Zod schema shared between this route
- * and the client form (CLAUDE.md §11, realignment Step 3). The hand-rolled
- * checks below are the current behaviour, not the target.
+ * Property names match the domain model in `./submission.ts`: the form field,
+ * this payload, the Stripe metadata key, and the Airtable column all use the
+ * same word for the same thing.
+ *
+ * Server-side re-validation is not optional. Client validation is a courtesy to
+ * honest users; anyone can POST directly.
  */
-import { FOCUS_OPTIONS, type Focus } from "../model/submission";
+import { z } from "zod";
+import { FOCUS_OPTIONS } from "./submission";
 
 /**
  * Values ride on Stripe metadata, which caps each entry at 500 characters.
@@ -21,81 +26,127 @@ const MAX_PLAYER_NAME_LENGTH = 120;
 const MIN_PLAYER_AGE = 4;
 const MAX_PLAYER_AGE = 99;
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/**
+ * An email address we're willing to accept.
+ *
+ * One home for the question — checkout and the status lookup both ask it, and
+ * two definitions would drift into accepting different things.
+ *
+ * **Normalize before validating, not after.** Mobile keyboards routinely append
+ * a space after an autocompleted address, and `z.email()` rejects
+ * `"alex@x.com "` outright — so trimming in a trailing `.transform()` would
+ * reject real customers before it ever got the chance to clean their input.
+ * Hence `.trim().toLowerCase().pipe(...)`.
+ *
+ * Lowercased because Airtable's formula comparison is case-sensitive: a
+ * customer who checks out as `Alex@x.com` and later looks up `alex@x.com` must
+ * find their own submission.
+ */
+export const customerEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(
+    z
+      .email("Please enter a valid email address.")
+      .max(MAX_EMAIL_LENGTH, "That email address is too long."),
+  );
+
+/** Just the email — the status lookup's entire payload. */
+export const lookupSchema = z.object({
+  customerEmail: customerEmailSchema,
+});
+
+export type LookupInput = z.input<typeof lookupSchema>;
 
 /**
- * Is this a plausible email address?
+ * Age is optional, but a value that *was* supplied and isn't a plausible age is
+ * a typo worth surfacing rather than silently dropping — the coach uses it to
+ * pitch their feedback.
  *
- * One home for the question — the checkout form and the status lookup both ask
- * it, and two regexes would drift into accepting different things.
+ * Empty string coerces to `undefined` rather than 0, since an untouched
+ * optional text input submits `""`.
  */
-export function isValidEmail(value: string): boolean {
-  return EMAIL_PATTERN.test(value) && value.length <= MAX_EMAIL_LENGTH;
-}
+const playerAgeSchema = z
+  .union([z.literal(""), z.coerce.number()])
+  .optional()
+  .transform((value) => (value === "" || value === undefined ? undefined : value))
+  .pipe(
+    z
+      .number()
+      .int("Please enter the player's age as a whole number.")
+      .min(MIN_PLAYER_AGE, "Please enter a valid age.")
+      .max(MAX_PLAYER_AGE, "Please enter a valid age.")
+      .optional(),
+  );
 
-export interface SubmissionInput {
-  customerEmail: string;
-  playerName: string;
-  playerAge?: number;
-  focus?: Focus;
-  customerNotes?: string;
-}
+/** Everything collected before payment. */
+export const submissionInputSchema = z.object({
+  customerEmail: customerEmailSchema,
+
+  playerName: z
+    .string()
+    .trim()
+    .min(1, "Please enter the player's name.")
+    .max(MAX_PLAYER_NAME_LENGTH, "That name is too long."),
+
+  playerAge: playerAgeSchema,
+
+  // An unselected <select> submits "", which means "not sure / general" —
+  // absence, not an error.
+  focus: z
+    .union([z.literal(""), z.enum(FOCUS_OPTIONS)])
+    .optional()
+    .transform((value) => (value === "" ? undefined : value)),
+
+  customerNotes: z
+    .string()
+    .trim()
+    .max(MAX_NOTES_LENGTH, `Please keep notes under ${MAX_NOTES_LENGTH} characters.`)
+    .optional()
+    .transform((value) => value || undefined),
+});
+
+/** What the form collects, before parsing — every field a string. */
+export type SubmissionInputDraft = z.input<typeof submissionInputSchema>;
+
+/** What the server acts on, after parsing. */
+export type SubmissionInput = z.output<typeof submissionInputSchema>;
 
 export type ParseResult =
   | { ok: true; value: SubmissionInput }
   | { ok: false; error: string };
 
-export function parseSubmissionInput(
-  raw: Record<string, unknown>,
-): ParseResult {
-  const text = (value: unknown) =>
-    typeof value === "string" ? value.trim() : "";
+/**
+ * Parse an untrusted payload, surfacing the **first** problem as one sentence.
+ *
+ * The API returns a single message rather than a field map because the client
+ * form already shows per-field errors inline; by the time a request reaches the
+ * server with bad data, the caller isn't using our form.
+ */
+export function parseSubmissionInput(raw: unknown): ParseResult {
+  const result = submissionInputSchema.safeParse(raw);
+  if (result.success) return { ok: true, value: result.data };
 
-  const customerEmail = text(raw.customerEmail).toLowerCase();
-  if (!isValidEmail(customerEmail)) {
-    return { ok: false, error: "Please enter a valid email address." };
-  }
-
-  const playerName = text(raw.playerName);
-  if (playerName.length < 1) {
-    return { ok: false, error: "Please enter the player's name." };
-  }
-  if (playerName.length > MAX_PLAYER_NAME_LENGTH) {
-    return { ok: false, error: "That name is too long." };
-  }
-
-  const playerAge = parseAge(text(raw.playerAge));
-  if (playerAge === "invalid") {
-    return { ok: false, error: "Please enter the player's age as a number." };
-  }
-
-  const rawFocus = text(raw.focus);
-  const focus = (FOCUS_OPTIONS as readonly string[]).includes(rawFocus)
-    ? (rawFocus as Focus)
-    : undefined;
-
-  const customerNotes =
-    text(raw.customerNotes).slice(0, MAX_NOTES_LENGTH) || undefined;
-
+  const first = result.error.issues[0];
   return {
-    ok: true,
-    value: { customerEmail, playerName, playerAge, focus, customerNotes },
+    ok: false,
+    error: first?.message ?? "Please check the form and try again.",
   };
 }
 
-/**
- * Age is optional, so an empty value is fine — but a value that *was* supplied
- * and isn't a plausible age is a typo worth surfacing rather than silently
- * dropping, since the coach uses it to pitch their feedback.
- */
-function parseAge(raw: string): number | undefined | "invalid" {
-  if (raw.length === 0) return undefined;
+/** Parse a status-lookup payload. Same contract as above. */
+export function parseLookupInput(
+  raw: unknown,
+): { ok: true; customerEmail: string } | { ok: false; error: string } {
+  const result = lookupSchema.safeParse(raw);
+  if (result.success) {
+    return { ok: true, customerEmail: result.data.customerEmail };
+  }
 
-  const age = Number(raw);
-  if (!Number.isFinite(age)) return "invalid";
-
-  const whole = Math.round(age);
-  if (whole < MIN_PLAYER_AGE || whole > MAX_PLAYER_AGE) return "invalid";
-
-  return whole;
+  const first = result.error.issues[0];
+  return {
+    ok: false,
+    error: first?.message ?? "Please enter a valid email address.",
+  };
 }

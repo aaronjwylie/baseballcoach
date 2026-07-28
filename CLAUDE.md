@@ -65,8 +65,8 @@ the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
 | Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) |
 | ~~**3 statuses** instead of 5 (§8)~~ | ✅ Step 1 — five statuses, with the middle three owned by Yuta |
 | ~~Flat `src/lib/` + `src/components/` instead of FSD (§5)~~ | ✅ Step 2 — domain-first, see [PRINCIPLES.md](PRINCIPLES.md) |
-| Hand-rolled validation instead of **Zod** (§11) | Replace; share one schema between client and server |
-| No rate limit on the status lookup (Sprint 5) | Add — 5 requests per IP per minute |
+| ~~Hand-rolled validation instead of **Zod** (§11)~~ | ✅ Step 3 — one schema, both sides |
+| ~~No rate limit on the status lookup (Sprint 5)~~ | ✅ Step 3 — 5/IP/min, in-memory and knowingly partial |
 | No `/feedback/[id]` viewer (Sprint 5) | Build, once the wireframe lands |
 | Raw-HTML email strings instead of **React Email** (§4) | Open — decide during the email pass |
 | Hand-rolled `ui.tsx` primitives instead of **shadcn/ui** (§4) | Open — decide when the wireframe lands |
@@ -96,7 +96,7 @@ wrong file.
 0. ✅ **Reconcile the docs** so the source of truth is true
 1. ✅ **One name per concept** — schema, codec, 5 statuses, notes split
 2. ✅ **Domain-first move** — `domains/` + `shared/`, per-slice docs
-3. **Zod** + the status-lookup rate limit
+3. ✅ **Zod** + the status-lookup rate limit
 4. **Sprint 1** — landing page, against Audrey's wireframe
 5. **Sprint 2 redo** — Stripe Elements
 

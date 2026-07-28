@@ -1,45 +1,77 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
-import { Button } from "@/shared/ui";
-import { FOCUS_OPTIONS } from "@/domains/submission";
+import { Button, Field, inputClass } from "@/shared/ui";
+import {
+  FOCUS_OPTIONS,
+  submissionInputSchema,
+  type SubmissionInput,
+  type SubmissionInputDraft,
+} from "@/domains/submission";
 
+/**
+ * The player-info form — everything we collect before taking money.
+ *
+ * Validates with the **same schema the API re-validates with**, so the two
+ * can't drift into disagreeing about what's acceptable. The server still
+ * re-checks: this is a courtesy to honest users, not a security boundary.
+ */
 export function StartForm() {
   const searchParams = useSearchParams();
   const wasCanceled = searchParams.get("canceled") === "1";
 
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Distinct from RHF's isSubmitting: it stays true through the redirect, so
+  // the button can't be pressed twice while the browser navigates to Stripe.
+  const [redirecting, setRedirecting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setSubmitting(true);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    // Three generics because the schema transforms: the form holds raw strings
+    // (the Draft), while handleSubmit receives the parsed output.
+  } = useForm<SubmissionInputDraft, unknown, SubmissionInput>({
+    resolver: zodResolver(submissionInputSchema),
+    // Validate on blur rather than on every keystroke — flagging an email as
+    // invalid while it's still being typed is hostile.
+    mode: "onBlur",
+  });
 
-    const form = event.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
+  const onSubmit = handleSubmit(async (values) => {
+    setSubmitError(null);
 
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(values),
       });
-      const json = (await res.json()) as { url?: string; error?: string };
+      const json = (await res.json().catch(() => ({}))) as {
+        url?: string;
+        error?: string;
+      };
 
       if (!res.ok || !json.url) {
-        setError(json.error ?? "Something went wrong. Please try again.");
-        setSubmitting(false);
+        setSubmitError(json.error ?? "Something went wrong. Please try again.");
         return;
       }
-      // Hand off to Stripe's hosted checkout.
-      window.location.href = json.url;
+
+      setRedirecting(true);
+      // assign() rather than setting location.href — a method call, which the
+      // React Compiler lint accepts as an effect rather than a mutation.
+      window.location.assign(json.url);
     } catch {
-      setError("Network error. Please check your connection and try again.");
-      setSubmitting(false);
+      setSubmitError(
+        "Network error. Please check your connection and try again.",
+      );
     }
-  }
+  });
+
+  const busy = isSubmitting || redirecting;
 
   return (
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
@@ -49,11 +81,14 @@ export function StartForm() {
         </p>
       )}
 
-      <Field label="Your email" hint="We'll send confirmations and feedback here.">
+      <Field
+        label="Your email"
+        hint="We'll send confirmations and feedback here."
+        error={errors.customerEmail?.message}
+      >
         <input
-          name="customerEmail"
+          {...register("customerEmail")}
           type="email"
-          required
           autoComplete="email"
           placeholder="you@example.com"
           className={inputClass}
@@ -63,21 +98,20 @@ export function StartForm() {
       <Field
         label="Player's name"
         hint="If the player is a minor, a parent or guardian should submit."
+        error={errors.playerName?.message}
       >
         <input
-          name="playerName"
+          {...register("playerName")}
           type="text"
-          required
-          maxLength={120}
           placeholder="e.g. Alex Tanaka"
           className={inputClass}
         />
       </Field>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Player's age" optional>
+        <Field label="Player's age" optional error={errors.playerAge?.message}>
           <input
-            name="playerAge"
+            {...register("playerAge")}
             type="text"
             inputMode="numeric"
             maxLength={2}
@@ -86,8 +120,8 @@ export function StartForm() {
           />
         </Field>
 
-        <Field label="Focus" optional>
-          <select name="focus" defaultValue="" className={inputClass}>
+        <Field label="Focus" optional error={errors.focus?.message}>
+          <select {...register("focus")} defaultValue="" className={inputClass}>
             <option value="">Not sure / general</option>
             {FOCUS_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -102,58 +136,28 @@ export function StartForm() {
         label="Anything you want the coach to look at?"
         optional
         hint="Optional — a specific issue, a recent change, a goal."
+        error={errors.customerNotes?.message}
       >
         <textarea
-          name="customerNotes"
+          {...register("customerNotes")}
           rows={3}
-          maxLength={500}
           placeholder="e.g. Trying to fix an early bat drop on inside pitches."
           className={`${inputClass} resize-none`}
         />
       </Field>
 
-      {error && (
-        <p className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {error}
+      {submitError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+        >
+          {submitError}
         </p>
       )}
 
-      <Button
-        type="submit"
-        size="lg"
-        disabled={submitting}
-        className="w-full"
-      >
-        {submitting ? "Redirecting to checkout…" : "Continue to secure checkout"}
+      <Button type="submit" size="lg" disabled={busy} className="w-full">
+        {busy ? "Redirecting to checkout…" : "Continue to secure checkout"}
       </Button>
     </form>
-  );
-}
-
-const inputClass =
-  "w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-ink shadow-sm outline-none transition-colors placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent/30";
-
-function Field({
-  label,
-  hint,
-  optional,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  optional?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-ink">
-        {label}
-        {optional && (
-          <span className="text-xs font-normal text-ink-muted">(optional)</span>
-        )}
-      </span>
-      {children}
-      {hint && <span className="mt-1.5 block text-xs text-ink-muted">{hint}</span>}
-    </label>
   );
 }

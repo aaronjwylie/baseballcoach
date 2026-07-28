@@ -61,7 +61,8 @@ flowchart LR
 - 🔶 **Still hosted Checkout, not Elements.** Approved for rebuild and **not yet started** —
   the whole point is keeping payment on our own domain inside our own layout. This is the
   largest outstanding gap in the slice. *(See [ADR 005](../../../docs/decisions/005-stripe-elements-over-checkout.md).)*
-- 🔶 **No Zod** on the form; see the submission slice.
+- ✅ **`StartForm` on React Hook Form + the shared Zod schema**, with per-field errors on
+  blur and a redirect guard so the button can't be double-pressed during handoff to Stripe.
 
 ---
 
