@@ -137,6 +137,21 @@ Use Stripe **test** keys and Stripe test cards before flipping to live.
 - [ ] Do **one real low-stakes purchase** end to end, then refund it in Stripe.
 - [ ] Confirm the money appears in the client's Stripe balance.
 
+## 10. Decommission the dev setup
+
+Once the client's site is live and verified, tear down the old dev deployment so
+nothing keeps firing against test data or duplicating work.
+
+- [ ] Delete (or pause) the **dev Vercel project** so its deployment and any
+      `*.vercel.app` URL stop serving.
+- [ ] Disable/delete the **dev Stripe webhook** (test mode) so it no longer fires.
+- [ ] Disable/delete the **dev Mux webhook**.
+- [ ] Turn off the **dev Airtable automation** (and archive the dev base if it
+      held only test rows).
+- [ ] Revoke any **dev-only API keys/tokens** that are no longer used.
+- [ ] Confirm the production site still passes the step 8 test after teardown —
+      i.e. nothing live depended on a dev resource.
+
 ---
 
 ### Quick reference — endpoints in this app
