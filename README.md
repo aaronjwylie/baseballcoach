@@ -61,98 +61,48 @@ webhook timing.
 
 `npm run build` produces the production build; `npm run lint` runs ESLint.
 
-## Airtable schema
+## Setting up the services
 
-Create a base with one table (default name **`Submissions`**, override with
-`AIRTABLE_TABLE_NAME`). Field names must match exactly — they're referenced in
-[src/lib/airtable.ts](src/lib/airtable.ts):
+**Account setup, the Airtable base schema, webhook configuration, DNS, and
+deployment all live in [OPERATIONS.md](OPERATIONS.md)** — that's the single
+runbook. This file deliberately doesn't repeat them; two copies of a schema
+means one of them is wrong.
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `Email` | Single line text | Customer identity |
-| `Player Name` | Single line text | |
-| `Player Age` | Single line text | Optional |
-| `Sport` | Single line text | Focus area (Hitting/Pitching/…) |
-| `Notes` | Long text | Customer note + system messages |
-| `Status` | Single select | Options: `Awaiting Upload`, `In Review`, `Complete` |
-| `Stripe Session ID` | Single line text | |
-| `Mux Upload ID` | Single line text | |
-| `Mux Asset ID` | Single line text | |
-| `Mux Playback ID` | Single line text | |
-| `Feedback Link` | URL | Loom/PDF link the client pastes in |
-| `Created At` | Single line text | ISO timestamp set by the app |
-| `Feedback Emailed` | Checkbox | Optional. Set by the notify webhook to avoid double-sending the "feedback ready" email |
+Env vars are documented in [.env.example](.env.example) and read in exactly one
+place, [src/lib/env.ts](src/lib/env.ts). Required values throw at point of use
+with a message naming the variable.
 
-Suggested views for day-to-day operation: **New** (`Status = Awaiting Upload` or
-`In Review`), **Complete**, plus per-coach filtered views once a coach-assignment
-field is added.
+### Local webhook testing
 
-Use a personal access token (scopes `data.records:read`, `data.records:write`)
-for `AIRTABLE_API_KEY` and the base ID (`app…`) for `AIRTABLE_BASE_ID`.
+Stripe events won't reach `localhost` on their own — forward them:
 
-## Stripe setup
-
-1. Add `STRIPE_SECRET_KEY` from the dashboard.
-2. Pricing comes from `site.price` in `site.ts` by default (no Stripe Product
-   needed). To use a pre-created Price instead, set `STRIPE_PRICE_ID`.
-3. **Webhook** → endpoint `POST /api/webhooks/stripe`, event
-   `checkout.session.completed`. Put its signing secret in
-   `STRIPE_WEBHOOK_SECRET`.
-
-Local testing with the Stripe CLI:
 ```bash
 stripe listen --forward-to localhost:3000/api/webhooks/stripe
-# use the printed whsec_... as STRIPE_WEBHOOK_SECRET
+# use the printed whsec_... as your local STRIPE_WEBHOOK_SECRET
 stripe trigger checkout.session.completed
 ```
 
-## Mux setup
+Mux can't reach localhost either. Either point a Mux webhook at a tunnel
+(`ngrok http 3000`) or exercise the handler directly with a saved payload.
 
-1. Create an access token (`MUX_TOKEN_ID` / `MUX_TOKEN_SECRET`).
-2. **Webhook** → endpoint `POST /api/webhooks/mux`. Put its signing secret in
-   `MUX_WEBHOOK_SECRET`. Handled events: `video.asset.ready`,
-   `video.asset.errored`.
-3. `cors_origin` for direct uploads is set from `NEXT_PUBLIC_SITE_URL`, so keep
-   that accurate per environment.
+Emails are skipped entirely when `RESEND_API_KEY` is unset, which is usually
+what you want locally — the flow still works, and the `[email]` log lines tell
+you what would have been sent.
 
-The submission's Airtable record ID travels as the asset `passthrough`, so the
-Mux webhook can map a ready asset back to its row.
+## Where things are documented
 
-## Email (Resend)
+| Question | Look in |
+| --- | --- |
+| What are we building, and why this way? | [CLAUDE.md](CLAUDE.md) |
+| What's actually built vs. specified? | [CLAUDE.md §0](CLAUDE.md#0-where-this-project-actually-is) |
+| How do I set up an account / webhook / the base? | [OPERATIONS.md](OPERATIONS.md) |
+| How does the client run this day to day? | [OPERATIONS.md §11](OPERATIONS.md#11-yutas-daily-workflow) |
+| Why is *this* done this odd way? | [docs/decisions/](docs/decisions/) |
 
-Optional. Set `RESEND_API_KEY` and a verified `EMAIL_FROM`. If the key is unset,
-emails are skipped with a log line and never break a webhook. Templates live in
-[src/lib/email.ts](src/lib/email.ts). The "payment received" and "video
-received" emails fire from the Stripe and Mux webhooks; the "feedback ready"
-email fires from the Airtable automation below.
-
-## Feedback-ready notification
-
-When a coach finishes a review and sets `Status = Complete` (with a
-`Feedback Link`) in Airtable, an **Airtable automation** calls
-`POST /api/webhooks/airtable` and the app emails the customer their link.
-
-Set it up once in the Airtable base → **Automations**:
-
-1. **Trigger:** *When a record matches conditions* → `Status` is `Complete` and
-   `Feedback Link` is not empty. (This fires once per record, when it first
-   matches.)
-2. **Action:** *Send request* (webhook):
-   - **Method:** `POST`
-   - **URL:** `https://<your-site>/api/webhooks/airtable`
-   - **Header:** `x-webhook-secret: <AIRTABLE_WEBHOOK_SECRET>`
-   - **Body (JSON):** `{ "recordId": "<record id from the trigger>" }`
-
-Set `AIRTABLE_WEBHOOK_SECRET` in the host env to the same value used in the
-header. Add a **`Feedback Emailed`** checkbox column (see schema) so a re-fired
-automation can't email the customer twice — the endpoint works without it but
-then relies solely on the trigger firing once.
-
-## Deploying
-
-Deploy to Vercel (or any Node host). Set every variable from `.env.example` in
-the host's environment, and point the Stripe and Mux webhooks at the deployed
-URLs. Set `NEXT_PUBLIC_SITE_URL` to the production origin.
+**The codebase is being realigned to CLAUDE.md** — naming, folder structure, and
+the payment flow are all in flight. Read [CLAUDE.md
+§0](CLAUDE.md#0-where-this-project-actually-is) before starting anything
+substantial, or you may build against a layout that's about to move.
 
 ## Notes on Next.js 16
 

@@ -1,0 +1,367 @@
+# OPERATIONS.md — Setup & Runbook
+
+Everything that lives outside the codebase: third-party account setup, the
+Airtable base, webhooks, DNS, go-live, and the client's day-to-day workflow.
+
+**Nothing in this document requires writing code.** It is all dashboard
+configuration. If a step here contradicts [CLAUDE.md](CLAUDE.md), this file wins
+for *operational* detail (what to click, which URL, which secret) and CLAUDE.md
+wins for *architectural* intent (what we're building and why).
+
+> **This document describes the system as it exists today.** Several approved
+> changes are in flight — see [Pending changes](#pending-changes) at the bottom
+> before configuring a production base, or you may have to migrate it twice.
+
+**The one rule that has bitten this project before:** every webhook URL is
+derived from the site URL. If the domain changes, **re-point every webhook** or
+the flow silently breaks — no errors, just submissions that never progress.
+
+---
+
+## Table of contents
+
+1. [Ownership model](#1-ownership-model)
+2. [Move the code](#2-move-the-code)
+3. [Create the service accounts](#3-create-the-service-accounts)
+4. [Build the Airtable base](#4-build-the-airtable-base)
+5. [Environment variables](#5-environment-variables)
+6. [Configure the webhooks](#6-configure-the-webhooks)
+7. [Domain & DNS](#7-domain--dns)
+8. [Verify the email domain](#8-verify-the-email-domain)
+9. [End-to-end test (test mode)](#9-end-to-end-test-test-mode)
+10. [Flip to live](#10-flip-to-live)
+11. [Yuta's daily workflow](#11-yutas-daily-workflow)
+12. [Endpoint reference](#12-endpoint-reference)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Pending changes](#pending-changes)
+
+---
+
+## 1. Ownership model
+
+The client owns **every** third-party account — Stripe, Mux, Airtable, Resend,
+Vercel, and the domain. Payments and customer data go directly to them; we never
+hold either. Set accounts up in the client's name from the start, because
+migrating a Stripe account with live charges on it is painful.
+
+| Service | Purpose | Rough cost at MVP volume |
+| --- | --- | --- |
+| Vercel | Hosts the app | Free tier |
+| Stripe | Payments | Per-transaction only |
+| Mux | Video upload, storage, streaming | Usage-based, a few $/mo |
+| Airtable | Database + the client's admin UI | Free or ~$20/mo |
+| Resend | Transactional email | Free tier (3k/mo) |
+| GoDaddy | Domain registration | ~$20/yr |
+
+Target is under ~$80 CAD/month all-in. See the [Make.com note](#make-com) — we
+may not need it at all, which keeps us comfortably under.
+
+---
+
+## 2. Move the code
+
+- [ ] **Transfer the GitHub repo** to the client's account/org (repo →
+      **Settings → Transfer ownership**), *or* have them create their own repo
+      and push the code there.
+- [ ] Client **imports the repo into their own Vercel account**
+      (Vercel → **Add New → Project → Import Git Repository**).
+- [ ] Confirm Vercel is watching the `main` branch.
+- [ ] **Commit author emails must match a GitHub account on the client's side**,
+      or Vercel blocks the build. This has cost us a deploy cycle before.
+
+---
+
+## 3. Create the service accounts
+
+- [ ] **Stripe** — account created, business and bank details completed so it
+      can accept live charges. (Activation can take a day or two — start early.)
+- [ ] **Mux** — account plus an access token (Settings → Access Tokens). You
+      need both the token ID and secret; the secret is shown **once**.
+- [ ] **Airtable** — account and a base (next section).
+- [ ] **Resend** — account plus a **verified sending domain**. Without
+      verification, emails are silently skipped rather than failing loudly.
+      DNS propagation can take hours — **do this first**, not on launch day.
+
+---
+
+## 4. Build the Airtable base
+
+The app reads and writes one table whose **field names are load-bearing** —
+they appear as exact strings in the code. A rename in Airtable breaks the app
+with no warning.
+
+Create a table named `Submissions` (or set `AIRTABLE_TABLE_NAME` to match).
+
+| Field | Type | Written by |
+| --- | --- | --- |
+| `Email` | Single line text | App (Stripe webhook) |
+| `Player Name` | Single line text | App |
+| `Player Age` | Single line text | App |
+| `Sport` | Single line text | App — holds the coaching focus |
+| `Notes` | Long text | App, then the client |
+| `Status` | Single select — `Awaiting Upload`, `In Review`, `Complete` | App, then the client |
+| `Stripe Session ID` | Single line text | App |
+| `Mux Upload ID` | Single line text | App |
+| `Mux Asset ID` | Single line text | App (Mux webhook) |
+| `Mux Playback ID` | Single line text | App (Mux webhook) |
+| `Feedback Link` | URL | **The client** — the coach's Loom/video link |
+| `Created At` | Single line text | App (ISO timestamp) |
+| `Feedback Emailed` | Checkbox | App (feedback webhook) |
+
+- [ ] Table and all fields created, names matching **exactly** (including case).
+- [ ] `Status` single-select options created with those exact three labels.
+- [ ] Create a **Personal Access Token** with scopes `data.records:read` and
+      `data.records:write`, scoped to this base → `AIRTABLE_API_KEY`.
+- [ ] Note the **Base ID** (`app…`) from the API docs → `AIRTABLE_BASE_ID`.
+
+**Two field-name warnings:**
+
+- `Sport` actually holds the *coaching focus* (`Hitting`, `Pitching`,
+  `Fielding`, `Catching`, `Other`) — not a sport. It is being renamed to
+  `Focus`; see [Pending changes](#pending-changes).
+- `Created At` is an ISO string written by the app, **not** an Airtable
+  "Created time" field, and the status lookup sorts on it. If the client clears
+  that cell, ordering breaks. Don't edit it by hand.
+
+---
+
+## 5. Environment variables
+
+Set in **Vercel → Settings → Environment Variables**, for **Production** (and
+Preview, with test-mode keys, if you want branch previews to work).
+
+| Variable | Value / source | Required |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Live URL, **no trailing slash** (e.g. `https://diamondpath.com`) | Yes |
+| `STRIPE_SECRET_KEY` | Stripe live key `sk_live_…` | Yes |
+| `STRIPE_WEBHOOK_SECRET` | From the Stripe webhook in step 6 (`whsec_…`) | Yes |
+| `STRIPE_PRICE_ID` | A pre-created Stripe Price. Leave unset to price inline from `src/lib/site.ts` | No |
+| `MUX_TOKEN_ID` | Mux access token ID | Yes |
+| `MUX_TOKEN_SECRET` | Mux access token secret | Yes |
+| `MUX_WEBHOOK_SECRET` | From the Mux webhook in step 6 | Yes |
+| `AIRTABLE_API_KEY` | Airtable PAT (`pat…`) | Yes |
+| `AIRTABLE_BASE_ID` | Base ID (`app…`) | Yes |
+| `AIRTABLE_TABLE_NAME` | Defaults to `Submissions` | No |
+| `AIRTABLE_WEBHOOK_SECRET` | Random secret — `openssl rand -hex 32`. Also used in step 6 | Yes |
+| `RESEND_API_KEY` | Resend key. **If unset, emails are skipped silently** | No |
+| `EMAIL_FROM` | Verified sender, e.g. `Diamond Path <hello@theirdomain.com>` | No |
+
+- [ ] All required vars set for **Production**.
+- [ ] Update the customer-facing content in
+      [src/lib/site.ts](src/lib/site.ts) — business name, price, coach bios,
+      contact email. This is the only file that needs editing for content.
+- [ ] **Redeploy.** Env changes only take effect on a new build.
+
+Env vars are read in exactly one place — [src/lib/env.ts](src/lib/env.ts).
+Required values throw at point of use with a message naming the variable, so a
+misconfiguration surfaces as a clear error rather than a silent failure.
+
+---
+
+## 6. Configure the webhooks
+
+**Do this after the domain is final** (step 7), so the URLs don't need redoing.
+
+### Stripe
+
+- [ ] Stripe → Developers → Webhooks → **Add endpoint**
+- [ ] URL: `https://<site>/api/webhooks/stripe`
+- [ ] Event: `checkout.session.completed`
+- [ ] Copy the signing secret → `STRIPE_WEBHOOK_SECRET`
+
+> Test mode and live mode have **separate** webhook endpoints and **separate**
+> signing secrets. A test-mode secret in production fails every signature check.
+
+### Mux
+
+- [ ] Mux → Settings → Webhooks → add `https://<site>/api/webhooks/mux`
+- [ ] Events: `video.asset.ready`, `video.asset.errored`
+- [ ] Copy the signing secret → `MUX_WEBHOOK_SECRET`
+
+### Airtable — the feedback-ready automation
+
+This is what emails the customer when their feedback is done.
+
+- [ ] Airtable base → **Automations** → create new
+- [ ] **Trigger:** *When a record matches conditions* → `Status` is `Complete`
+      **and** `Feedback Link` is not empty
+- [ ] **Action:** *Send request*
+      - Method: `POST`
+      - URL: `https://<site>/api/webhooks/airtable`
+      - Header: `x-webhook-secret` → the `AIRTABLE_WEBHOOK_SECRET` value
+      - Body (JSON): `{ "recordId": "<record ID from the trigger step>" }`
+- [ ] Turn the automation **on**
+- [ ] Redeploy so all three secrets are live
+
+The endpoint authenticates with a constant-time comparison of that shared
+secret, re-reads the record rather than trusting the payload, and ticks
+`Feedback Emailed` so a re-fired automation can't double-send.
+
+<a id="make-com"></a>
+### A note on Make.com
+
+CLAUDE.md §7 budgets for Make.com as the automation glue. **In practice we
+haven't needed it.** The feedback-ready email — its main job — is handled by the
+Airtable automation above, calling our own endpoint. The two remaining candidate
+scenarios (abandoned-upload reminder, admin daily digest) can both be built as
+native Airtable automations too.
+
+Recommend we **drop Make.com from the stack** unless something specific needs
+it: one fewer vendor, one fewer subscription, one fewer place to look when
+something breaks. Flagged for Ben.
+
+---
+
+## 7. Domain & DNS
+
+- [ ] Add the custom domain in **Vercel → Settings → Domains**
+- [ ] In **GoDaddy**, point DNS at the A/CNAME records Vercel provides.
+      GoDaddy is the *registrar only* — it does not host the app.
+- [ ] Wait for verification to go green in Vercel
+- [ ] Set `NEXT_PUBLIC_SITE_URL` to the final domain **exactly**, then redeploy
+- [ ] **Re-check all three webhook URLs** from step 6 against the final domain
+
+---
+
+## 8. Verify the email domain
+
+- [ ] Resend → Domains → add the client's domain
+- [ ] Add the DKIM/SPF records Resend gives you to GoDaddy DNS
+- [ ] Wait for Resend to show **Verified** (minutes to hours)
+- [ ] Set `EMAIL_FROM` to an address on that domain, then redeploy
+
+Until this is done, either emails don't send or they land in spam. If
+`RESEND_API_KEY` is unset the app logs a warning and carries on — the flow
+still works, the customer just never hears from us.
+
+---
+
+## 9. End-to-end test (test mode)
+
+Run the whole thing on **Stripe test keys** before going live.
+
+- [ ] From `/start`, complete checkout with test card `4242 4242 4242 4242`
+      (any future expiry, any CVC)
+- [ ] Redirect lands on `/upload?session_id=…` **on the live domain**
+- [ ] An Airtable row appears, `Status = Awaiting Upload`
+- [ ] "Payment received" email arrives
+- [ ] Upload a short video; row flips to `In Review`; `Mux Asset ID` and
+      `Mux Playback ID` populate
+- [ ] "Video received" email arrives
+- [ ] In Airtable, paste a `Feedback Link` and set `Status = Complete`
+- [ ] "Feedback ready" email arrives with a working link
+- [ ] `Feedback Emailed` checkbox ticks itself
+- [ ] On `/status`, entering the same email shows the submission and a working
+      **Watch feedback** button
+- [ ] Repeat the upload step **on a real phone** — mobile upload is the
+      highest-risk part of the flow
+
+---
+
+## 10. Flip to live
+
+- [ ] Swap `STRIPE_SECRET_KEY` to the live `sk_live_…` key
+- [ ] **Recreate the Stripe webhook in live mode** (test and live are separate)
+      and update `STRIPE_WEBHOOK_SECRET`
+- [ ] Redeploy
+- [ ] One **real low-stakes purchase**, end to end, then refund it in Stripe
+- [ ] Confirm the money lands in the client's Stripe balance
+- [ ] Confirm the refund goes through cleanly
+
+---
+
+## 11. Yuta's daily workflow
+
+The whole operation runs from Airtable. Budget ~10–15 minutes per submission.
+
+**Once or twice a day, open the Submissions table:**
+
+1. **Look for rows with `Status = In Review`.** These are paid submissions with
+   a video ready to go. (Rows still on `Awaiting Upload` are customers who paid
+   but haven't uploaded — leave them; they get a reminder.)
+2. **Pick a coach** for the submission based on the `Sport` / focus field.
+3. **Email the coach** the video link. Get it from `Mux Playback ID`:
+   `https://stream.mux.com/<Mux Playback ID>.m3u8`, or open the asset in the
+   Mux dashboard. Include the player's name, age, and anything in `Notes`.
+4. **Wait for the coach** to send back their feedback video (usually a Loom).
+5. **Paste that link into `Feedback Link`.**
+6. **Set `Status` to `Complete`.**
+
+That last step is the trigger. The automation fires, the customer gets their
+"feedback ready" email, and `Feedback Emailed` ticks. Nothing else to do.
+
+**Things to watch for:**
+
+- A row stuck on `Awaiting Upload` for days → the customer paid and never
+  uploaded. Their confirmation email has the upload link; resend it or reach out.
+- A `[system]` line appended to `Notes` → Mux failed to process the video. The
+  status is reset to `Awaiting Upload`; ask the customer to re-upload.
+- **Never edit `Created At`, or any `Stripe`/`Mux` ID field.** The app uses
+  those to find rows. `Notes`, `Feedback Link`, `Status`, and `Internal Notes`
+  are yours to edit freely.
+
+---
+
+## 12. Endpoint reference
+
+| Route | Trigger | What it does |
+| --- | --- | --- |
+| `POST /api/checkout` | `/start` form submit | Creates the Stripe Checkout session, returns its URL |
+| `POST /api/webhooks/stripe` | Stripe, on `checkout.session.completed` | Creates the Airtable row (`Awaiting Upload`) + payment email |
+| `POST /api/mux/upload` | `/upload` page load | Verifies the session is paid, issues a Mux direct-upload URL |
+| `POST /api/webhooks/mux` | Mux, on `video.asset.ready` | Stores asset + playback IDs, → `In Review`, video-received email |
+| `POST /api/webhooks/airtable` | Airtable automation, on `Complete` | Feedback-ready email, ticks `Feedback Emailed` |
+| `POST /api/status` | `/status` form submit | Email-keyed lookup of the customer's own submissions |
+
+All three webhook endpoints verify authenticity before doing any work —
+Stripe and Mux by SDK signature check, Airtable by shared secret. All are
+idempotent: a retried delivery is a no-op, never a duplicate row or a second
+email.
+
+---
+
+## 13. Troubleshooting
+
+**Payment succeeds but no Airtable row appears.**
+Check Stripe → Webhooks → the endpoint's recent deliveries. A 400 means the
+signing secret is wrong (test secret in production is the usual cause). A 500
+means Airtable rejected the write — check the Vercel function logs, then that
+the field names match section 4 exactly.
+
+**Video uploads but the row never leaves `Awaiting Upload`.**
+The Mux webhook isn't landing. Check Mux → Settings → Webhooks for delivery
+failures, and confirm the URL matches the current domain.
+
+**Customer says they got no email.**
+Emails are best-effort by design — a Resend failure logs but never breaks the
+flow, so the submission still went through. Check the Vercel logs for `[email]`
+lines, then that `RESEND_API_KEY` is set and the domain is verified.
+
+**Feedback-ready email didn't fire.**
+The automation only triggers when `Status = Complete` **and** `Feedback Link`
+is non-empty. If `Feedback Emailed` is already ticked it deliberately won't
+re-send. Check the automation's run history in Airtable.
+
+**Everything broke at once, right after a domain change.**
+Every webhook URL. See the warning at the top of this document.
+
+---
+
+## Pending changes
+
+Approved but not yet implemented. **Read this before building a production
+base** — three of these change the Airtable schema, and doing them before real
+customer data lands is far cheaper than after.
+
+| Change | Impact on this document | Status |
+| --- | --- | --- |
+| **Stripe Elements** replaces hosted Checkout | `Stripe Session ID` → payment-intent ID; the Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit` | Approved |
+| **5 statuses** replace 3 | `Status` options become `Awaiting Upload`, `New`, `Assigned`, `In Review`, `Complete`. Yuta's workflow gains an explicit "needs a coach" queue | Approved |
+| **Naming sweep** | `Sport` → `Focus`; other columns renamed for consistency. Exact mapping TBD | Proposal pending |
+| **Rate limit on `/api/status`** | None operationally | Not started |
+| **Drop Make.com** | Section 7 of CLAUDE.md becomes moot; the two remaining scenarios become Airtable automations | Recommended, awaiting Ben |
+
+---
+
+_Companion to [CLAUDE.md](CLAUDE.md) (architecture and intent) and
+[README.md](README.md) (developer quick start)._

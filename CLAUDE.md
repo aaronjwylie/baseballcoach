@@ -3,15 +3,18 @@
 # CLAUDE.md — Baseball Coaching Platform (v1)
 
 **Project Handoff — Version 4 Proposal**
-**Repository:** [GitHub repo]
-**Status:** Ready to build
+**Repository:** https://github.com/aaronjwylie/baseballcoach
+**Status:** Built through ~Sprint 4 and deployed. Realigning to this spec — see [§0](#0-where-this-project-actually-is).
 
 This document is the single source of truth for Claude Code building this project. Read it fully before touching any code. When it conflicts with intuition, this file wins. When it conflicts with an SDK's docs, the SDK's docs win — but flag the discrepancy.
+
+**Operational detail lives in [OPERATIONS.md](OPERATIONS.md)** — account setup, the Airtable base, webhook configuration, DNS, and the client's daily workflow. This file owns *intent*; that file owns *what to click*.
 
 ---
 
 ## Table of Contents
 
+0. [Where this project actually is](#0-where-this-project-actually-is)
 1. [Project Northstar](#1-project-northstar)
 2. [Non-Goals & Anti-Scope](#2-non-goals--anti-scope)
 3. [Architecture](#3-architecture)
@@ -27,6 +30,75 @@ This document is the single source of truth for Claude Code building this projec
 13. [Definition of Done](#13-definition-of-done)
 14. [When to Stop and Ask](#14-when-to-stop-and-ask)
 15. [Glossary](#15-glossary)
+
+---
+
+## 0. Where this project actually is
+
+This document was written as a pre-build handoff. **The build ran ahead of it.**
+A working, deployed, end-to-end paid flow already exists, and in several places
+it diverges from what's specified below. This section is the reconciliation, so
+that nothing downstream inherits a false premise.
+
+### What's built and working
+
+Landing page, player-info form, payment, Mux upload, status lookup, three
+transactional emails, and all webhook glue. `tsc --noEmit` passes clean. Roughly
+Sprints 0–4 plus most of 5, minus the feedback viewer.
+
+### Where the code beat this spec — the code wins
+
+These were considered improvements, not drift. **Do not "fix" them back toward
+the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
+
+| Divergence | Why the code is right |
+| --- | --- |
+| Mux `passthrough` holds the **Airtable record ID**, not the payment ID (§7 said payment ID) | Turns the webhook's row lookup into a direct fetch by ID instead of a `filterByFormula` search — cheaper, no escaping risk, no ambiguity |
+| Row creation is a shared `ensureSubmission()`, called by **both** the Stripe webhook and the upload endpoint | Handles a race this spec never addressed: the customer returning from payment before the webhook lands |
+| The upload endpoint verifies payment **against Stripe directly**, not against our Airtable row (§7 said Airtable) | Can't mint an upload URL against a forged or unpaid session, even if Airtable is stale |
+| Transactional email is best-effort and never throws into a webhook | A Resend outage would otherwise make Stripe retry-loop a payment that already succeeded |
+
+### Where the code diverges and must be realigned
+
+| Divergence | Resolution |
+| --- | --- |
+| Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site |
+| **3 statuses** instead of 5 (§8) | **Go to 5.** Yuta needs an explicit "needs a coach" queue state |
+| Flat `src/lib/` + `src/components/` instead of FSD (§5) | Move to the §5 structure |
+| Hand-rolled validation instead of **Zod** (§11) | Replace; share one schema between client and server |
+| No rate limit on the status lookup (Sprint 5) | Add — 5 requests per IP per minute |
+| No `/feedback/[id]` viewer (Sprint 5) | Build, once the wireframe lands |
+| Raw-HTML email strings instead of **React Email** (§4) | Open — decide during the email pass |
+| Hand-rolled `ui.tsx` primitives instead of **shadcn/ui** (§4) | Open — decide when the wireframe lands |
+
+### Nomenclature is the live problem
+
+One concept currently carries three names across the stack. The worst offender:
+the coaching focus is `focus` in code, `Sport` in Airtable (holding values like
+`"Hitting"`), and `Skill Focus` in this document. Airtable column names also
+appear as bare string literals in six files, so a rename in the base breaks the
+app silently in six places.
+
+**The fix — the spine of the realignment — is one name per concept, declared
+once.** Every Airtable column string gets exactly one home in `src/config/`;
+everything else touches typed properties. This is what "one source of truth"
+means for this codebase, and it lands before the FSD move.
+
+### Sequencing
+
+0. **Reconcile the docs** so the source of truth is true ← *this section*
+1. **One name per concept** — the schema/naming sweep
+2. **FSD move** — mechanical, guarded by `tsc`
+3. **Zod** + the status-lookup rate limit
+4. **Sprint 1** — landing page, against Audrey's wireframe
+5. **Sprint 2 redo** — Stripe Elements
+
+Steps 0–3 are wireframe-independent, so they run while design is in flight.
+
+> **The Airtable base is live in the client's workspace.** Any field rename or
+> status change is a data migration on Yuta's base, not just a code change. Do
+> them before real customers land, and coordinate — see
+> [OPERATIONS.md § Pending changes](OPERATIONS.md#pending-changes).
 
 ---
 
@@ -184,6 +256,10 @@ If any of these feels needed, the scope is wrong. Stop and flag it.
 ## 5. Repository Structure (FSD)
 
 This is a Feature-Sliced Design–inspired structure, adapted for a Next.js App Router project of this size. The core idea: organize by feature (submission, feedback, admin) rather than by file type, keeping related code co-located.
+
+> **This is the target, not the current layout.** Today the code sits in a flat
+> `src/lib/` + `src/components/`, with routes at `/start`, `/upload`, `/status`.
+> Step 2 of the realignment moves it here. See [§0](#0-where-this-project-actually-is).
 
 ```
 /
@@ -427,13 +503,14 @@ This section describes what each tool does, why we chose it, and how to integrat
 **Key flow:**
 
 1. Client posts to `/api/mux/upload-url` with the payment intent ID
-2. Server verifies the payment intent exists and is paid (via Airtable lookup)
-3. Server creates a Mux direct upload URL with `passthrough: paymentIntentId`
-4. Client renders `<MuxUploader>` with the upload URL
-5. Upload completes → Mux fires `video.asset.ready` webhook to `/api/mux/webhook`
-6. Webhook handler reads `passthrough`, finds the Airtable row, updates it with Mux Asset ID and Playback ID, changes status to "New"
+2. Server verifies the payment intent is paid **by retrieving it from Stripe** — not by trusting our own Airtable row, which may be stale or forged
+3. Server calls `ensureSubmission()` to get (or idempotently create) the Airtable row
+4. Server creates a Mux direct upload URL with `passthrough: <airtableRecordId>`
+5. Client renders `<MuxUploader>` with the upload URL
+6. Upload completes → Mux fires `video.asset.ready` webhook to `/api/mux/webhook`
+7. Webhook handler reads `passthrough`, fetches that Airtable record **directly by ID**, updates it with Mux Asset ID and Playback ID, changes status to "New"
 
-**The `passthrough` field is critical** — it's how we link the video back to the payment.
+**The `passthrough` field is critical** — it's how we link the video back to the submission. It holds the **Airtable record ID**, so the webhook does a direct record fetch rather than a `filterByFormula` search: cheaper, no formula-escaping surface, and unambiguous. (Earlier drafts of this document said it held the payment intent ID. The code's approach is better and wins — see [ADR 002](docs/decisions/002-passthrough-holds-record-id.md).) Fall back to a lookup on Mux Upload ID if `passthrough` is ever absent.
 
 ### Airtable
 
@@ -470,19 +547,23 @@ This section describes what each tool does, why we chose it, and how to integrat
 - **Video Received** — triggered by Mux webhook, sent when upload completes
 - **Feedback Ready** — triggered by Make.com when Yuta changes status to "Complete"
 
-**Note:** The Feedback Ready email is sent by Make.com, not our app. This is intentional — Make.com is watching Airtable for the status change and can fire the email directly.
+**Note:** This document originally had Make.com sending the Feedback Ready email. **In the built system our app sends all three.** An Airtable automation watches for `Status = Complete` and calls `POST /api/webhooks/airtable`, which re-reads the record, sends the email, and ticks `Feedback Emailed` so a re-fire can't double-send. One less vendor in the path, and the email template lives with the other two.
 
 ### Make.com
 
 **Role:** Automation glue between tools that don't need app code.
 
-**Scenarios to configure (documented in OPERATIONS.md):**
+**Status: we haven't needed it, and probably shouldn't keep it.**
 
-1. **Feedback Ready** — Airtable status changes to "Complete" → send customer email with feedback link
-2. **Abandoned Upload Reminder** — Detects submissions stuck in "Awaiting Upload" for 24+ hours → send reminder email
-3. **Admin Daily Digest** (optional) — Sends Yuta a daily summary of pending submissions
+Three scenarios were budgeted:
 
-Make.com scenarios are set up manually by Ben during the OPERATIONS.md handoff. Claude Code does not touch Make.com directly — it only ensures the Airtable schema and webhook contracts are compatible with what Make.com will read.
+1. ~~**Feedback Ready**~~ — built instead as an Airtable automation calling our own endpoint (see the Resend note above). Done, working, no Make.com involved.
+2. **Abandoned Upload Reminder** — submissions stuck in "Awaiting Upload" for 24+ hours → reminder email. Not built. A native Airtable automation can do this.
+3. **Admin Daily Digest** (optional) — daily summary for Yuta. Not built. Same.
+
+Since the one scenario that justified the subscription turned out not to need it, **recommend dropping Make.com from the stack**: one fewer vendor, one fewer bill, one fewer place to look when something breaks. That's squarely on-northstar. Flagged for Ben — see [OPERATIONS.md](OPERATIONS.md#make-com).
+
+If Make.com does stay, Claude Code never touches it directly — it only keeps the Airtable schema and webhook contracts compatible with what Make.com reads.
 
 ### Vercel
 
@@ -503,31 +584,35 @@ Make.com scenarios are set up manually by Ben during the OPERATIONS.md handoff. 
 
 Airtable is the database. The schema lives in one base with two tables.
 
-### Submissions table
+### Submissions table — as it exists today
 
-**Field names are load-bearing** — code references them by exact string. Do not rename without updating the code.
+**Field names are load-bearing** — code references them by exact string. Do not rename without updating the code *and* migrating the client's live base.
 
-| Field Name           | Type             | Notes                                                                                |
-| -------------------- | ---------------- | ------------------------------------------------------------------------------------ |
-| Submission ID        | Autonumber       | Primary field, human-readable                                                        |
-| Customer Name        | Single line text | Required                                                                             |
-| Customer Email       | Email            | Required, always lowercased                                                          |
-| Player Name          | Single line text | Required                                                                             |
-| Player Age           | Number           | 1-decimal off                                                                        |
-| Skill Focus          | Single select    | Options: "Batting", "Pitching"                                                       |
-| Stripe Payment ID    | Single line text | From Stripe webhook                                                                  |
-| Stripe Amount        | Currency (CAD)   | Amount paid                                                                          |
-| Mux Asset ID         | Single line text | From Mux webhook                                                                     |
-| Mux Playback ID      | Single line text | For playback URLs                                                                    |
-| Video URL            | Formula          | `IF({Mux Playback ID}, "https://stream.mux.com/" & {Mux Playback ID} & ".m3u8", "")` |
-| Submitted At         | Created time     | Auto                                                                                 |
-| Status               | Single select    | See status values below                                                              |
-| Assigned Coach       | Link to Coaches  | Set manually by Yuta                                                                 |
-| Coach Feedback Video | URL              | Loom link or video URL from Yuta                                                     |
-| Coach Feedback PDF   | Attachment       | Optional                                                                             |
-| Coach Notes          | Long text        | Optional                                                                             |
-| Feedback Sent At     | Date             | Set when status → Complete                                                           |
-| Internal Notes       | Long text        | Admin-only                                                                           |
+| Field Name        | Type             | Written by                                    |
+| ----------------- | ---------------- | --------------------------------------------- |
+| Email             | Single line text | App — always lowercased before write and read |
+| Player Name       | Single line text | App                                           |
+| Player Age        | Single line text | App — currently a string, should be a number  |
+| Sport             | Single line text | App — **misnamed**; holds the coaching focus  |
+| Notes             | Long text        | App, then Yuta                                |
+| Status            | Single select    | App, then Yuta — see below                    |
+| Stripe Session ID | Single line text | App                                           |
+| Mux Upload ID     | Single line text | App                                           |
+| Mux Asset ID      | Single line text | App (Mux webhook)                             |
+| Mux Playback ID   | Single line text | App (Mux webhook)                             |
+| Feedback Link     | URL              | **Yuta** — the coach's Loom/video link         |
+| Created At        | Single line text | App — an ISO string, *not* an Airtable created-time field |
+| Feedback Emailed  | Checkbox         | App — idempotency guard on the feedback email |
+
+**Known problems with this schema, to be resolved in the Step 1 naming sweep:**
+
+- `Sport` holds values like `"Hitting"` — it's the coaching **focus**, not a sport. Nobody reading the base can tell what the column means. → rename to `Focus`
+- `Player Age` is a string. → number
+- `Created At` is written by app code and sorted on by the status lookup. If Yuta clears the cell, ordering breaks. → replace with a real Airtable created-time field
+- No `Stripe Amount`, no `Internal Notes`, no denormalized `Video URL` formula
+- The Elements rebuild replaces `Stripe Session ID` with a payment-intent ID
+
+The target schema is **not yet settled** — it lands with the Step 1 proposal, and every rename is a migration on Yuta's live base, so they go in one batch.
 
 ### Status values (exact strings, in order)
 
@@ -537,15 +622,21 @@ Airtable is the database. The schema lives in one base with two tables.
 4. `"In Review"` — Coach is working on feedback
 5. `"Complete"` — Feedback delivered
 
-**Never invent new status values in code without updating Airtable and Make.com.**
+**Currently the base has only three** — `Awaiting Upload`, `In Review`, `Complete`. Moving to the five above is approved: without `New` and `Assigned`, Yuta has no way to distinguish "needs a coach" from "a coach has it," which is the queue he actually operates from. Migration lands with the Step 1 batch.
 
-### Coaches table
+**Never invent new status values in code without updating Airtable and the automations that watch it.**
+
+### Coaches table — not built
+
+Specified below, but **no Coaches table exists** and nothing in the code reads one. Coach assignment currently happens in Yuta's head and his email outbox.
+
+Build it when the `Assigned` status lands — that's the point at which "which coach?" becomes a field the system needs to answer rather than a note Yuta keeps himself. Until then it would be an empty table.
 
 | Field Name         | Type                | Notes                     |
 | ------------------ | ------------------- | ------------------------- |
 | Coach Name         | Single line text    | Primary field             |
 | Email              | Email               | For Yuta to contact       |
-| Specialties        | Multiple select     | "Batting", "Pitching"     |
+| Specialties        | Multiple select     | Match the Focus options   |
 | Languages          | Multiple select     | "English", "Japanese"     |
 | Active             | Checkbox            | Toggle                    |
 | Linked Submissions | Link to Submissions | Reverse link auto-created |
@@ -608,6 +699,10 @@ export async function POST(req: Request) {
 ## 10. Build Timeline & Sprint Plan
 
 Total: **4–6 weeks from kickoff to soft launch.**
+
+> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ built but pre-wireframe, rebuilding · Sprint 2 ⚠️ working on hosted Checkout, needs the Elements redo · Sprint 3 ✅ · Sprint 4 ⚠️ done with raw-HTML templates, not React Email · Sprint 5 ⚠️ status lookup done, feedback viewer and rate limit outstanding · Sprint 6 ✅ (via Airtable automations, not Make.com) · Sprints 7–8 not started.
+>
+> The realignment steps in [§0](#0-where-this-project-actually-is) run before picking the sprint plan back up.
 
 ### Sprint 0 — Project Initialization (Day 1)
 
@@ -967,9 +1062,12 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 
 ## Related Documents
 
-- **OPERATIONS.md** — Manual setup for Airtable, Stripe dashboard, Mux dashboard, Make.com scenarios, Resend domain, Vercel deployment, DNS
-- **README.md** — Quick start for a new developer joining
+- **[OPERATIONS.md](OPERATIONS.md)** — Account setup, the Airtable base, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and Yuta's daily workflow
+- **[docs/decisions/](docs/decisions/)** — ADRs recording where and why the implementation departs from this document
+- **[README.md](README.md)** — Quick start for a new developer joining
 - **Proposal v4** — Scope, budget, timeline as agreed with the client. Defer to this if a stakeholder claims something is "in scope"
+
+_(`docs/go-live.md` was folded into OPERATIONS.md — two runbooks describing two different Airtable schemas is exactly the drift this realignment exists to kill.)_
 
 ---
 
