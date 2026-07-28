@@ -916,7 +916,7 @@ Tasks:
 > **Handoff runbook:** For the step-by-step go-live and client-handoff
 > procedure — transferring the app to the client's own Vercel/GitHub and
 > third-party accounts, every env var, webhook re-point, end-to-end test, and
-> dev teardown — see [`docs/go-live.md`](docs/go-live.md).
+> dev teardown — see [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
