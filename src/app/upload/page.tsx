@@ -52,7 +52,7 @@ function MissingSession() {
         email. Otherwise you can check the status of your submissions anytime.
       </p>
       <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-        <ButtonLink href="/status" variant="dark">
+        <ButtonLink href="/status" variant="outline">
           Check submission status
         </ButtonLink>
         <ButtonLink href="/start" variant="outline">

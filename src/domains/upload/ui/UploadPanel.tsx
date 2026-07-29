@@ -98,7 +98,7 @@ function Confirmation() {
         close this tab.
       </p>
       <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-        <ButtonLink href="/status" variant="dark">
+        <ButtonLink href="/status" variant="outline">
           Track your submission
         </ButtonLink>
         <ButtonLink href="/" variant="outline">

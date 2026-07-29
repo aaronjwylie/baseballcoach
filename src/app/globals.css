@@ -1,23 +1,39 @@
 @import "tailwindcss";
 
 /**
- * Design tokens for Diamond Path.
- * Navy ink + a warm rose accent (matches the transactional emails), on a
- * soft off-white. Single light theme — the landing page is the brand.
+ * Design tokens.
+ *
+ * PROVISIONAL — taken from the reference wireframe in
+ * `docs/reference/baseball_platform_wireframe.html` (2026-07-29). A warm
+ * off-white ground with a calm blue accent, which reads more "trusted
+ * instructor" than the navy/rose these replaced.
+ *
+ * Audrey's brand work supersedes this wholesale. Everything visual is
+ * expressed as a token here and consumed by name, so that swap stays a
+ * one-file change — no component references a hex value.
  */
 @theme {
-  --color-ink: #0f172a;
-  --color-ink-soft: #334155;
-  --color-ink-muted: #64748b;
-  --color-paper: #f8fafc;
-  --color-line: #e2e8f0;
+  /* Ground: three warm neutrals, lightest to white */
+  --color-paper: #f7f6f2;
+  --color-paper-alt: #f1efe8;
+  --color-surface: #ffffff;
 
-  --color-accent: #e11d48;
-  --color-accent-dark: #be123c;
+  /* Ink */
+  --color-ink: #2c2c2a;
+  --color-ink-soft: #5f5e5a;
+  --color-ink-muted: #888780;
 
-  --color-brand-50: #eef4ff;
-  --color-brand-600: #1d4ed8;
-  --color-brand-900: #0f172a;
+  /* Lines */
+  --color-line: #e4e2da;
+  --color-line-strong: #c9c6bc;
+
+  /* Accent — used for step numbers, tags, and links */
+  --color-accent: #185fa5;
+  --color-accent-dark: #124b83;
+  --color-accent-soft: #e6f1fb;
+
+  /* Affirmative — checkmarks in the pricing list */
+  --color-success: #1d9e75;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
@@ -32,14 +48,4 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-/* A subtle diamond-diamond dotted texture used behind hero sections. */
-.bg-diamond {
-  background-image: radial-gradient(
-    circle at 1px 1px,
-    rgba(255, 255, 255, 0.08) 1px,
-    transparent 0
-  );
-  background-size: 22px 22px;
 }

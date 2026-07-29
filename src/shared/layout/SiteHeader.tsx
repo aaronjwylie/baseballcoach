@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Container, ButtonLink } from "@/shared/ui";
+import { ButtonLink, Container } from "@/shared/ui";
 import { Logo } from "@/shared/layout/Logo";
 
 const navLinks = [
@@ -9,9 +9,17 @@ const navLinks = [
   { href: "/#faq", label: "FAQ" },
 ];
 
+/**
+ * Sticky nav, per the reference wireframe.
+ *
+ * The section links collapse below `md` rather than becoming a hamburger — on a
+ * page this short, scrolling *is* the navigation, and a menu button would be
+ * more machinery than the page earns. The CTA stays visible at every width,
+ * because that's the one thing a phone visitor needs to reach.
+ */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line/80 bg-paper/85 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" aria-label="Home">
           <Logo />
@@ -22,21 +30,21 @@ export function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-ink-soft transition-colors hover:text-ink"
+              className="text-sm text-ink-soft transition-colors hover:text-ink"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-3">
           <Link
             href="/status"
-            className="hidden text-sm font-medium text-ink-soft transition-colors hover:text-ink sm:inline"
+            className="hidden text-sm text-ink-soft transition-colors hover:text-ink sm:inline"
           >
             Check status
           </Link>
-          <ButtonLink href="/start">Get started</ButtonLink>
+          <ButtonLink href="/start">Get feedback</ButtonLink>
         </div>
       </Container>
     </header>

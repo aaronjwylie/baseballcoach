@@ -25,22 +25,31 @@ export const howItWorks = [
   },
 ] as const;
 
+/**
+ * `specialty` is the tag shown on a coach card — it tells a parent at a glance
+ * whether this coach covers what their kid needs. The words match the `Focus`
+ * options a customer picks at checkout, so the promise on the landing page and
+ * the choice in the form use the same vocabulary.
+ */
 export const coaches = [
   {
     name: "Coach A",
-    role: "Hitting — former NPB infielder",
+    role: "Former NPB infielder",
+    specialty: "Hitting",
     bio: "Twelve seasons in Japan's top division. Specializes in bat path, timing, and the lower-half mechanics that generate power without losing contact.",
     initials: "A",
   },
   {
     name: "Coach B",
-    role: "Pitching — former NPB right-hander",
+    role: "Former NPB right-hander",
+    specialty: "Pitching",
     bio: "Built his career on command over velocity. Works on delivery repeatability, arm health, and sequencing that holds up deep into games.",
     initials: "B",
   },
   {
     name: "Coach C",
-    role: "Development — youth & high school",
+    role: "Youth & high school development",
+    specialty: "Hitting & Pitching",
     bio: "Fifteen years coaching Japanese high school baseball. Focused on fundamentals, discipline, and building mechanics that last.",
     initials: "C",
   },

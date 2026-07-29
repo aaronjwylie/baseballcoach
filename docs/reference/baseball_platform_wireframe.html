@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baseball Coaching Platform — Wireframe</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+  :root {
+    --surface-0: #f7f6f2;
+    --surface-1: #f1efe8;
+    --surface-2: #ffffff;
+    --border: #e4e2da;
+    --border-strong: #c9c6bc;
+    --text-primary: #2c2c2a;
+    --text-secondary: #5f5e5a;
+    --text-muted: #888780;
+    --bg-accent: #e6f1fb;
+    --text-accent: #185fa5;
+    --text-success: #1d9e75;
+    --fill-control: #e4e2da;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 24px;
+    line-height: 1.5;
+  }
+
+  .canvas {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--surface-1);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  /* Browser chrome */
+  .chrome {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .chrome-dots { display: flex; gap: 6px; }
+  .chrome-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border-strong); }
+  .chrome-url {
+    flex: 1;
+    background: var(--surface-1);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .site {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+  }
+
+  /* Sticky nav */
+  .nav {
+    border-bottom: 0.5px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; }
+  .nav-logo {
+    width: 28px;
+    height: 28px;
+    border: 0.5px dashed var(--border-strong);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .nav-wordmark { font-size: 14px; font-weight: 500; }
+  .nav-links {
+    display: flex;
+    gap: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .nav-links a {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .nav-links a:hover { color: var(--text-primary); }
+  .nav-cta, .cta-primary {
+    background: var(--text-primary);
+    color: var(--surface-2);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-block;
+    border: none;
+  }
+  .cta-primary { padding: 12px 28px; }
+
+  /* Section labels */
+  .section {
+    padding: 48px 24px;
+    border-bottom: 0.5px solid var(--border);
+    position: relative;
+  }
+  .section.alt { background: var(--surface-1); }
+  .section-label {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* Hero */
+  .hero-inner { max-width: 480px; margin: 0 auto; text-align: center; }
+  .bar { border-radius: 4px; height: 10px; background: var(--border); margin: 0 auto 6px; }
+  .bar-strong { background: var(--border-strong); height: 14px; margin-bottom: 10px; }
+  .bar-heading { background: var(--text-primary); height: 26px; margin-bottom: 8px; }
+  .hero-note { margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+
+  /* Section headers */
+  .section-heading {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .section-heading h2 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 6px 0;
+  }
+  .section-heading .sub-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    width: 50%;
+    margin: 0 auto;
+  }
+
+  /* How it works */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .step { text-align: center; }
+  .step-num {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+  }
+  .step-title { font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+  .step-bar-1 { height: 6px; background: var(--border); border-radius: 3px; width: 80%; margin: 0 auto 4px; }
+  .step-bar-2 { height: 6px; background: var(--border); border-radius: 3px; width: 60%; margin: 0 auto; }
+
+  /* Coaches */
+  .coaches {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .coach-card {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .coach-photo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--fill-control);
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .coach-name-bar { height: 10px; background: var(--text-primary); border-radius: 3px; width: 60%; margin: 0 auto 6px; }
+  .coach-bio-bar-1 { height: 6px; background: var(--border); border-radius: 3px; width: 80%; margin: 0 auto 4px; }
+  .coach-bio-bar-2 { height: 6px; background: var(--border); border-radius: 3px; width: 70%; margin: 0 auto 10px; }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 3px 8px;
+    background: var(--bg-accent);
+    color: var(--text-accent);
+    border-radius: 10px;
+  }
+
+  /* Pricing */
+  .pricing-card {
+    max-width: 340px;
+    margin: 0 auto;
+    background: var(--surface-1);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .pricing-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .pricing-price { font-size: 32px; font-weight: 500; margin-bottom: 4px; }
+  .pricing-note { font-size: 11px; color: var(--text-muted); margin-bottom: 20px; }
+  .pricing-features { text-align: left; margin-bottom: 20px; }
+  .pricing-feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .pricing-feature i { color: var(--text-success); }
+  .pricing-cta {
+    background: var(--text-primary);
+    color: var(--surface-2);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  /* FAQ */
+  .faq-list { max-width: 480px; margin: 0 auto; }
+  .faq-item {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .faq-item:last-child { margin-bottom: 0; }
+  .faq-item i { color: var(--text-muted); }
+
+  /* Footer CTA */
+  .footer-cta {
+    text-align: center;
+  }
+  .footer-cta h3 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+  }
+  .footer-cta p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 20px 0;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .footer-links { display: flex; gap: 16px; }
+
+  /* Responsive fallback */
+  @media (max-width: 640px) {
+    .steps, .coaches {
+      grid-template-columns: 1fr;
+    }
+    .nav-links {
+      display: none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="canvas">
+
+  <div class="chrome">
+    <div class="chrome-dots">
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+      <div class="chrome-dot"></div>
+    </div>
+    <div class="chrome-url">yourdomain.com</div>
+  </div>
+
+  <div class="site">
+
+    <nav class="nav">
+      <div class="nav-brand">
+        <div class="nav-logo">LOGO</div>
+        <div class="nav-wordmark">Wordmark</div>
+      </div>
+      <div class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#coaches">Coaches</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+      </div>
+      <a href="#hero" class="nav-cta">Get feedback</a>
+    </nav>
+
+    <section id="hero" class="section alt">
+      <div class="section-label">§ HERO</div>
+      <div class="hero-inner">
+        <div class="bar bar-strong" style="width: 55%;"></div>
+        <div class="bar bar-heading" style="width: 90%;"></div>
+        <div class="bar bar-heading" style="width: 70%; margin-bottom: 18px;"></div>
+        <div class="bar" style="width: 80%;"></div>
+        <div class="bar" style="width: 65%; margin-bottom: 24px;"></div>
+        <a href="#pricing" class="cta-primary">Submit a video →</a>
+        <div class="hero-note">Feedback within 48 hours</div>
+      </div>
+    </section>
+
+    <section id="how" class="section">
+      <div class="section-label">§ HOW IT WORKS</div>
+      <div class="section-heading">
+        <h2>How it works</h2>
+        <div class="sub-bar"></div>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-title">Upload your video</div>
+          <div class="step-bar-1"></div>
+          <div class="step-bar-2"></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-title">Coach reviews it</div>
+          <div class="step-bar-1"></div>
+          <div class="step-bar-2"></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-title">Get personalized feedback</div>
+          <div class="step-bar-1"></div>
+          <div class="step-bar-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="coaches" class="section alt">
+      <div class="section-label">§ COACHES</div>
+      <div class="section-heading">
+        <h2>Meet your coaches</h2>
+        <div class="sub-bar" style="width: 55%;"></div>
+      </div>
+      <div class="coaches">
+        <div class="coach-card">
+          <div class="coach-photo">PHOTO</div>
+          <div class="coach-name-bar"></div>
+          <div class="coach-bio-bar-1"></div>
+          <div class="coach-bio-bar-2"></div>
+          <div class="tag">Pitching</div>
+        </div>
+        <div class="coach-card">
+          <div class="coach-photo">PHOTO</div>
+          <div class="coach-name-bar"></div>
+          <div class="coach-bio-bar-1"></div>
+          <div class="coach-bio-bar-2"></div>
+          <div class="tag">Batting</div>
+        </div>
+        <div class="coach-card">
+          <div class="coach-photo">PHOTO</div>
+          <div class="coach-name-bar"></div>
+          <div class="coach-bio-bar-1"></div>
+          <div class="coach-bio-bar-2"></div>
+          <div class="tag">Both</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section">
+      <div class="section-label">§ PRICING</div>
+      <div class="section-heading">
+        <h2>Simple, upfront pricing</h2>
+        <div class="sub-bar" style="width: 45%;"></div>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-label">Per video submission</div>
+        <div class="pricing-price">$XX</div>
+        <div class="pricing-note">Single payment · no subscription</div>
+        <div class="pricing-features">
+          <div class="pricing-feature"><i class="ti ti-check"></i>Coach video walkthrough</div>
+          <div class="pricing-feature"><i class="ti ti-check"></i>Written summary of notes</div>
+          <div class="pricing-feature"><i class="ti ti-check"></i>Delivered within 48 hours</div>
+        </div>
+        <div class="pricing-cta">Submit a video</div>
+      </div>
+    </section>
+
+    <section id="faq" class="section alt">
+      <div class="section-label">§ FAQ</div>
+      <div class="section-heading">
+        <h2>Frequently asked questions</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <div>How long does feedback take?</div>
+          <i class="ti ti-chevron-down"></i>
+        </div>
+        <div class="faq-item">
+          <div>What video format should I use?</div>
+          <i class="ti ti-chevron-down"></i>
+        </div>
+        <div class="faq-item">
+          <div>Who are the coaches?</div>
+          <i class="ti ti-chevron-down"></i>
+        </div>
+        <div class="faq-item">
+          <div>Can I submit more than one video?</div>
+          <i class="ti ti-chevron-down"></i>
+        </div>
+      </div>
+    </section>
+
+    <section class="section footer-cta">
+      <div class="section-label">§ FOOTER CTA</div>
+      <h3>Ready to level up?</h3>
+      <p>Get personalized feedback from pros in Japan.</p>
+      <a href="#pricing" class="cta-primary">Submit a video →</a>
+    </section>
+
+    <div class="footer">
+      <div>© 2026 Wordmark</div>
+      <div class="footer-links">
+        <span>Status</span>
+        <span>Privacy</span>
+        <span>Contact</span>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

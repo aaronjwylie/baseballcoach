@@ -1,37 +1,34 @@
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { Logo } from "@/shared/layout/Logo";
 import { site } from "@/shared/config/site";
 
+/**
+ * Slim footer, per the reference wireframe: a copyright line and a short link
+ * row, nothing more.
+ *
+ * The wireframe lists Status · Privacy · Contact. Privacy has no page yet —
+ * see the landing slice doc; it's a real gap for a site taking payments, and a
+ * link to nowhere would be worse than its absence.
+ */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-white">
-      <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2">
-          <Logo />
-          <p className="max-w-sm text-sm text-ink-muted">{site.tagline}</p>
-        </div>
-
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-ink-soft">
-          <Link href="/#how-it-works" className="hover:text-ink">
-            How it works
+    <footer className="border-t border-line bg-paper-alt">
+      <Container className="flex flex-col items-center justify-between gap-4 py-6 text-sm text-ink-muted sm:flex-row">
+        <p>
+          © {site.name}. Every review is done by a real coach.
+        </p>
+        <nav className="flex items-center gap-6">
+          <Link href="/status" className="transition-colors hover:text-ink">
+            Status
           </Link>
-          <Link href="/#pricing" className="hover:text-ink">
-            Pricing
-          </Link>
-          <Link href="/status" className="hover:text-ink">
-            Check status
-          </Link>
-          <a href={`mailto:${site.email}`} className="hover:text-ink">
+          <a
+            href={`mailto:${site.email}`}
+            className="transition-colors hover:text-ink"
+          >
             Contact
           </a>
         </nav>
       </Container>
-      <div className="border-t border-line">
-        <Container className="py-5 text-xs text-ink-muted">
-          © {site.name}. Every review is done by a real coach.
-        </Container>
-      </div>
     </footer>
   );
 }

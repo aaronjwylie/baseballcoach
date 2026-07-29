@@ -15,13 +15,14 @@ strangers overseas. The page's whole job is closing that gap.
 | # | Section | Doing what |
 |---|---|---|
 | 1 | `Hero` | the hook — what this is, in one line |
-| 2 | `TrustStrip` | proof, before they've scrolled |
-| 3 | `HowItWorks` | the process, demystified |
-| 4 | `WhatYouGet` | the value, concretely |
-| 5 | `Coaches` | who's actually watching your kid's video |
-| 6 | `Pricing` | the ask, once they want it |
-| 7 | `Faq` | the objections |
-| 8 | `FinalCta` | the ask again, for scrollers |
+| 2 | `HowItWorks` | the process, demystified |
+| 3 | `Coaches` | who's actually watching your kid's video |
+| 4 | `Pricing` | the ask, with the value beside the number |
+| 5 | `Faq` | the objections |
+| 6 | `FooterCta` | the ask again, for scrollers |
+
+Six sections, matching
+[`docs/reference/baseball_platform_wireframe.html`](../../../docs/reference/baseball_platform_wireframe.html).
 
 ### The invariants
 
@@ -33,6 +34,8 @@ strangers overseas. The page's whole job is closing that gap.
   whole business — name, price, turnaround — are in `shared/config/site.ts`, because the
   emails and checkout need them too. Facts true only of this page are here. *(PRINCIPLES #5
   — the highest node where it's still true.)*
+- **Every call to action goes to `/start`** — the live paid flow, not an anchor. The
+  wireframe's CTAs scroll to `#pricing` because a static mockup has nowhere else to go.
 - **This slice imports no other domain.** It's a pitch, not a workflow.
 
 ---
@@ -45,11 +48,28 @@ strangers overseas. The page's whole job is closing that gap.
 - 🔶 **Placeholder content throughout.** The coaches are "Coach A/B/C" with initials instead
   of photos and invented credentials. The trust strip's stats ("NPB", "100%") are unsourced
   claims. **None of this can go live as written** — it needs Yuta's real coaches.
-- 🔶 **Pre-wireframe.** This was built before Audrey's design existed. CLAUDE.md Sprint 1
-  rebuilds it against the real thing; treat the current visual design as a placeholder that
-  proves the structure, not as the destination.
+- ✅ **Restructured to the reference wireframe** (2026-07-29) — six sections, warm-neutral
+  palette with a blue accent, specialty tags on coach cards.
+- 🔶 **Provisional design.** The reference wireframe is greybox and explicitly not final.
+  **Audrey's brand work supersedes all of it.** Every colour is a token in
+  `app/globals.css`, so the swap is one file — no component holds a hex value.
+- 🔶 **Coach headshots.** The wireframe calls for photos; we render initials until Yuta
+  supplies real ones.
 - 🔶 **No OG image, no structured SEO metadata** beyond title and description.
 - 🔶 **Accessibility unaudited** — no Lighthouse run yet (CLAUDE.md Sprint 7).
+- 🔶 **No privacy page**, though the wireframe's footer lists one. A site taking payments
+  wants it; a link to nowhere would be worse, so the footer omits it for now.
+
+### Content conflicts the wireframe introduces — unresolved
+
+The reference makes three promises the current system doesn't back. **None was adopted**, on
+the grounds that a landing page shouldn't promise what the pipeline can't deliver:
+
+| Wireframe says | We say | Why it wasn't adopted |
+| --- | --- | --- |
+| "Feedback within **48 hours**" | `3–5 days` | Tightening a customer SLA is Yuta's call. 48h across timezones, with a manual hand-off to coaches in Japan, is aggressive. |
+| "**Written summary** of notes" as a paid feature | not offered | **There is no field for it.** The schema stores one `Feedback Video URL`; CLAUDE.md §8 dropped `Coach Notes`, and §2 puts written reports out of scope. Selling it would need a schema change *and* a coach workflow change. |
+| Coach tag "**Batting**" | `Hitting` | Step 1 standardized on Hitting — it's in the Airtable `Focus` select, the migration runbook, and the coach bios. Changing it now is a data migration to satisfy a wireframe label. |
 
 ---
 
@@ -71,6 +91,18 @@ Decisions taken, with their reasoning:
 - **`site.ts` split in two (Step 2).** It had been holding both app-wide facts (name, price)
   and landing-only copy (coach bios, FAQ). The emails imported it for the price and got the
   FAQ in the bundle. Facts moved to `shared/config/site.ts`; page copy stayed here.
+- **Restructured to the reference wireframe (2026-07-29).** `TrustStrip` and `WhatYouGet`
+  were **deleted**, not moved: the wireframe folds the value proposition into the pricing
+  card, where it lands next to the number. `included` still renders — as the card's feature
+  list — so nothing was lost, only relocated. Dropping `TrustStrip` also retired its
+  unsourced claims ("NPB", "100%"), which were flagged as unshippable anyway.
+- **Palette taken from the wireframe** — warm off-white with a blue accent, replacing an
+  invented navy/rose. The primary button is **ink, not accent**: the wireframe reserves blue
+  for step numbers and tags so nothing competes with the call to action. `email/shell.ts` was
+  re-palettised in the same commit, since email can't read CSS variables and would otherwise
+  have drifted from the site.
+- **`SectionHeading` lost its eyebrow.** Three stacked lines of centered text before any
+  content was one too many; the wireframe leads with the title alone.
 - **`SectionHeading` and `icons.tsx` kept local, not promoted to `shared/ui/`.** Nothing
   outside this page uses them. Promoting them would claim a generality they haven't earned —
   and `shared/` is the hardest layer to change, because everything can depend on it.

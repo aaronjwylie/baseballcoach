@@ -11,10 +11,15 @@ const SIZES = {
   lg: "px-7 py-3.5 text-base",
 } as const;
 
+/**
+ * Primary is **ink, not accent**, matching the reference wireframe: the blue is
+ * reserved for step numbers and specialty tags, so the call to action stays the
+ * darkest thing on the page and nothing competes with it.
+ */
 const VARIANTS = {
-  primary: "bg-accent text-white hover:bg-accent-dark",
-  dark: "bg-ink text-white hover:bg-ink-soft",
-  outline: "border border-line bg-white text-ink hover:bg-paper",
+  primary: "bg-ink text-surface hover:bg-ink-soft",
+  accent: "bg-accent text-surface hover:bg-accent-dark",
+  outline: "border border-line bg-surface text-ink hover:bg-paper-alt",
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;
