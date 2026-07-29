@@ -356,6 +356,14 @@ Until this is done, either emails don't send or they land in spam. If
 `RESEND_API_KEY` is unset the app logs a warning and carries on — the flow
 still works, the customer just never hears from us.
 
+> **Observed 2026-07-29, on the dev account:** with a key set but no verified
+> domain, Resend rejects every send with
+> `403 validation_error — "You can only send testing emails to your own email
+> address (yuta@mini-engine.com)."` Mail reaches the account owner and nobody
+> else, and the app logs it and carries on. **This is the single most
+> launch-blocking item outside the Airtable migration**, because it fails
+> quietly: the flow looks healthy and the customer simply hears nothing.
+
 ---
 
 ## 9. End-to-end test (test mode)
@@ -519,6 +527,8 @@ customer data lands is far cheaper than after.
 | **Naming sweep** + **5 statuses** | §4 and §4b above — the schema here is already the target | **Done in code, base migration pending** |
 | **Stripe Elements** replaces hosted Checkout | The Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit`. **No further schema change** — `Stripe Payment ID` already holds the right thing under the right name | Approved, not started |
 | ~~Rate limit on `/api/status`~~ | None operationally | **Done** (Step 3) — 5/IP/min, in-memory so partial; shared state (Upstash) is a scope decision |
+| **Verify the Resend domain** | §8 | **Not done — blocks launch.** Mail currently reaches only the account owner |
+| **Set `EMAIL_FROM`** | §5 | Not done — sends fall back to Resend's onboarding sender |
 | **Drop Make.com** | Section 7 of CLAUDE.md becomes moot; the two remaining scenarios become Airtable automations | Recommended, awaiting Ben |
 | **Coaches table** | `Assigned Coach` becomes a linked record instead of text | Deferred until it earns its place |
 

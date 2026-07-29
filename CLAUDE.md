@@ -97,19 +97,20 @@ wrong file.
 1. ✅ **One name per concept** — schema, codec, 5 statuses, notes split
 2. ✅ **Domain-first move** — `domains/` + `shared/`, per-slice docs
 3. ✅ **Zod** + the status-lookup rate limit
-4. **Sprint 1** — landing page, against Audrey's wireframe
-5. **Sprint 2 redo** — Stripe Elements
+4. ✅ **Interim landing restructure** — against the reference wireframe
+5. **Stripe Elements** — the last approved-but-unbuilt divergence
+6. **Reformat to Audrey's approved design** — when it can be read
 
-Steps 0–3 are wireframe-independent, so they run while design is in flight.
+Steps 0–3 were the wireframe-independent block; Step 5 is too.
 
-> **Step 1 is written but not deployed.** It renames columns, so it can't ship
-> until the client's base is migrated — the code and the base have to move
-> together. Runbook: [OPERATIONS.md §4b](OPERATIONS.md#4b-migrating-an-existing-base).
-
-> **The Airtable base is live in the client's workspace.** Any field rename or
-> status change is a data migration on Yuta's base, not just a code change. Do
-> them before real customers land, and coordinate — see
-> [OPERATIONS.md § Pending changes](OPERATIONS.md#pending-changes).
+> **Verified end to end on 2026-07-29** against a scratch base
+> (`appQpITLd7VoG2KT5`, 17/17 fields): the status lookup, all three webhooks,
+> their idempotency guards, and the seed tooling. Details in the slice docs.
+>
+> **Yuta's own base has NOT been migrated.** It still carries the pre-Step-1
+> schema, so the deployed app cannot read or write it. That migration is
+> `--migrate`, not `--create` — runbook at
+> [OPERATIONS.md §4b](OPERATIONS.md#4b-migrating-an-existing-base).
 
 ---
 
@@ -582,7 +583,7 @@ export async function POST(req: Request) {
 
 Total: **4–6 weeks from kickoff to soft launch.**
 
-> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ built but pre-wireframe, rebuilding · Sprint 2 ⚠️ working on hosted Checkout, needs the Elements redo · Sprint 3 ✅ · Sprint 4 ⚠️ done with raw-HTML templates, not React Email · Sprint 5 ⚠️ status lookup done, feedback viewer and rate limit outstanding · Sprint 6 ✅ (via Airtable automations, not Make.com) · Sprints 7–8 not started.
+> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ restructured to an interim wireframe, awaiting Audrey's design · Sprint 2 ⚠️ hosted Checkout works; the Elements redo is Step 5 · Sprint 3 ✅ · Sprint 4 ⚠️ raw-HTML templates, not React Email; **Resend has no verified domain, so mail only reaches the account owner** · Sprint 5 ✅ status lookup, rate-limited · ⚠️ feedback viewer outstanding · Sprint 6 ✅ (Airtable automations, not Make.com) · Sprint 7 ⚠️ mobile upload still untested on real devices · Sprint 8 not started.
 >
 > The realignment steps in [§0](#0-where-this-project-actually-is) run before picking the sprint plan back up.
 

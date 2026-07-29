@@ -59,6 +59,12 @@ shared/
   wireframe lands, since the design will decide whether shadcn's primitives fit.
 - 🔶 **No React Email.** CLAUDE.md §4 specifies it; `email/shell.ts` builds HTML strings.
   Works and has no dependency cost, but templates are harder to preview and edit.
+- 🔴 **Resend has no verified sending domain.** Observed 2026-07-29: every send returns
+  `403 validation_error` — *"You can only send testing emails to your own email address."*
+  So mail reaches the account owner and **nobody else**. `EMAIL_FROM` is also unset, so
+  sends fall back to Resend's onboarding sender. Both must be fixed before a real
+  customer; DNS propagation can take hours, so it's a start-early item
+  ([OPERATIONS.md §8](../../OPERATIONS.md)).
 - 🔶 **Design tokens are provisional.** `app/globals.css` carries the warm-neutral/blue set
   taken from the reference wireframe (2026-07-29), replacing an invented navy/rose. Audrey's
   approved design supersedes it. `email/shell.ts` mirrors the same hex values by hand, since
@@ -96,6 +102,12 @@ Decisions taken, with their reasoning:
 - **`Field` and `inputClass` promoted here from the start form (Step 2).** Two forms already
   used the same input styling by copy-paste, which is exactly the drift PRINCIPLES #2 exists
   to stop.
+- **The best-effort email design was demonstrated under real failure (2026-07-29).** Resend
+  rejected all three sends with a 403 (no verified domain). Every failure logged and
+  continued: the webhooks still answered 200 and every Airtable write landed. A degraded
+  email provider touched neither money nor state — which is precisely what
+  [ADR 004](../../docs/decisions/004-best-effort-email.md) was arguing for, now observed
+  rather than assumed.
 - **Lazy env getters kept over CLAUDE.md's eager Zod parse** (original build). Flagged in
   the invariants above rather than silently reconciled — it's a real deviation from the spec,
   made for a real reason.

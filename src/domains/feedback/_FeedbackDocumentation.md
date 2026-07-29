@@ -47,6 +47,9 @@ flowchart LR
 ## 2 · Where we are now — 2026-07-28
 
 - ✅ **The feedback-ready email**, fired by the Airtable automation, idempotent.
+  **Verified against a live base 2026-07-29:** first call `sent` and stamped
+  `Feedback Emailed At`; a re-fire returned `already-sent` with no second send; a
+  not-yet-Complete row returned `not-ready` as a 200 no-op; a wrong shared secret got 401.
 - 🔶 **No `/feedback/[id]` viewer.** CLAUDE.md Sprint 5 specifies a page showing the coach's
   video, notes, and any PDF. Today the email links straight out to Loom and `/status`
   offers the same link. **This is the main gap in the slice** — and the one that would make

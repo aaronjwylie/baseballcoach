@@ -51,6 +51,9 @@ flowchart LR
 
 - ✅ **Direct upload**, gated on a paid session, with a one-hour URL timeout.
 - ✅ **`video.asset.ready`** → asset and playback ids stored, status → `New`, email sent.
+  **Verified against a live base 2026-07-29**, including the idempotency guard: a second
+  delivery moves nothing and sends no second email, because the row has already left
+  `Awaiting Upload`.
 - ✅ **`video.asset.errored`** → status back to `Awaiting Upload` with a `[system]` line in
   `Internal Notes`, so Yuta can spot it and ask for a re-upload.
 - 🔶 **Mobile upload is untested on real devices.** CLAUDE.md Sprint 7 flags this as the

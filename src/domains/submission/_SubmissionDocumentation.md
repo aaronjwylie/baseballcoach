@@ -68,9 +68,13 @@ its job.
 
 - ✅ **The type family** — `Submission`, `SubmissionPatch`, `SubmissionStatus`, `Focus`.
 - ✅ **The codec** — bidirectional, with a runtime read-only guard and defensive reads.
-  Covered by a 22-assertion round-trip check (run ad hoc; no test framework in the repo yet).
+  Covered by a 22-assertion round-trip check — **run ad hoc from a scratchpad; there is
+  still no test framework in the repo**, so it doesn't run in CI and nobody else can run it.
 - ✅ **The queries** — create, update, get, and four finders.
 - ✅ **The status lookup** — `/status` → `POST /api/status` → sanitized list, rate limited.
+  **Verified against a live base 2026-07-29:** returns the projection with
+  `submissionId` and `submittedAt` populated by Airtable, and no Stripe/Mux ids or
+  internal notes crossing the boundary.
 - ✅ **Zod schemas**, shared by the form and the route, with per-field errors in the UI.
   Covered by a 37-assertion check alongside the codec's.
 - 🔶 **The rate limit is per-instance.** Five per minute per IP, held in one serverless

@@ -97,6 +97,11 @@ npm run schema -- --migrate --apply    # rename + add fields on an old-schema ba
 **Dry run unless you pass `--apply`.** Needs a PAT with `schema.bases:read` and
 `schema.bases:write` on top of the data scopes.
 
+Two of the seventeen fields — `Submission ID` (autonumber) and `Submitted At`
+(created time) — **must be added by hand.** Airtable's API cannot create computed
+field types at all. `Submitted At` is not optional: the status lookup sorts on it
+and returns 502 without it. `--inspect` flags which manual fields are load-bearing.
+
 Airtable's API can create and **rename** fields but **cannot convert a field's type**.
 Renames are therefore safe (data is preserved); the handful of conversions are manual, and
 `--inspect` lists exactly which ones remain.
