@@ -142,6 +142,10 @@ If you'd rather use the real thing, `stripe listen --forward-to
 localhost:3000/api/webhooks/stripe` still works; use the `whsec_…` it prints as
 your local `STRIPE_WEBHOOK_SECRET`.
 
+**Keep `NEXT_PUBLIC_SITE_URL` accurate per environment.** It's sent to Mux as the
+direct upload's `cors_origin`, so if it doesn't match the origin you're browsing
+from, uploads fail as CORS violations with no useful error.
+
 ## Where things are documented
 
 | Question | Look in |

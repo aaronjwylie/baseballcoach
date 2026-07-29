@@ -254,7 +254,7 @@ Preview, with test-mode keys, if you want branch previews to work).
 
 | Variable | Value / source | Required |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Live URL, **no trailing slash** (e.g. `https://diamondpath.com`) | Yes |
+| `NEXT_PUBLIC_SITE_URL` | Live URL, **no trailing slash** (e.g. `https://diamondpath.com`). Also becomes Mux's `cors_origin` — a mismatch silently breaks every upload | Yes |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe `pk_live_…`. **Browser-visible by design** — it can only create payment attempts, never move money. Must be the same mode (test/live) as the secret key | Yes |
 | `STRIPE_SECRET_KEY` | Stripe live key `sk_live_…` | Yes |
 | `STRIPE_WEBHOOK_SECRET` | From the Stripe webhook in step 6 (`whsec_…`) | Yes |
@@ -348,6 +348,12 @@ something breaks. Flagged for Ben.
       GoDaddy is the *registrar only* — it does not host the app.
 - [ ] Wait for verification to go green in Vercel
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to the final domain **exactly**, then redeploy
+
+> **This one breaks uploads silently if it's wrong.** Mux receives it as the
+> upload's `cors_origin` and enforces it, so if the variable doesn't match the
+> origin the customer's browser is on, every upload fails as a CORS violation
+> with nothing useful shown to them. No trailing slash, right protocol, exact
+> host.
 - [ ] **Re-check all three webhook URLs** from step 6 against the final domain
 
 ---

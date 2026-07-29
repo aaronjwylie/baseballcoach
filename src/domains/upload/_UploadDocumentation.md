@@ -32,6 +32,11 @@ flowchart LR
   from. Don't create Mux uploads outside that path.
 - **Wait for `video.asset.ready`, never `video.upload.asset_created`.** An asset isn't
   playable the moment the upload finishes.
+- **`cors_origin` is set from `NEXT_PUBLIC_SITE_URL`, and Mux enforces it.** If that variable
+  doesn't match the origin the browser is actually on, Mux refuses the upload as a CORS
+  violation — and the customer sees a failed upload with no explanation. Verified 2026-07-29:
+  a locally-minted upload carried `cors_origin: http://localhost:3000`, straight from the
+  variable. **Getting this wrong in production breaks every upload, quietly.**
 - **The received email fires only on the first transition out of `Awaiting Upload`**, so a
   redelivered webhook can't send it twice.
 - **System messages go to `Internal Notes`, never `Customer Notes`.** The customer's own
@@ -49,7 +54,11 @@ flowchart LR
 
 ## 2 · Where we are now — 2026-07-28
 
-- ✅ **Direct upload**, gated on a paid session, with a one-hour URL timeout.
+- ✅ **Direct upload**, gated on a verified payment, with a one-hour URL timeout.
+  **Verified against real Mux 2026-07-29:** credentials accepted, upload minted, and
+  `passthrough` confirmed to carry the Airtable record id — so the ADR 002 linkage holds
+  against actual Mux, not just our own test payloads. Webhook signature verification also
+  confirmed with the real `MUX_WEBHOOK_SECRET`, and a wrong secret rejected with 400.
 - ✅ **`video.asset.ready`** → asset and playback ids stored, status → `New`, email sent.
   **Verified against a live base 2026-07-29**, including the idempotency guard: a second
   delivery moves nothing and sends no second email, because the row has already left
