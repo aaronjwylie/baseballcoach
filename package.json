@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx --tsconfig tsconfig.json scripts/seed-airtable.ts",
-    "webhook": "tsx --tsconfig tsconfig.json scripts/test-webhook.ts"
+    "webhook": "tsx --tsconfig tsconfig.json scripts/test-webhook.ts",
+    "schema": "tsx --tsconfig tsconfig.json scripts/airtable-schema.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

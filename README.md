@@ -81,6 +81,26 @@ Env vars are documented in [.env.example](.env.example) and read in exactly one
 place, [src/shared/config/env.ts](src/shared/config/env.ts). Required values throw at point of use
 with a message naming the variable.
 
+### Building or migrating the Airtable table
+
+The table's shape is declared in code
+([`submissionTableSpec.ts`](src/domains/submission/api/submissionTableSpec.ts)) and this
+script applies or verifies it. Select options are derived from the TypeScript unions, so
+Airtable's dropdowns can't drift from `SUBMISSION_STATUSES` / `FOCUS_OPTIONS`.
+
+```bash
+npm run schema -- --inspect            # live base vs. what the app expects
+npm run schema -- --create --apply     # build the table in an empty base
+npm run schema -- --migrate --apply    # rename + add fields on an old-schema base
+```
+
+**Dry run unless you pass `--apply`.** Needs a PAT with `schema.bases:read` and
+`schema.bases:write` on top of the data scopes.
+
+Airtable's API can create and **rename** fields but **cannot convert a field's type**.
+Renames are therefore safe (data is preserved); the handful of conversions are manual, and
+`--inspect` lists exactly which ones remain.
+
 ### Exercising the flow without paying
 
 Two scripts remove the need to complete a real $149 checkout every time you
