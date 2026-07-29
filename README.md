@@ -81,22 +81,41 @@ Env vars are documented in [.env.example](.env.example) and read in exactly one
 place, [src/shared/config/env.ts](src/shared/config/env.ts). Required values throw at point of use
 with a message naming the variable.
 
-### Local webhook testing
+### Exercising the flow without paying
 
-Stripe events won't reach `localhost` on their own — forward them:
+Two scripts remove the need to complete a real $149 checkout every time you
+touch the backend. **No Stripe CLI, no Mux account, no tunnel.**
 
 ```bash
-stripe listen --forward-to localhost:3000/api/webhooks/stripe
-# use the printed whsec_... as your local STRIPE_WEBHOOK_SECRET
-stripe trigger checkout.session.completed
+npm run dev                              # in one terminal
+
+npm run seed                             # one submission in each of the 5 states
+npm run seed -- --status New -n 3        # three rows in "New"
+npm run seed -- --list                   # what's been seeded (with record ids)
+npm run seed -- --clean                  # retire them
+
+npm run webhook -- stripe                # a paid checkout → creates a row
+npm run webhook -- mux <recordId>        # video ready → row moves to "New"
+npm run webhook -- mux-error <recordId>  # processing failed
+npm run webhook -- feedback <recordId>   # the feedback-ready email
 ```
 
-Mux can't reach localhost either. Either point a Mux webhook at a tunnel
-(`ngrok http 3000`) or exercise the handler directly with a saved payload.
+`npm run webhook` **signs its own payloads** with the secrets in `.env.local`, so
+the handlers verify them exactly as they would in production — a rejected
+signature comes back as a 400 and is a real failure, not a test artifact.
 
-Emails are skipped entirely when `RESEND_API_KEY` is unset, which is usually
-what you want locally — the flow still works, and the `[email]` log lines tell
-you what would have been sent.
+Both scripts write to whatever `AIRTABLE_BASE_ID` points at and print the base id
+before doing anything. **Read it.** Seeded rows use `@seed.test` addresses
+(RFC 2606 reserved, can never resolve) so a test send can't reach a real person,
+and every row is stamped `[seed]` in `Internal Notes` so strays are findable.
+
+Emails are skipped entirely when `RESEND_API_KEY` is unset, which is usually what
+you want locally — the flow still works, and the `[email]` log lines tell you what
+would have been sent.
+
+If you'd rather use the real thing, `stripe listen --forward-to
+localhost:3000/api/webhooks/stripe` still works; use the `whsec_…` it prints as
+your local `STRIPE_WEBHOOK_SECRET`.
 
 ## Where things are documented
 
