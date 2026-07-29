@@ -485,7 +485,7 @@ customer data lands is far cheaper than after.
 | --- | --- | --- |
 | **Naming sweep** + **5 statuses** | §4 and §4b above — the schema here is already the target | **Done in code, base migration pending** |
 | **Stripe Elements** replaces hosted Checkout | The Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit`. **No further schema change** — `Stripe Payment ID` already holds the right thing under the right name | Approved, not started |
-| **Rate limit on `/api/status`** | None operationally | Not started |
+| ~~Rate limit on `/api/status`~~ | None operationally | **Done** (Step 3) — 5/IP/min, in-memory so partial; shared state (Upstash) is a scope decision |
 | **Drop Make.com** | Section 7 of CLAUDE.md becomes moot; the two remaining scenarios become Airtable automations | Recommended, awaiting Ben |
 | **Coaches table** | `Assigned Coach` becomes a linked record instead of text | Deferred until it earns its place |
 

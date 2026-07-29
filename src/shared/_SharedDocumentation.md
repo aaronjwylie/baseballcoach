@@ -59,8 +59,10 @@ shared/
   wireframe lands, since the design will decide whether shadcn's primitives fit.
 - 🔶 **No React Email.** CLAUDE.md §4 specifies it; `email/shell.ts` builds HTML strings.
   Works and has no dependency cost, but templates are harder to preview and edit.
-- 🔶 **Design tokens are placeholders.** `app/globals.css` carries a navy/rose palette
-  invented before Audrey's brand work.
+- 🔶 **Design tokens are provisional.** `app/globals.css` carries the warm-neutral/blue set
+  taken from the reference wireframe (2026-07-29), replacing an invented navy/rose. Audrey's
+  approved design supersedes it. `email/shell.ts` mirrors the same hex values by hand, since
+  email can't read CSS variables — change one, change the other.
 
 ---
 
