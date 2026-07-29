@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { parseSubmissionInput } from "@/domains/submission";
-import { createCheckoutSession } from "@/domains/payment";
+import { createPaymentIntent } from "@/domains/payment";
 
 /**
- * Start checkout for a single video review.
+ * Create a PaymentIntent for one video review.
  *
  * The route owns HTTP — parsing, validation, status codes. What it means to
  * charge for a review lives in the payment domain.
+ *
+ * Returns a client secret, which is safe to hand to the browser: it authorizes
+ * confirming *this one* payment and nothing else.
  */
 export async function POST(request: Request) {
-  let body: Record<string, unknown>;
+  let body: unknown;
   try {
     body = await request.json();
   } catch {
@@ -22,10 +25,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const url = await createCheckoutSession(parsed.value);
-    return NextResponse.json({ url });
+    const intent = await createPaymentIntent(parsed.value);
+    return NextResponse.json(intent);
   } catch (err) {
-    console.error("[checkout] Stripe session create failed:", err);
+    console.error("[payment] intent create failed:", err);
     return NextResponse.json(
       { error: "Could not start checkout. Please try again." },
       { status: 502 },

@@ -16,7 +16,7 @@ const MuxUploader = dynamic(() => import("@mux/mux-uploader-react"), {
 
 type Status = "idle" | "done" | "error";
 
-export function UploadPanel({ sessionId }: { sessionId: string }) {
+export function UploadPanel({ paymentIntentId }: { paymentIntentId: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export function UploadPanel({ sessionId }: { sessionId: string }) {
     const res = await fetch("/api/mux/upload", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ payment_intent: paymentIntentId }),
     });
     const json = (await res.json().catch(() => ({}))) as {
       url?: string;
@@ -39,7 +39,7 @@ export function UploadPanel({ sessionId }: { sessionId: string }) {
       throw new Error(message);
     }
     return json.url;
-  }, [sessionId]);
+  }, [paymentIntentId]);
 
   if (status === "done") {
     return <Confirmation />;

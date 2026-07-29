@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Container } from "@/shared/ui";
 import { site } from "@/shared/config/site";
-import { StartForm } from "@/domains/payment";
+import { SubmitFlow } from "@/domains/payment";
 
 export const metadata: Metadata = {
   title: "Get started",
@@ -28,7 +28,7 @@ export default function StartPage() {
 
         <div className="mt-10 rounded-2xl border border-line bg-white p-6 sm:p-8">
           <Suspense>
-            <StartForm />
+            <SubmitFlow />
           </Suspense>
         </div>
 

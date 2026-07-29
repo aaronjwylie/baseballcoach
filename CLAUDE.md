@@ -62,7 +62,7 @@ the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
 
 | Divergence | Resolution |
 | --- | --- |
-| Stripe **hosted Checkout** instead of Elements (§4) | **Rebuild on Elements.** Payment is part of the platform experience, not an errand run off-site ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) |
+| ~~Stripe **hosted Checkout** instead of Elements (§4)~~ | ✅ Step 5 — Elements, both steps on one route. **Untested against real Stripe keys** |
 | ~~**3 statuses** instead of 5 (§8)~~ | ✅ Step 1 — five statuses, with the middle three owned by Yuta |
 | ~~Flat `src/lib/` + `src/components/` instead of FSD (§5)~~ | ✅ Step 2 — domain-first, see [PRINCIPLES.md](PRINCIPLES.md) |
 | ~~Hand-rolled validation instead of **Zod** (§11)~~ | ✅ Step 3 — one schema, both sides |
@@ -98,7 +98,7 @@ wrong file.
 2. ✅ **Domain-first move** — `domains/` + `shared/`, per-slice docs
 3. ✅ **Zod** + the status-lookup rate limit
 4. ✅ **Interim landing restructure** — against the reference wireframe
-5. **Stripe Elements** — the last approved-but-unbuilt divergence
+5. ✅ **Stripe Elements** — built; needs a live test payment to verify
 6. **Reformat to Audrey's approved design** — when it can be read
 
 Steps 0–3 were the wireframe-independent block; Step 5 is too.
@@ -583,7 +583,7 @@ export async function POST(req: Request) {
 
 Total: **4–6 weeks from kickoff to soft launch.**
 
-> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ restructured to an interim wireframe, awaiting Audrey's design · Sprint 2 ⚠️ hosted Checkout works; the Elements redo is Step 5 · Sprint 3 ✅ · Sprint 4 ⚠️ raw-HTML templates, not React Email; **Resend has no verified domain, so mail only reaches the account owner** · Sprint 5 ✅ status lookup, rate-limited · ⚠️ feedback viewer outstanding · Sprint 6 ✅ (Airtable automations, not Make.com) · Sprint 7 ⚠️ mobile upload still untested on real devices · Sprint 8 not started.
+> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ restructured to an interim wireframe, awaiting Audrey's design · Sprint 2 ✅ Elements (Step 5) — built, **not yet run against real Stripe keys** · Sprint 3 ✅ · Sprint 4 ⚠️ raw-HTML templates, not React Email; **Resend has no verified domain, so mail only reaches the account owner** · Sprint 5 ✅ status lookup, rate-limited · ⚠️ feedback viewer outstanding · Sprint 6 ✅ (Airtable automations, not Make.com) · Sprint 7 ⚠️ mobile upload still untested on real devices · Sprint 8 not started.
 >
 > The realignment steps in [§0](#0-where-this-project-actually-is) run before picking the sprint plan back up.
 

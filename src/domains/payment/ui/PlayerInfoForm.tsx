@@ -11,21 +11,28 @@ import {
   type SubmissionInput,
   type SubmissionInputDraft,
 } from "@/domains/submission";
+import type { CreatedIntent } from "../api/paymentApi";
 
 /**
- * The player-info form — everything we collect before taking money.
+ * Step one — everything we collect before taking money.
  *
- * Validates with the **same schema the API re-validates with**, so the two
- * can't drift into disagreeing about what's acceptable. The server still
- * re-checks: this is a courtesy to honest users, not a security boundary.
+ * Validates with the **same schema the API re-validates with**, so the two can't
+ * drift into disagreeing about what's acceptable. The server still re-checks:
+ * this is a courtesy to honest users, not a security boundary.
+ *
+ * On success it hands a PaymentIntent up to the parent rather than navigating.
+ * Keeping both steps on one route is what makes payment feel like part of the
+ * product instead of an errand (ADR 005) — and it keeps the client secret in
+ * memory rather than in a URL.
  */
-export function StartForm() {
+export function PlayerInfoForm({
+  onIntentCreated,
+}: {
+  onIntentCreated: (intent: CreatedIntent, playerName: string) => void;
+}) {
   const searchParams = useSearchParams();
   const wasCanceled = searchParams.get("canceled") === "1";
 
-  // Distinct from RHF's isSubmitting: it stays true through the redirect, so
-  // the button can't be pressed twice while the browser navigates to Stripe.
-  const [redirecting, setRedirecting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -45,25 +52,29 @@ export function StartForm() {
     setSubmitError(null);
 
     try {
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/payment/intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const json = (await res.json().catch(() => ({}))) as {
-        url?: string;
+      const json = (await res.json().catch(() => ({}))) as Partial<CreatedIntent> & {
         error?: string;
       };
 
-      if (!res.ok || !json.url) {
+      if (!res.ok || !json.clientSecret || !json.paymentIntentId) {
         setSubmitError(json.error ?? "Something went wrong. Please try again.");
         return;
       }
 
-      setRedirecting(true);
-      // assign() rather than setting location.href — a method call, which the
-      // React Compiler lint accepts as an effect rather than a mutation.
-      window.location.assign(json.url);
+      onIntentCreated(
+        {
+          clientSecret: json.clientSecret,
+          paymentIntentId: json.paymentIntentId,
+          amountCents: json.amountCents ?? 0,
+          currency: json.currency ?? "cad",
+        },
+        values.playerName,
+      );
     } catch {
       setSubmitError(
         "Network error. Please check your connection and try again.",
@@ -71,7 +82,7 @@ export function StartForm() {
     }
   });
 
-  const busy = isSubmitting || redirecting;
+  const busy = isSubmitting;
 
   return (
     <form onSubmit={onSubmit} className="space-y-5" noValidate>
@@ -156,7 +167,7 @@ export function StartForm() {
       )}
 
       <Button type="submit" size="lg" disabled={busy} className="w-full">
-        {busy ? "Redirecting to checkout…" : "Continue to secure checkout"}
+        {busy ? "Preparing checkout…" : "Continue to payment"}
       </Button>
     </form>
   );

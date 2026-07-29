@@ -1,5 +1,9 @@
 /**
- * Centralized, lazy access to environment variables.
+ * Centralized, lazy access to **server-only** environment variables.
+ *
+ * Browser-visible config lives in `publicEnv.ts`. Never import this file from a
+ * client component — it exists to hold secrets, and that split is the boundary.
+ *
  * Server-only values throw if read at runtime while missing, so a
  * misconfiguration fails loudly at the point of use rather than silently.
  */

@@ -10,13 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function UploadPage(props: PageProps<"/upload">) {
-  const { session_id } = await props.searchParams;
-  const sessionId = typeof session_id === "string" ? session_id : undefined;
+  const { payment_intent } = await props.searchParams;
+  const paymentIntentId =
+    typeof payment_intent === "string" ? payment_intent : undefined;
 
   return (
     <section className="py-14 sm:py-20">
       <Container className="max-w-xl">
-        {sessionId ? (
+        {paymentIntentId ? (
           <>
             <div className="text-center">
               <div className="text-sm font-semibold uppercase tracking-wide text-accent">
@@ -31,7 +32,7 @@ export default async function UploadPage(props: PageProps<"/upload">) {
               </p>
             </div>
             <div className="mt-10">
-              <UploadPanel sessionId={sessionId} />
+              <UploadPanel paymentIntentId={paymentIntentId} />
             </div>
           </>
         ) : (

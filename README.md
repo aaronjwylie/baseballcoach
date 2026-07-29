@@ -16,7 +16,7 @@ Built with **Next.js 16 (App Router, Turbopack)**, React 19, and Tailwind CSS v4
 | Getting the video to us | [src/domains/upload/](src/domains/upload/) |
 | The submission record + status lookup | [src/domains/submission/](src/domains/submission/) |
 | The coach's response | [src/domains/feedback/](src/domains/feedback/) |
-| Checkout API | [src/app/api/checkout/route.ts](src/app/api/checkout/route.ts) |
+| Payment intent API | [src/app/api/payment/intent/route.ts](src/app/api/payment/intent/route.ts) |
 | Mux direct-upload API | [src/app/api/mux/upload/route.ts](src/app/api/mux/upload/route.ts) |
 | Status lookup API | [src/app/api/status/route.ts](src/app/api/status/route.ts) |
 | Stripe webhook | [src/app/api/webhooks/stripe/route.ts](src/app/api/webhooks/stripe/route.ts) |

@@ -148,8 +148,11 @@ layout can change freely.
 quoted Airtable column name. If you're typing one, you're in the wrong file. *(Rule #2. This
 is what Step 1 of the realignment bought.)*
 
-**Every `process.env` read lives in exactly one file** — `shared/config/env.ts`. Everything
-else imports `env`. *(Rule #2, same shape.)*
+**Every `process.env` read lives in `shared/config/`** — `env.ts` for server-only secrets,
+`publicEnv.ts` for the handful of `NEXT_PUBLIC_*` values the browser needs. Two files, split
+by *audience*, so a client component never imports a module full of secret getters. Nothing
+outside that folder reads `process.env`. *(Rule #2, with the split being a security boundary
+rather than a convenience.)*
 
 **`shared/` never imports a domain.** If you need to, the thing you're writing isn't shared.
 

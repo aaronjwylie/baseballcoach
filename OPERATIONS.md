@@ -255,6 +255,7 @@ Preview, with test-mode keys, if you want branch previews to work).
 | Variable | Value / source | Required |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Live URL, **no trailing slash** (e.g. `https://diamondpath.com`) | Yes |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe `pk_live_…`. **Browser-visible by design** — it can only create payment attempts, never move money. Must be the same mode (test/live) as the secret key | Yes |
 | `STRIPE_SECRET_KEY` | Stripe live key `sk_live_…` | Yes |
 | `STRIPE_WEBHOOK_SECRET` | From the Stripe webhook in step 6 (`whsec_…`) | Yes |
 | `STRIPE_PRICE_ID` | A pre-created Stripe Price. Leave unset to price inline from `src/shared/config/site.ts` | No |
@@ -288,8 +289,14 @@ misconfiguration surfaces as a clear error rather than a silent failure.
 
 - [ ] Stripe → Developers → Webhooks → **Add endpoint**
 - [ ] URL: `https://<site>/api/webhooks/stripe`
-- [ ] Event: `checkout.session.completed`
+- [ ] Events: `payment_intent.succeeded` **and** `payment_intent.payment_failed`
 - [ ] Copy the signing secret → `STRIPE_WEBHOOK_SECRET`
+
+> **Changed in Step 5.** The app used Stripe's hosted Checkout and listened for
+> `checkout.session.completed`. It now uses Elements, so the event is
+> `payment_intent.succeeded`. **An endpoint still subscribed to the old event
+> will go silent** — payments will succeed and no submission row will appear.
+> Re-point any existing endpoint.
 
 > Test mode and live mode have **separate** webhook endpoints and **separate**
 > signing secrets. A test-mode secret in production fails every signature check.
@@ -370,9 +377,10 @@ still works, the customer just never hears from us.
 
 Run the whole thing on **Stripe test keys** before going live.
 
-- [ ] From `/start`, complete checkout with test card `4242 4242 4242 4242`
-      (any future expiry, any CVC)
-- [ ] Redirect lands on `/upload?session_id=…` **on the live domain**
+- [ ] From `/start`, fill in the player details and press **Continue to payment**
+- [ ] A card field appears **on our own page** — no redirect to Stripe
+- [ ] Pay with test card `4242 4242 4242 4242` (any future expiry, any CVC)
+- [ ] Lands on `/upload?payment_intent=…` **on the live domain**
 - [ ] An Airtable row appears, `Status = Awaiting Upload`
 - [ ] "Payment received" email arrives
 - [ ] Upload a short video; row flips to `In Review`; `Mux Asset ID` and
@@ -475,9 +483,9 @@ can't be edited anyway.
 
 | Route | Trigger | What it does |
 | --- | --- | --- |
-| `POST /api/checkout` | `/start` form submit | Creates the Stripe Checkout session, returns its URL |
-| `POST /api/webhooks/stripe` | Stripe, on `checkout.session.completed` | Creates the Airtable row (`Awaiting Upload`) + payment email |
-| `POST /api/mux/upload` | `/upload` page load | Verifies the session is paid, issues a Mux direct-upload URL |
+| `POST /api/payment/intent` | `/start` step one | Creates a PaymentIntent, returns its client secret |
+| `POST /api/webhooks/stripe` | Stripe, on `payment_intent.succeeded` | Creates the Airtable row (`Awaiting Upload`) + payment email |
+| `POST /api/mux/upload` | `/upload` page load | Verifies the payment succeeded, issues a Mux direct-upload URL |
 | `POST /api/webhooks/mux` | Mux, on `video.asset.ready` | Stores asset + playback IDs, → `New`, video-received email |
 | `POST /api/webhooks/airtable` | Airtable automation, on `Complete` | Feedback-ready email, ticks `Feedback Emailed` |
 | `POST /api/status` | `/status` form submit | Email-keyed lookup of the customer's own submissions |
@@ -525,7 +533,7 @@ customer data lands is far cheaper than after.
 | Change | Impact on this document | Status |
 | --- | --- | --- |
 | **Naming sweep** + **5 statuses** | §4 and §4b above — the schema here is already the target | **Done in code, base migration pending** |
-| **Stripe Elements** replaces hosted Checkout | The Stripe webhook event becomes `payment_intent.succeeded`; a new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` var; `/start` → `/submit`. **No further schema change** — `Stripe Payment ID` already holds the right thing under the right name | Approved, not started |
+| ~~Stripe Elements replaces hosted Checkout~~ | **Done** (Step 5). Re-point the Stripe webhook to `payment_intent.succeeded`, and set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. No schema change was needed — `Stripe Payment ID` was already named for the role | **Needs a live test payment to verify** |
 | ~~Rate limit on `/api/status`~~ | None operationally | **Done** (Step 3) — 5/IP/min, in-memory so partial; shared state (Upstash) is a scope decision |
 | **Verify the Resend domain** | §8 | **Not done — blocks launch.** Mail currently reaches only the account owner |
 | **Set `EMAIL_FROM`** | §5 | Not done — sends fall back to Resend's onboarding sender |
