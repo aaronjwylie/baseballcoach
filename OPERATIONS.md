@@ -118,8 +118,41 @@ Create a table named `Submissions` (or set `AIRTABLE_TABLE_NAME` to match).
 
 `Awaiting Upload` · `New` · `Assigned` · `In Review` · `Complete`
 
+### Build it with the script, not by hand
+
+The table's shape is declared in code, so don't click 17 fields against this
+table and hope. From a checkout with `AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID`
+set (PAT scopes: `schema.bases:read/write` + `data.records:read/write`):
+
+```bash
+npm run schema -- --inspect          # what's there vs. what the app needs
+npm run schema -- --create --apply   # empty base → builds 15 of the 17 fields
+```
+
+- [ ] Script run; it reports 15 fields created.
+
+**Then add two fields by hand — Airtable's API cannot create computed types.**
+`--inspect` lists them, and one of the two is load-bearing:
+
+| Field | Type | |
+| --- | --- | --- |
+| `Submitted At` | Created time | **REQUIRED.** The status lookup sorts on it; without it `/api/status` returns 502 |
+| `Submission ID` | Autonumber | Optional — a human-quotable reference. Nothing breaks without it |
+
+Airtable → **+** at the right of the header row → pick the type.
+
+- [ ] `Submitted At` added as **Created time**.
+- [ ] `Submission ID` added as **Autonumber** (optional).
+- [ ] `npm run schema -- --inspect` reports a clean match.
+
+**The primary field is `Player Name`, not `Submission ID`** — an autonumber can't
+be created through the API and so can't be primary at creation time. Player Name
+is the better choice regardless: it's the frozen left column and what shows in a
+linked-record chip. Nothing in the app depends on which field is primary.
+
+### If you'd rather do it by hand
+
 - [ ] Table and all fields created, names matching **exactly** (including case).
-- [ ] `Submission ID` is an autonumber **and** the primary field.
 - [ ] `Submitted At` is a **created-time** field, not text.
 - [ ] `Status` options created with those five exact labels, in that order.
 - [ ] Create a **Personal Access Token** with scopes `data.records:read` and

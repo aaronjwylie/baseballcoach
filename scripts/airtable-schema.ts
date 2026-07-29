@@ -28,8 +28,10 @@
  */
 import "./loadEnv";
 import {
+  COMPUTED_TYPES,
   LEGACY_RENAMES,
   LEGACY_RETIRED,
+  PREFERRED_PRIMARY,
   SUBMISSION_FIELDS,
   type FieldSpec,
 } from "@/domains/submission/api/submissionTableSpec";
@@ -166,9 +168,27 @@ async function inspect() {
   }
 
   if (missing.length) {
-    console.log("→ missing (`--migrate` creates these):");
-    for (const s of missing) console.log(`    ${s.name}  (${s.type})`);
-    console.log();
+    const manual = missing.filter((s) => COMPUTED_TYPES.includes(s.type));
+    const automatic = missing.filter((s) => !COMPUTED_TYPES.includes(s.type));
+
+    if (automatic.length) {
+      console.log("→ missing (`--migrate --apply` creates these):");
+      for (const s of automatic) console.log(`    ${s.name}  (${s.type})`);
+      console.log();
+    }
+
+    if (manual.length) {
+      console.log(
+        "⚠ MISSING, AND THE API CANNOT CREATE THEM — Airtable computes these types.",
+      );
+      console.log("  Add by hand: Airtable → + at the right of the header row.\n");
+      for (const s of manual) {
+        const label = s.breaksWithout ? "REQUIRED" : "optional";
+        console.log(`    [${label}] "${s.name}" — type "${s.type}"`);
+        if (s.breaksWithout) console.log(`               ${s.breaksWithout}`);
+      }
+      console.log();
+    }
   }
 
   if (wrongType.length) {
@@ -213,50 +233,63 @@ async function create() {
     return;
   }
 
-  const payload = {
-    name: env.airtableTable,
-    description: "Customer video-review submissions. Schema owned by the app — see OPERATIONS.md §4.",
-    fields: SUBMISSION_FIELDS.map(fieldPayload),
-  };
+  // Airtable refuses computed types in a create-table call, so the table is
+  // built from the plain fields first and the computed ones added after.
+  const computed = SUBMISSION_FIELDS.filter((f) => COMPUTED_TYPES.includes(f.type));
+  const plain = SUBMISSION_FIELDS.filter((f) => !COMPUTED_TYPES.includes(f.type));
 
-  console.log(`Would create "${env.airtableTable}" with ${payload.fields.length} field(s):`);
-  for (const f of payload.fields) console.log(`    ${f.name}  (${f.type})`);
-  console.log(`\n  Primary field: ${payload.fields[0].name}`);
+  // The primary field is whichever plain field we've nominated; the rest keep
+  // spec order behind it.
+  const primary = plain.find((f) => f.name === PREFERRED_PRIMARY) ?? plain[0];
+  const ordered = [primary, ...plain.filter((f) => f !== primary)];
+
+  console.log(`Would create "${env.airtableTable}":`);
+  console.log(`\n  ${ordered.length} field(s) in the create call —`);
+  for (const f of ordered) {
+    console.log(`    ${f.name}  (${f.type})${f === primary ? "   ← primary" : ""}`);
+  }
+  console.log(`\n  ${computed.length} computed field(s) added straight after —`);
+  for (const f of computed) console.log(`    ${f.name}  (${f.type})`);
 
   if (!applying) return dryRunNotice();
 
-  try {
-    const table = await api<LiveTable>(`/bases/${env.airtableBaseId}/tables`, {
-      method: "POST",
-      body: payload,
-    });
-    console.log(`\n✓ created table ${table.id}`);
-  } catch (err) {
-    const message = String(err);
-    // Airtable restricts which types may be primary. If autoNumber is refused,
-    // retry with a text primary and add Submission ID as an ordinary field —
-    // the app doesn't care which field is primary, only that both exist.
-    if (/primary/i.test(message)) {
-      console.warn(
-        `\n! Airtable refused "${SUBMISSION_FIELDS[0].name}" as the primary field.`,
-      );
-      console.warn("  Retrying with Player Name primary and Submission ID after it.\n");
-      const [submissionId, ...rest] = SUBMISSION_FIELDS;
-      const playerNameIdx = rest.findIndex((f) => f.name.includes("Player Name"));
-      const reordered = [
-        rest[playerNameIdx],
-        submissionId,
-        ...rest.filter((_, i) => i !== playerNameIdx),
-      ];
-      const table = await api<LiveTable>(`/bases/${env.airtableBaseId}/tables`, {
+  const table = await api<LiveTable>(`/bases/${env.airtableBaseId}/tables`, {
+    method: "POST",
+    body: {
+      name: env.airtableTable,
+      description:
+        "Customer video-review submissions. Schema owned by the app — see OPERATIONS.md §4.",
+      fields: ordered.map(fieldPayload),
+    },
+  });
+  console.log(`\n✓ created table ${table.id} with ${ordered.length} field(s)`);
+
+  // Computed fields, one at a time so a refusal names itself rather than
+  // sinking the whole batch.
+  const manual: FieldSpec[] = [];
+  for (const spec of computed) {
+    try {
+      await api(`/bases/${env.airtableBaseId}/tables/${table.id}/fields`, {
         method: "POST",
-        body: { ...payload, fields: reordered.map(fieldPayload) },
+        body: fieldPayload(spec),
       });
-      console.log(`✓ created table ${table.id} (Player Name is primary)`);
-      return;
+      console.log(`✓ added ${spec.name} (${spec.type})`);
+    } catch (err) {
+      manual.push(spec);
+      console.warn(`! ${spec.name}: ${String(err).split("\n").slice(-1)[0]}`);
     }
-    throw err;
+    await sleep(220);
   }
+
+  if (manual.length) {
+    console.log("\n⚠ Airtable wouldn't create these through the API. Add by hand:");
+    for (const spec of manual) {
+      console.log(`    "${spec.name}" — field type "${spec.type}"`);
+    }
+    console.log("  (Airtable → + at the right of the header row → pick the type.)");
+  }
+
+  console.log("\nThen verify:  npm run schema -- --inspect");
 }
 
 // ---------------------------------------------------------------- migrate

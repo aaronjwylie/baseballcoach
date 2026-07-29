@@ -46,6 +46,11 @@ export interface FieldSpec {
   description: string;
   /** True when Airtable computes it and the app is blocked from writing it. */
   computed?: boolean;
+  /**
+   * What breaks if this column is absent. Set only where absence is a runtime
+   * failure rather than a missing nicety — `--inspect` promotes these.
+   */
+  breaksWithout?: string;
 }
 
 const selectChoices = (values: readonly string[]) => ({
@@ -53,11 +58,33 @@ const selectChoices = (values: readonly string[]) => ({
 });
 
 /**
+ * Types Airtable computes itself, which its API refuses in a create-table call
+ * (`UNSUPPORTED_FIELD_TYPE_FOR_CREATE`). They're added afterward, or by hand.
+ */
+export const COMPUTED_TYPES: readonly AirtableFieldType[] = [
+  "autoNumber",
+  "createdTime",
+];
+
+/**
+ * The primary field.
+ *
+ * NOT `Submission ID`, despite it leading the spec: an autoNumber can't be
+ * created through the API, so it can't be primary at creation time. Player Name
+ * is the better fallback anyway — it's the leftmost frozen column and what shows
+ * in a linked-record chip, so it's what makes a row identifiable at a glance.
+ *
+ * The app is indifferent: `submissionId` is optional in the codec and nothing
+ * depends on which field Airtable considers primary.
+ */
+export const PREFERRED_PRIMARY = COLUMN.playerName;
+
+/**
  * The table, in the order the columns should appear.
  *
- * The **first entry becomes the primary field**. `Submission ID` leads because
- * a human-quotable reference is what Yuta and a customer need to talk about the
- * same submission.
+ * `Submission ID` leads because a human-quotable reference is what Yuta and a
+ * customer need in order to talk about the same submission — but it is *not* the
+ * primary field; see `PREFERRED_PRIMARY` above for why.
  */
 export const SUBMISSION_FIELDS: readonly FieldSpec[] = [
   {
@@ -65,6 +92,7 @@ export const SUBMISSION_FIELDS: readonly FieldSpec[] = [
     type: "autoNumber",
     description: "Human-readable reference. Airtable assigns it; the app never writes it.",
     computed: true,
+    // No breaksWithout: the codec reads it as optional and nothing queries it.
   },
   {
     name: COLUMN.customerEmail,
@@ -110,6 +138,10 @@ export const SUBMISSION_FIELDS: readonly FieldSpec[] = [
     type: "createdTime",
     description: "When the row was created. Airtable computes it; can't be edited.",
     computed: true,
+    // Verified against a live base 2026-07-29: without this column the query
+    // returns Airtable 422 UNKNOWN_FIELD_NAME and /status answers 502.
+    breaksWithout:
+      "the status lookup sorts on it — /api/status returns 502 without it",
   },
   {
     name: COLUMN.stripePaymentId,
