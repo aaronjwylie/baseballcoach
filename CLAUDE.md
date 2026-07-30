@@ -24,7 +24,7 @@ This document is the single source of truth for Claude Code building this projec
 7. [Third-Party Tool Integrations](#7-third-party-tool-integrations)
 8. [Data Model (Postgres)](#8-data-model-postgres)
 9. [Webhook Contracts](#9-webhook-contracts)
-10. [Build Timeline & Sprint Plan](#10-build-timeline--sprint-plan)
+10. [Build Status](#10-build-status)
 11. [Coding Standards](#11-coding-standards)
 12. [Common Pitfalls](#12-common-pitfalls)
 13. [Definition of Done](#13-definition-of-done)
@@ -65,80 +65,58 @@ FSD structure, the naming sweep, Zod, and Stripe Elements
 changes the storage and operator layers, not those. The customer-facing flow
 (pay → upload → status → feedback email) is unchanged.
 
-**Status:** in build, on a feature branch, local-first (dockerized Postgres +
-local storage) ahead of porting to Vercel.
+**Status:** the pivot is **built** on branch `build/operator-portal`, verified
+locally; the Vercel deploy is the remaining step ([OPERATIONS.md](OPERATIONS.md)).
 
-### What's built and working
+### What's built — the platform pivot is done
 
-Landing page, player-info form, payment, Mux upload, status lookup, three
-transactional emails, and all webhook glue. `tsc --noEmit` passes clean. Roughly
-Sprints 0–4 plus most of 5, minus the feedback viewer.
+The customer funnel (landing, player-info + Stripe Elements, upload, status)
+**and** the operator portal (admin + coach) run end to end on **Postgres + object
+storage + jose auth** — Airtable and Mux are gone. Verified locally against
+dockerized Postgres and local-disk storage: login + roles, the admin submissions
+queue, coach management + assignment, the coach's video download + feedback
+delivery, and the customer's status lookup + feedback download. `next build` and
+`eslint` are clean. The production Supabase schema has been migrated and the first
+admin seeded.
 
-### Where the code beat this spec — the code wins
+### Decisions that outlived the pivot
 
-These were considered improvements, not drift. **Do not "fix" them back toward
-the text.** Each has an ADR in [docs/decisions/](docs/decisions/).
+These predate the platform pivot but still hold — each has an ADR:
 
-| Divergence | Why the code is right |
-| --- | --- |
-| Mux `passthrough` holds the **Airtable record ID**, not the payment ID (§7 said payment ID) | Turns the webhook's row lookup into a direct fetch by ID instead of a `filterByFormula` search — cheaper, no escaping risk, no ambiguity |
-| Row creation is a shared `ensureSubmission()`, called by **both** the Stripe webhook and the upload endpoint | Handles a race this spec never addressed: the customer returning from payment before the webhook lands |
-| The upload endpoint verifies payment **against Stripe directly**, not against our Airtable row (§7 said Airtable) | Can't mint an upload URL against a forged or unpaid session, even if Airtable is stale |
-| Transactional email is best-effort and never throws into a webhook | A Resend outage would otherwise make Stripe retry-loop a payment that already succeeded |
+- **One idempotent `ensureSubmission()`, two callers** (webhook + upload) — handles
+  the race between the customer returning from payment and the webhook landing
+  ([ADR 003](docs/decisions/003-shared-idempotent-fulfillment.md)). Now writes to Postgres.
+- **Payment is verified against Stripe, never our own row** — a stale or forged row
+  can't mint an upload.
+- **Transactional email is best-effort, never throws** into a webhook or a portal
+  action ([ADR 004](docs/decisions/004-best-effort-email.md)).
+- **Stripe Elements, not hosted Checkout** ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) —
+  payment stays on our page.
 
-### Where the code diverges and must be realigned
+Retired by the pivot: the Mux `passthrough` trick ([ADR 002](docs/decisions/002-passthrough-holds-record-id.md))
+— a submission's own uuid is the link now — and Airtable-as-database
+([ADR 001](docs/decisions/001-airtable-as-db.md)).
 
-| Divergence | Resolution |
-| --- | --- |
-| ~~Stripe **hosted Checkout** instead of Elements (§4)~~ | ✅ Step 5 — Elements, both steps on one route. Verified against real Stripe; the `<PaymentElement>` UI still needs a browser check |
-| ~~**3 statuses** instead of 5 (§8)~~ | ✅ Step 1 — five statuses, with the middle three owned by Yuta |
-| ~~Flat `src/lib/` + `src/components/` instead of FSD (§5)~~ | ✅ Step 2 — domain-first, see [PRINCIPLES.md](PRINCIPLES.md) |
-| ~~Hand-rolled validation instead of **Zod** (§11)~~ | ✅ Step 3 — one schema, both sides |
-| ~~No rate limit on the status lookup (Sprint 5)~~ | ✅ Step 3 — 5/IP/min, in-memory and knowingly partial |
-| No `/feedback/[id]` viewer (Sprint 5) | Build, once the wireframe lands |
-| Raw-HTML email strings instead of **React Email** (§4) | Open — decide during the email pass |
-| Hand-rolled `ui.tsx` primitives instead of **shadcn/ui** (§4) | Open — decide when the wireframe lands |
+### One name per concept — the spine
 
-### Nomenclature — the spine
+Still the invariant, now on Postgres: the storage column names live once in the
+Drizzle schema (`shared/db`), surfaced through
+[`domains/submission/api/submissionRow.ts`](src/domains/submission/api/submissionRow.ts).
+The domain model
+([`domains/submission/model/submission.ts`](src/domains/submission/model/submission.ts))
+is spelled the same in the form, the API, and the UI. **No other file turns a DB
+row into a domain object** — if you're mapping columns anywhere else, you're in
+the wrong file.
 
-One concept used to carry three names across the stack: the coaching focus was
-`focus` in code, `Sport` in Airtable (holding values like `"Hitting"`), and
-`Skill Focus` in this document. Column names appeared as bare string literals in
-six files, so a rename in the base broke the app silently in six places.
+### Still open
 
-**The rule now: one name per concept, declared once.**
-
-- [`domains/submission/model/submission.ts`](src/domains/submission/model/submission.ts) —
-  the domain vocabulary. Knows nothing about Airtable. A property here is spelled
-  the same way in the form, the API, and the UI.
-- [`domains/submission/api/submissionSchema.ts`](src/domains/submission/api/submissionSchema.ts) —
-  the **only** file containing Airtable column names, plus the codec between the
-  two. If storage ever moves off Airtable, this is what changes.
-
-**No other file may contain a quoted Airtable column name.** That's the
-invariant the whole architecture rests on — if you're typing one, you're in the
-wrong file.
-
-### Sequencing
-
-0. ✅ **Reconcile the docs** so the source of truth is true
-1. ✅ **One name per concept** — schema, codec, 5 statuses, notes split
-2. ✅ **Domain-first move** — `domains/` + `shared/`, per-slice docs
-3. ✅ **Zod** + the status-lookup rate limit
-4. ✅ **Interim landing restructure** — against the reference wireframe
-5. ✅ **Stripe Elements** — built and verified against real Stripe (test mode)
-6. **Reformat to Audrey's approved design** — when it can be read
-
-Steps 0–3 were the wireframe-independent block; Step 5 is too.
-
-> **Verified end to end on 2026-07-29** against a scratch base
-> (`appQpITLd7VoG2KT5`, 17/17 fields): the status lookup, all three webhooks,
-> their idempotency guards, and the seed tooling. Details in the slice docs.
->
-> **Yuta's own base has NOT been migrated.** It still carries the pre-Step-1
-> schema, so the deployed app cannot read or write it. That migration is
-> `--migrate`, not `--create` — runbook at
-> [OPERATIONS.md §4b](OPERATIONS.md#4b-migrating-an-existing-base).
+- **Reformat to Audrey's approved design** when it lands — the current look is the
+  reference wireframe, explicitly provisional.
+- **Upload before payment** ([ADR 009](docs/decisions/009-upload-before-payment.md)) — proposed, not built.
+- **The Vercel production deploy**, a verified Resend domain, and a live-mode
+  Stripe webhook ([OPERATIONS.md](OPERATIONS.md)).
+- Nice-to-haves: coach edit/deactivate, resumable large-file uploads, React Email,
+  shadcn/ui.
 
 ---
 
@@ -293,7 +271,7 @@ The 30-second version:
 ```
 src/
 ├── app/        Next.js routes + API handlers — thin
-├── domains/    submission · payment · upload · feedback · landing
+├── domains/    submission · payment · upload · feedback · account · coach · landing
 └── shared/     the domain-less floor
 ```
 
@@ -523,291 +501,91 @@ each paired with a `coaches` row.
 
 ## 9. Webhook Contracts
 
-> **Being reworked with the build.** The **Stripe** webhook stays but now writes
-> the submission row to **Postgres** (not Airtable). The **Mux** webhook is
-> **removed** — object storage replaces it ([§7](#7-third-party-tool-integrations)),
-> and "upload complete → status `new`" becomes an app callback, not a Mux event.
-> The raw-body signature-verification rule below still applies to Stripe. Exact
-> URLs are the wire contract in [structure.md §3b](docs/design/structure.md);
-> this section is rewritten in the same commit as the reworked handlers.
+One inbound webhook: **Stripe**. Mux is gone — the upload route stores the file
+directly, so there's no async video webhook. The feedback-ready notification is a
+coach action in the portal, not a webhook.
 
 ### Stripe webhook
 
-**Endpoint:** `POST /api/stripe/webhook`
+**Endpoint:** `POST /api/webhooks/stripe`
 
-**Events handled:**
+**Events:**
 
-- `payment_intent.succeeded` → create Airtable row with status "Awaiting Upload"
-- `payment_intent.payment_failed` → log for admin visibility (no Airtable row created)
+- `payment_intent.succeeded` → create the submission row in Postgres
+  (`awaiting_upload`) + send the payment-received email
+- `payment_intent.payment_failed` → log for admin visibility; no row created
 
-**Signature verification:** Use `stripe.webhooks.constructEvent()` with the raw request body and `STRIPE_WEBHOOK_SECRET`. Verify BEFORE parsing.
+**Signature verification:** `stripe.webhooks.constructEventAsync()` over the raw
+body with `STRIPE_WEBHOOK_SECRET`. Verify before doing anything.
 
-**Idempotency:** Check if a row with this `Stripe Payment ID` already exists in Airtable. If yes, return 200 without creating a duplicate.
+**Idempotency:** `stripePaymentId` is unique and `ensureSubmission()` is
+idempotent on it, so a Stripe retry finds the existing row instead of duplicating.
+The email is gated on first-creation.
 
-**Response:** Return `200` quickly (under 5 seconds). Long-running work (email send, Airtable write) should complete inside the 30s timeout but be structured to fail gracefully.
-
-### Mux webhook
-
-**Endpoint:** `POST /api/mux/webhook`
-
-**Events handled:**
-
-- `video.asset.ready` → update Airtable row with Mux IDs, change status to "New"
-- `video.asset.errored` → update row status, log for admin
-- `video.upload.cancelled` → log
-
-**Signature verification:** Use `Mux.Webhooks.verifyHeader()` with the raw body and `MUX_WEBHOOK_SECRET`.
-
-**Passthrough retrieval:** Read `passthrough` from the asset payload — this contains the Stripe payment intent ID that links the video back to the paying customer.
-
-**Idempotency:** Check if the row already has `Mux Asset ID` populated. If yes, return 200 without re-updating.
+**Response:** return `200` quickly; a handler error returns `500` so Stripe
+retries — safe, because the work is idempotent.
 
 ### Raw body handling (critical)
 
-Next.js App Router API routes need special handling for webhook signature verification. The Stripe and Mux SDKs need the **raw, unparsed body** to verify signatures. Use `await req.text()` and pass the string directly to the verification function.
+App Router route handlers must read the **raw, unparsed body** for signature
+verification — `await req.text()`, then pass the string to the verifier. Parsing
+first (`req.json()`) breaks it.
 
 ```typescript
-// Example pattern
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature");
-  const event = stripe.webhooks.constructEvent(
+  const event = await stripe().webhooks.constructEventAsync(
     rawBody,
     signature,
-    env.STRIPE_WEBHOOK_SECRET,
+    env.stripeWebhookSecret,
   );
   // ... handle event
 }
 ```
 
+### The file uploads (not webhooks)
+
+`POST /api/upload` (customer video) and `POST /api/feedback/upload` (coach
+feedback) take the file as the request body — gated on a Stripe-verified payment
+and on operator ownership respectively. Downloads are `GET /api/video/[id]`
+(operator-only) and `GET /api/feedback/[id]` (public, once complete). See the
+endpoint table in [OPERATIONS.md](OPERATIONS.md).
+
 ---
 
-## 10. Build Timeline & Sprint Plan
+## 10. Build Status
 
-Total: **4–6 weeks from kickoff to soft launch.**
+The original 8-sprint plan is retired — the platform pivot reshaped it, and git
+holds the history. Here's where the build actually stands, on branch
+`build/operator-portal`.
 
-> **This plan predates the [§0 platform pivot](#0-where-this-project-actually-is) and is being reworked.**
-> The customer-funnel sprints (landing, payment, upload, status) largely stand;
-> what changes is the layer beneath — Airtable/Mux/Make.com give way to Postgres,
-> object storage, and Auth.js — plus new work for the **admin and coach portals**.
-> The live build sequence is: docs sweep → dockerized Postgres + Drizzle schema →
-> Auth.js → move persistence/storage off Airtable/Mux → the two portals → retire
-> the old code. The sprint entries below are kept for the customer-funnel detail
-> that's still accurate; treat §0 + the ADRs as the current plan of record.
+**Built and verified locally:**
 
-### Sprint 0 — Project Initialization (Day 1)
+- ✅ **Customer funnel** — landing, `/start` (info + Stripe Elements), `/upload`
+  (video → storage), confirmation, `/status`, feedback download.
+- ✅ **Foundation** — dockerized Postgres, Drizzle schema + migration, seed.
+- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`.
+- ✅ **Persistence + storage** — submissions on Postgres, files on the storage
+  seam (local disk / Blob); Airtable + Mux retired.
+- ✅ **Admin portal** — submissions queue, coach management, coach assignment.
+- ✅ **Coach portal** — assigned reviews, video download, feedback delivery →
+  complete → customer email.
+- ✅ **Transactional email** — payment received, video received, feedback ready.
 
-**Deliverable:** Empty repo → running Next.js app with all dependencies, dev tooling, and env validation.
+**Remaining:**
 
-Tasks:
+- The **Vercel production deploy** (Supabase schema migrated + admin seeded) —
+  runbook in [OPERATIONS.md](OPERATIONS.md).
+- A **verified Resend domain** + a **live-mode Stripe webhook** before real customers.
+- **Reformat to Audrey's approved design** when it lands.
+- Deferred: an in-app `/feedback/[id]` viewer, coach edit/deactivate, resumable
+  large-file uploads, React Email, shadcn/ui, and upload-before-payment
+  ([ADR 009](docs/decisions/009-upload-before-payment.md)).
 
-1. Initialize Next.js 14+ with App Router, TypeScript, Tailwind
-2. Install shadcn/ui, configure Slate base color and CSS variables
-3. Install core dependencies (Stripe SDK, Mux SDK, Airtable, Resend, React Email, React Hook Form, Zod, lucide-react, clsx, tailwind-merge)
-4. Install dev dependencies (Prettier, prettier-plugin-tailwindcss, ESLint config)
-5. Create `.env.example` with every variable documented, no values
-6. Create `.env.local` (gitignored) with placeholder values
-7. Set up `src/config/env.ts` with Zod validation of env vars
-8. Configure `tsconfig.json` with `"strict": true`
-9. Set up the FSD folder structure from section 5
-10. Initial commit → push → Vercel connects and does first preview deploy
+> **Handoff runbook:** the step-by-step go-live — accounts, env vars, migrations,
+> the Stripe webhook, DNS, and the end-to-end test — is in [OPERATIONS.md](OPERATIONS.md).
 
-**Checkpoint:** App runs on `npm run dev`. Tailwind works. shadcn/ui can install a Button. Env vars load. Preview deployment lives on Vercel.
-
-### Sprint 1 — Landing Page & Visual Design (Week 1, Days 2–5)
-
-**Deliverable:** Polished, responsive landing page with branding.
-
-Tasks:
-
-1. Collect brand assets and copy from Audrey (Figma designs, wordmark logo, colour palette, typography)
-2. Set up design tokens in `tailwind.config.ts` and `globals.css`
-3. Build the root layout (`app/layout.tsx`) — metadata, fonts, header, footer
-4. Build landing page sections in `features/landing/`:
-   - Hero (headline, subheadline, CTA)
-   - How it works (3 steps: Submit → Review → Receive)
-   - Coach bios (cards with photos, names, credentials, specialty tags)
-   - Pricing (single card, per-submission model)
-   - FAQ (accordion)
-   - Footer CTA
-5. Compose them in `app/page.tsx`
-6. Ensure smooth-scroll on nav anchor links
-7. Make everything responsive (test 375px, 768px, 1280px)
-8. Set up basic SEO (title, description, OG image)
-
-**Checkpoint:** Landing page deployed to Vercel preview. Audrey and Yuta review and approve. All CTAs link to `/submit`.
-
-### Sprint 2 — Submission Form & Stripe Payment (Week 2, Days 6–9)
-
-**Deliverable:** User can enter info, pay successfully, and land on a placeholder upload page.
-
-Tasks:
-
-1. Build `/submit` page with React Hook Form + Zod:
-   - Customer name (required, 2–100 chars)
-   - Customer email (required, valid, lowercased on submit)
-   - Player name (required)
-   - Player age (required, 5–18)
-   - Skill focus (required, radio: Batting / Pitching)
-2. Create `POST /api/stripe/create-intent`:
-   - Validate with Zod
-   - Create Stripe PaymentIntent with all customer/player data in metadata
-   - Return `{ clientSecret, paymentIntentId }`
-3. Build `/submit/payment` with `<PaymentElement>`:
-   - Show order summary
-   - Handle submit via Stripe.js
-   - On success → redirect to `/submit/upload?payment=<id>`
-   - On failure → show error, retry
-4. Build `POST /api/stripe/webhook`:
-   - Verify signature with raw body
-   - On `payment_intent.succeeded`:
-     - Idempotency check
-     - Create Airtable row with status "Awaiting Upload"
-     - Store all metadata + payment ID + amount
-   - Respond 200 quickly
-
-**Test card:** `4242 4242 4242 4242`, any future date, any CVC.
-
-**Checkpoint:** Test payment creates an Airtable row with status "Awaiting Upload". Webhook signature verifies. Customer email is lowercased.
-
-### Sprint 3 — Mux Video Upload (Week 3, Days 10–13)
-
-**Deliverable:** After payment, customer uploads a video and the Airtable row updates to "New".
-
-Tasks:
-
-1. Create `POST /api/mux/upload-url`:
-   - Verify the payment intent ID is real and paid (check Airtable)
-   - Call Mux to create a direct upload URL
-   - Set `passthrough` to the payment intent ID
-   - Return the upload URL to the client
-2. Build `/submit/upload`:
-   - Verify the payment intent in URL is valid
-   - Render `<MuxUploader>` from `@mux/mux-uploader-react`
-   - Style the upload progress UI with Tailwind
-   - On upload completion, redirect to `/submit/confirmation`
-3. Build `POST /api/mux/webhook`:
-   - Verify signature with raw body
-   - On `video.asset.ready`:
-     - Idempotency check (row not already populated)
-     - Read `passthrough` for the payment intent ID
-     - Find the matching Airtable row
-     - Update with Mux Asset ID, Playback ID, status → "New"
-     - Trigger admin notification email to Yuta
-4. Build `/submit/confirmation`:
-   - Friendly thank-you message
-   - Show submission summary
-   - Link to status lookup page
-
-**Checkpoint:** End-to-end: pay → upload → Airtable row goes "Awaiting Upload" → "New" with Mux IDs populated. Yuta gets an admin notification.
-
-### Sprint 4 — Email Templates & Resend (Week 3–4, Days 14–15)
-
-**Deliverable:** Customers receive professional emails at each workflow milestone.
-
-Tasks:
-
-1. Set up Resend account, verify sending domain (Ben does this in OPERATIONS.md)
-2. Build email templates in `src/emails/` using React Email:
-   - `PaymentConfirmation.tsx` — "We received your payment, please upload your video"
-   - `VideoReceived.tsx` — "Your video is in! A coach will review it shortly"
-   - `FeedbackReady.tsx` — used by Make.com, but built as a React Email template first
-3. Build `src/integrations/resend/send.ts`:
-   - Renders React Email template to HTML
-   - Sends via Resend
-   - Logs success/failure
-4. Hook into webhook handlers:
-   - Stripe `payment_intent.succeeded` → send Payment Confirmation
-   - Mux `video.asset.ready` → send Video Received
-5. Consistent brand styling across all emails (shared layout component)
-
-**Checkpoint:** Test customer receives two emails in the right order. Render check passes in Gmail, Outlook, Apple Mail.
-
-### Sprint 5 — Status Lookup & Feedback Viewer (Week 4, Days 16–18)
-
-**Deliverable:** Returning customers can check their submissions and view feedback when ready.
-
-Tasks:
-
-1. Build `/status` page:
-   - Simple form: email input
-   - POST to `/api/submissions/lookup`
-   - API fetches all submissions for that email (normalized lowercase)
-   - Render list with status badges
-   - If status is "Complete", show a link to the feedback viewer
-2. Build `/feedback/[id]` page:
-   - Fetch the submission from Airtable by ID
-   - Display: coach name, feedback video (Mux player or Loom embed), PDF (if any), coach notes
-   - Access control note: this page is accessible to anyone with the URL. Acceptable for v1 (URL contains submission ID, not easily guessable). Document this trade-off.
-3. Rate limit the status lookup (5 requests per IP per minute) to prevent scraping
-
-**Checkpoint:** Customer can enter email → see submissions → click through to feedback when ready → view coach's response.
-
-### Sprint 6 — Airtable & Make.com Integration Glue (Week 4–5, Days 19–20)
-
-**Deliverable:** All automated flows wired up. Yuta can operate the workflow manually.
-
-Tasks:
-
-1. Confirm both webhook handlers (Stripe + Mux) reliably write to Airtable
-2. Document the webhook contracts in OPERATIONS.md for Make.com to consume
-3. Build the admin notification trigger: when Mux webhook completes, send an email to `ADMIN_NOTIFICATION_EMAIL` with a link to the Airtable record
-4. Make.com scenarios (Ben configures manually per OPERATIONS.md):
-   - Feedback Ready → customer email
-   - Abandoned Upload reminder
-   - Admin daily digest (optional)
-5. Test the full loop end-to-end: payment → upload → admin notified → Yuta assigns coach in Airtable → uploads feedback → changes status to "Complete" → customer receives email → views feedback
-
-**Checkpoint:** A test submission processes end-to-end with only Yuta's manual Airtable interaction. No developer intervention required.
-
-### Sprint 7 — Polish, QA, Launch Prep (Week 5, Days 21–25)
-
-**Deliverable:** Production-ready application.
-
-Tasks:
-
-1. **Error handling.** Every API route returns clear error responses. Every page handles loading and error states. Error boundaries on critical flows.
-2. **Idempotency.** Confirm all webhook handlers are idempotent (verified in Sprints 2 and 3).
-3. **Logging.** Use Vercel's built-in logging. Structured logs (`console.log(JSON.stringify({...}))`). Log every webhook receipt, Airtable write, email send.
-4. **Accessibility.** Run Lighthouse audit. Fix a11y issues (alt text, form labels, focus states, contrast).
-5. **Mobile.** Test full flow on real iPhone and Android. Mux upload from mobile is the highest-risk area.
-6. **Edge cases:**
-   - User pays but abandons upload → email reminder after 24 hours (Make.com scenario)
-   - Mux processing fails → admin alert
-   - User enters wrong email at checkout → no recovery in v1, document
-   - Duplicate submissions → allowed (each is a paid transaction)
-7. **Performance.** Lighthouse >90 on Performance, Accessibility, Best Practices, SEO for the landing page.
-8. **Security review.**
-   - All webhook signatures verified
-   - Server env vars never exposed to client
-   - Status lookup rate-limited
-   - Airtable formula injection protection
-9. **Client training.** Document Yuta's daily workflow in OPERATIONS.md.
-10. **Soft launch checklist.** Run through with Ben and Audrey before opening to real users.
-
-**Checkpoint:** All checks pass. Ready for Sprint 8 deployment.
-
-### Sprint 8 — Deploy to Production (Day 26)
-
-**Deliverable:** Live production platform.
-
-Tasks:
-
-1. Create production Vercel project (or promote existing preview to production)
-2. Set all production env vars — live Stripe keys, live Mux keys, prod Airtable base, prod Resend domain
-3. Configure custom domain via Vercel + GoDaddy DNS
-4. Update Stripe webhook endpoint to production URL
-5. Update Mux webhook endpoint to production URL
-6. Update Make.com scenarios to point to prod Airtable base
-7. Test full flow with a real $1 test transaction (refund afterward)
-8. Open to soft launch (Yuta invites first cohort of test users)
-
-**Checkpoint:** Production is live. First real submission processes cleanly.
-
-> **Handoff runbook:** For the step-by-step go-live and client-handoff
-> procedure — transferring the app to the client's own Vercel/GitHub and
-> third-party accounts, every env var, webhook re-point, end-to-end test, and
-> dev teardown — see [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
@@ -865,51 +643,62 @@ of the same idea.
 
 ## 12. Common Pitfalls
 
-Read this section before coding. These have bitten similar projects.
-
-> The **Airtable** and **Mux** subsections are historical (both are being
-> retired — [§0](#0-where-this-project-actually-is)). The **Webhooks**, **Stripe**,
-> **Email**, and **Next.js App Router** notes still apply. Postgres, Drizzle,
-> storage, and Auth.js pitfalls get added as those pieces land.
+Read this section before coding. These have bitten *this* project.
 
 ### Webhooks
 
-- **Stripe and Mux retry failed webhooks.** Idempotency is critical — check if the work is done before doing it.
-- **Respond 200 quickly.** Under 5 seconds ideally. Long work should still finish inside 30s but structure defensively.
-- **Signatures must be verified.** Without this, anyone can spoof events. Use the official SDK verification functions.
-- **Use the raw body for verification.** `await req.text()`, then pass the string. Do NOT `req.json()` first.
+- **Stripe retries failed webhooks.** Idempotency is critical — `ensureSubmission`
+  is idempotent on the payment id; keep it so. A handler error returns 500 (safe).
+- **Verify signatures over the raw body.** `await req.text()`, then verify. Never
+  `req.json()` first.
 
-### Airtable
+### Postgres + Drizzle
 
-- **Rate limit: 5 requests/sec per base.** Cache reads where possible, batch writes.
-- **Fields can be undefined if empty.** Always handle missing fields defensively (`row.fields["Coach Notes"] ?? ""`).
-- **Linked record fields return arrays of IDs.** To get coach name, either second fetch or use an Airtable formula field to denormalize.
-- **Email lookups must normalize case.** Airtable filters are case-sensitive.
-- **Field names are strings in code.** Rename a field in Airtable → break the code. Track this in code review.
+- **Column names live once** — in the Drizzle schema (`shared/db`), mapped by
+  `submissionRow.ts`. Don't spell a column anywhere else.
+- **A schema change is a migration** — `npm run db:generate` then `db:migrate`.
+  Never edit a table by hand.
+- **The pooler needs `prepare: false`** (Supabase transaction pooler); migrations
+  use the direct/non-pooling URL. Both are already wired.
+- **Timestamps are `Date` in the row, ISO strings in the domain** — the mapper
+  converts; don't pass a string into a Drizzle timestamp column.
 
-### Mux
+### The client/server boundary
 
-- **Uploads happen client-side, directly to Mux.** Your server never sees the file. Trust Mux for validation.
-- **The `passthrough` field is how you link uploads to payments.** Store the payment intent ID there.
-- **Assets take a few seconds to be "ready" after upload completes.** Wait for `video.asset.ready`, not `video.upload.asset_created`.
+- **A client component must not import a domain barrel that re-exports DB code.**
+  Importing `@/domains/submission` from a `"use client"` file pulls the Postgres
+  client into the browser bundle and the build fails. Client components import the
+  slice's **model** directly (schemas/types), never its barrel.
+- **`shared/config/env.ts` is server-only**; browser values go through
+  `publicEnv.ts`. Never import `env.ts` from a client component.
+
+### Storage + auth
+
+- **Files go through the `shared/storage` seam**, never a driver directly. The
+  locator is stored on the submission; downloads resolve via `/api/video/[id]`
+  (operator) and `/api/feedback/[id]` (public, complete-only).
+- **Auth checks live close to the data** — `requireSession` / `requireRole` in the
+  page or route, not only in `proxy.ts` (which is optimistic). Re-check role *and*
+  ownership in any route that mutates.
 
 ### Stripe
 
-- **Test mode and live mode use completely separate keys.** Never mix them.
-- **Test-mode webhook secrets fail in prod.** Set up two webhook endpoints in Stripe dashboard.
-- **PaymentIntent metadata has a 500-character limit per value.** Don't stuff JSON blobs in there.
+- **Test and live use separate keys _and_ separate webhook endpoints/secrets.** A
+  test-mode webhook secret fails every signature check in production.
+- **PaymentIntent metadata caps each value at 500 chars.** Don't stuff blobs in.
 
 ### Email
 
-- **Resend requires domain verification before sending from a custom domain.** Set this up early — DNS can take hours.
-- **React Email templates render at build/send time.** Preview them by rendering to HTML and opening in a browser.
-- **Gmail clips long emails.** Keep transactional emails focused — link out rather than embedding everything.
+- **Resend needs a verified domain** before it sends to anyone but the account
+  owner — set it up early, DNS takes hours. Sends are best-effort: a failure logs,
+  never throws into a webhook or action.
 
-### Next.js App Router
+### Next.js 16
 
-- **Server components can't use browser APIs** (window, localStorage). Mark as `"use client"` if needed.
-- **API routes use `route.ts` with named exports** (`export async function POST(req)`).
-- **Fetch data in server components when possible.** Better performance, no loading flicker.
+- **Middleware is `proxy.ts` now**, and `params` / `searchParams` / `cookies()`
+  are **async** — `await` them.
+- **Server components can't use browser APIs**; mark `"use client"` when needed.
+- **Route handlers are `route.ts` with named exports** (`export async function GET/POST`).
 
 ---
 

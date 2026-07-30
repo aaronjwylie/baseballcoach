@@ -37,6 +37,7 @@ domains/
   upload/       getting the video to us (storage)
   feedback/     the coach's response coming back
   account/      operator identity — who logs into the portal
+  coach/        the reviewers, and assigning work to them
   landing/      the sales pitch
 ```
 
@@ -165,7 +166,7 @@ Adopted from `wrld-sandbox/Nomenclature.md` so the two codebases read alike.
 | Kind | Convention | Example |
 |---|---|---|
 | Type / interface | `PascalCase`, singular | `Submission` · `SubmissionPatch` |
-| Union member (a domain value) | `PascalCase` string literal, matching Airtable | `'Awaiting Upload'` · `'Hitting'` |
+| Union member (a domain value) | string literal matching the DB enum | `'awaiting_upload'` (status) · `'Hitting'` (focus) |
 | Component (file **and** export) | `PascalCase` | `StartForm.tsx` → `StartForm` |
 | Module file | `camelCase` | `submissionApi.ts` · `env.ts` |
 | API client (file **and** export) | `camelCase` `xApi` | `submissionApi.ts` → `submissionApi` |

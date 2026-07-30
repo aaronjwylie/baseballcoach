@@ -69,8 +69,9 @@ flowchart LR
   in place, then `/upload`. Our layout, our order summary, our domain.
 - ✅ **Verified against real Stripe 2026-07-29** (test mode, via `npm run payment`):
   `createPaymentIntent` → confirmed with `pm_card_visa` → `succeeded` →
-  `getSucceededPaymentIntent` ✓ (and `null` for a bogus id) → signed webhook 200 → Airtable
-  row correct in every field → **re-delivery produced no duplicate**.
+  `getSucceededPaymentIntent` ✓ (and `null` for a bogus id) → signed webhook 200 → the
+  submission row correct in every field → **re-delivery produced no duplicate**. (The webhook
+  now writes that row to **Postgres**; the fulfillment logic verified here is unchanged.)
   A declined card (`pm_card_chargeDeclined`) created **no row**, which is the important
   negative: a failed payment must never look like a submission. A 3-D Secure card returned
   `requires_action`, correctly.
@@ -93,6 +94,12 @@ flowchart LR
 ---
 
 ## 3 · Where we came from
+
+**2026-07-29 · Postgres cutover.** Unchanged in shape: `ensureSubmission` and the webhook
+kept their signatures, so this slice barely moved. What changed underneath is that
+`createSubmission`/`findByStripePaymentId` now hit Postgres instead of Airtable, and
+`fulfillment` writes status `awaiting_upload` (lowercase enum) with the amount in cents. The
+idempotency and verify-against-Stripe invariants are exactly as before.
 
 **Before 2026-07-28**, this slice was four files in four folders: `lib/stripe.ts`,
 `lib/fulfillment.ts`, `app/api/checkout/route.ts` (which held the session-building logic

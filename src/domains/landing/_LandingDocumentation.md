@@ -68,8 +68,8 @@ the grounds that a landing page shouldn't promise what the pipeline can't delive
 | Wireframe says | We say | Why it wasn't adopted |
 | --- | --- | --- |
 | "Feedback within **48 hours**" | `3–5 days` | Tightening a customer SLA is Yuta's call. 48h across timezones, with a manual hand-off to coaches in Japan, is aggressive. |
-| "**Written summary** of notes" as a paid feature | not offered | **There is no field for it.** The schema stores one `Feedback Video URL`; CLAUDE.md §8 dropped `Coach Notes`, and §2 puts written reports out of scope. Selling it would need a schema change *and* a coach workflow change. |
-| Coach tag "**Batting**" | `Hitting` | Step 1 standardized on Hitting — it's in the Airtable `Focus` select, the migration runbook, and the coach bios. Changing it now is a data migration to satisfy a wireframe label. |
+| "**Written summary** of notes" as a paid feature | not offered | **There is no field for it.** A submission stores one feedback file (`feedbackUrl`); §2 puts written reports out of scope. Selling it would need a schema change *and* a coach workflow change. |
+| Coach tag "**Batting**" | `Hitting` | We standardized on Hitting — it's the `focus` enum value and the word in the coach bios. Changing it now is a schema + copy change to satisfy a wireframe label. |
 
 ---
 
