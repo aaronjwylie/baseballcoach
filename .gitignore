@@ -44,3 +44,6 @@ next-env.d.ts
 
 # dev seed tracking (scripts/seed-airtable.ts)
 .seeded-records.json
+
+# local object storage (dev only — STORAGE_DIR)
+/.storage

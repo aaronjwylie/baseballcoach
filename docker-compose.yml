@@ -1,0 +1,50 @@
+# Local development stack.
+#
+# Postgres always runs here. The app can either run on the host
+# (`npm run dev`, the default dev path) against this database, or fully in a
+# container via the "app" profile: `docker compose --profile app up`.
+#
+# Storage is local disk in dev (STORAGE_DIR), so there is no storage service.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: baseball_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: baseball
+    ports:
+      # Host 5434 → container 5432, to avoid clashing with other local Postgres
+      # instances on 5432/5433. In-container services still use 5432.
+      - "5434:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d baseball"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: .
+    container_name: baseball_app
+    restart: unless-stopped
+    env_file: .env.local
+    environment:
+      # Inside the compose network, Postgres is reachable by service name.
+      DATABASE_URL: postgres://app:app@db:5432/baseball
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./.storage:/app/.storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

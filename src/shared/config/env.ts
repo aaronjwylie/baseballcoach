@@ -31,6 +31,25 @@ export const env = {
     );
   },
 
+  // Postgres — the system of record. Dockerized locally, Vercel Postgres in prod.
+  get databaseUrl() {
+    return required("DATABASE_URL");
+  },
+
+  // Auth.js session/JWT secret for the operator portal.
+  get authSecret() {
+    return required("AUTH_SECRET");
+  },
+
+  // Object storage. In dev, files live on local disk under this dir; in prod
+  // the Blob driver uses BLOB_READ_WRITE_TOKEN instead.
+  get storageDir() {
+    return process.env.STORAGE_DIR || "./.storage";
+  },
+  get blobToken() {
+    return optional("BLOB_READ_WRITE_TOKEN");
+  },
+
   // Stripe
   get stripeSecretKey() {
     return required("STRIPE_SECRET_KEY");
