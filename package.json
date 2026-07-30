@@ -12,16 +12,11 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
-    "seed": "tsx --tsconfig tsconfig.json scripts/seed-airtable.ts",
-    "webhook": "tsx --tsconfig tsconfig.json scripts/test-webhook.ts",
-    "schema": "tsx --tsconfig tsconfig.json scripts/airtable-schema.ts",
     "payment": "tsx --tsconfig tsconfig.json scripts/test-payment.ts",
     "stripe": "tsx --tsconfig tsconfig.json scripts/stripe-webhook.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
-    "@mux/mux-node": "^14.1.1",
-    "@mux/mux-uploader-react": "^1.5.0",
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.12.1",
     "@vercel/blob": "^2.6.1",

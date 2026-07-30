@@ -5,12 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { Button, Field, inputClass } from "@/shared/ui";
+// Client-safe imports from the submission slice's model, not its barrel — the
+// barrel pulls in Postgres-backed queries that can't ship to the browser.
+import { FOCUS_OPTIONS } from "@/domains/submission/model/submission";
 import {
-  FOCUS_OPTIONS,
   submissionInputSchema,
   type SubmissionInput,
   type SubmissionInputDraft,
-} from "@/domains/submission";
+} from "@/domains/submission/model/submissionInput";
 import type { CreatedIntent } from "../api/paymentApi";
 
 /**

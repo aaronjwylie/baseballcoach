@@ -1,4 +1,4 @@
-# Diamond Path — Lean Validation Build
+# Baseball Sensei — Lean Validation Build
 
 A thin custom front door (landing page, checkout, video upload, status lookup)
 on top of existing back-office tools (Stripe, Mux, Airtable, Resend). Customers

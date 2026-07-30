@@ -41,11 +41,11 @@ export function submissionFromPaymentIntent(
     playerAge: parsePositiveInt(meta.playerAge),
     focus: parseFocus(meta.focus),
     customerNotes: meta.customerNotes || undefined,
-    status: "Awaiting Upload",
+    status: "awaiting_upload",
     stripePaymentId: intent.id,
-    // `amount_received` is what actually cleared; `amount` is what was asked
-    // for. They differ on a partial capture, and we want the truth.
-    stripeAmount: (intent.amount_received ?? intent.amount) / 100,
+    // Stored in cents. `amount_received` is what actually cleared; `amount` is
+    // what was asked for. They differ on a partial capture — we want the truth.
+    stripeAmount: intent.amount_received ?? intent.amount,
   };
 }
 

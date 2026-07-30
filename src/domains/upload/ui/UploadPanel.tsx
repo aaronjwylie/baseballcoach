@@ -1,69 +1,72 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import dynamic from "next/dynamic";
+import { useState } from "react";
 import Link from "next/link";
-import { ButtonLink } from "@/shared/ui";
+import { Button, ButtonLink } from "@/shared/ui";
 import { site } from "@/shared/config/site";
 
-// The uploader is a custom element; load it browser-side only.
-const MuxUploader = dynamic(() => import("@mux/mux-uploader-react"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-48 animate-pulse rounded-2xl border border-dashed border-line bg-white" />
-  ),
-});
-
-type Status = "idle" | "done" | "error";
+type Status = "idle" | "uploading" | "done" | "error";
 
 export function UploadPanel({ paymentIntentId }: { paymentIntentId: string }) {
   const [status, setStatus] = useState<Status>("idle");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Called by the uploader right before it starts; returns the Mux upload URL.
-  const getUploadUrl = useCallback(async () => {
-    setErrorMessage(null);
-    const res = await fetch("/api/mux/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ payment_intent: paymentIntentId }),
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      url?: string;
-      error?: string;
-    };
-    if (!res.ok || !json.url) {
-      const message = json.error ?? "Could not prepare the upload.";
+  async function upload() {
+    if (!file) return;
+    setStatus("uploading");
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        payment_intent: paymentIntentId,
+        filename: file.name,
+      });
+      const res = await fetch(`/api/upload?${params}`, {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(json.error ?? "The upload didn't finish. Please try again.");
+      }
+      setStatus("done");
+    } catch (err) {
       setStatus("error");
-      setErrorMessage(message);
-      throw new Error(message);
+      setError(err instanceof Error ? err.message : "The upload didn't finish.");
     }
-    return json.url;
-  }, [paymentIntentId]);
-
-  if (status === "done") {
-    return <Confirmation />;
   }
+
+  if (status === "done") return <Confirmation />;
 
   return (
     <div>
-      <div className="rounded-2xl border border-line bg-white p-4 sm:p-6">
-        <MuxUploader
-          endpoint={getUploadUrl}
-          onSuccess={() => setStatus("done")}
-          onUploadError={() => {
-            setStatus("error");
-            setErrorMessage(
-              "The upload didn't finish. Please check your connection and try again.",
-            );
-          }}
-          style={{ "--progress-bar-fill-color": "#e11d48" }}
-        />
+      <div className="rounded-2xl border border-dashed border-line bg-white p-6">
+        <label className="block text-sm font-medium text-ink">
+          Choose your video
+          <input
+            type="file"
+            accept="video/*"
+            disabled={status === "uploading"}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="mt-2 block w-full text-sm text-ink-muted file:mr-4 file:rounded-full file:border-0 file:bg-ink file:px-4 file:py-2 file:text-sm file:font-semibold file:text-surface hover:file:bg-ink-soft"
+          />
+        </label>
+
+        <Button
+          type="button"
+          size="lg"
+          className="mt-5 w-full"
+          disabled={!file || status === "uploading"}
+          onClick={upload}
+        >
+          {status === "uploading" ? "Uploading…" : "Upload video"}
+        </Button>
       </div>
 
-      {errorMessage && (
+      {error && (
         <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-          {errorMessage}
+          {error}
         </p>
       )}
 

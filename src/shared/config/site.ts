@@ -8,7 +8,7 @@
  * place in `shared/` (principle #5 — the highest node where it's still true).
  */
 export const site = {
-  name: "Diamond Path",
+  name: "Baseball Sensei",
   tagline: "Elite Japanese baseball coaching, wherever you play.",
   subhead:
     "Upload a video of your swing or delivery. A professional coach trained in the Japanese system breaks it down frame by frame and sends you a personal video walkthrough within days.",

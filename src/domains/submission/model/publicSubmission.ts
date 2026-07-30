@@ -1,37 +1,34 @@
 /**
  * The projection of a Submission that is safe to hand to anyone.
  *
- * The status lookup identifies customers by an **unverified** email address, so
- * anyone who guesses an address sees whatever this type exposes. Internal
- * fields — Stripe and Mux ids, internal notes, the amount paid, the assigned
- * coach — are deliberately absent.
+ * The status lookup identifies customers by an **unverified** email, so anyone
+ * who guesses an address sees whatever this type exposes. Internal fields —
+ * Stripe id, amount, internal notes, the assigned coach, storage locators — are
+ * deliberately absent. `id` is exposed only so the customer can hit the feedback
+ * download route for their own submission.
  *
- * **Adding a field here is a security decision**, not a convenience one. That
- * is why this lives in the domain beside the record it trims, rather than in
- * the route that happens to serialize it.
+ * **Adding a field here is a security decision**, not a convenience one.
  */
 import type { Submission, SubmissionStatus } from "./submission";
 
 export interface PublicSubmission {
-  submissionId?: number;
+  id: string;
   playerName: string;
   focus?: string;
   status: SubmissionStatus;
   submittedAt?: string;
-  feedbackVideoUrl?: string;
+  /** Whether a downloadable feedback file is ready for the customer. */
+  hasFeedback: boolean;
 }
 
 export function toPublicSubmission(submission: Submission): PublicSubmission {
   return {
-    submissionId: submission.submissionId,
+    id: submission.id,
     playerName: submission.playerName || "Player",
     focus: submission.focus,
     status: submission.status,
     submittedAt: submission.submittedAt,
-    // The feedback link is only theirs to see once the review is finished.
-    feedbackVideoUrl:
-      submission.status === "Complete"
-        ? submission.feedbackVideoUrl
-        : undefined,
+    // The feedback is only theirs to see once the review is finished.
+    hasFeedback: submission.status === "complete" && !!submission.feedbackUrl,
   };
 }

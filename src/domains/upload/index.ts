@@ -1,10 +1,9 @@
 /**
  * The upload domain — getting the video to us.
  *
- * All verb, and deliberately thin: the file goes browser → Mux directly, so the
- * only thing we own is minting permission and reacting when Mux says it's ready.
+ * The file goes browser → our upload route → storage; the domain owns saving it
+ * and moving the submission to `new`, plus the "video received" email.
  */
-export { createDirectUpload } from "./api/uploadApi";
+export { storeVideo } from "./api/uploadApi";
 export { sendVideoReceived } from "./api/uploadEmail";
-export { handleMuxEvent, verifyMuxWebhook, type MuxEvent } from "./api/uploadWebhook";
 export { UploadPanel } from "./ui/UploadPanel";

@@ -64,38 +64,11 @@ export const env = {
     return optional("STRIPE_PRICE_ID");
   },
 
-  // Mux
-  get muxTokenId() {
-    return required("MUX_TOKEN_ID");
-  },
-  get muxTokenSecret() {
-    return required("MUX_TOKEN_SECRET");
-  },
-  get muxWebhookSecret() {
-    return required("MUX_WEBHOOK_SECRET");
-  },
-
-  // Airtable
-  get airtableApiKey() {
-    return required("AIRTABLE_API_KEY");
-  },
-  get airtableBaseId() {
-    return required("AIRTABLE_BASE_ID");
-  },
-  get airtableTable() {
-    return process.env.AIRTABLE_TABLE_NAME || "Submissions";
-  },
-  // Shared secret guarding the /api/webhooks/airtable notify endpoint, sent by
-  // the Airtable automation as an `x-webhook-secret` header.
-  get airtableWebhookSecret() {
-    return required("AIRTABLE_WEBHOOK_SECRET");
-  },
-
   // Email (Resend). Optional — email failures should never break the flow.
   get resendApiKey() {
     return optional("RESEND_API_KEY");
   },
   get emailFrom() {
-    return process.env.EMAIL_FROM || "Diamond Path <onboarding@resend.dev>";
+    return process.env.EMAIL_FROM || "Baseball Sensei <onboarding@resend.dev>";
   },
 } as const;

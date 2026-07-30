@@ -4,11 +4,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, ButtonLink, Field, inputClass } from "@/shared/ui";
-import {
-  lookupSchema,
-  type LookupInput,
-  type PublicSubmission,
-} from "@/domains/submission";
+// A client component imports the slice's own client-safe model directly, not
+// the barrel — the barrel re-exports submissionApi (Postgres), which can't be
+// bundled for the browser.
+import { lookupSchema, type LookupInput } from "../model/submissionInput";
+import type { PublicSubmission } from "../model/publicSubmission";
 
 type Result =
   | { state: "idle" }
@@ -137,23 +137,23 @@ const STATUS_META: Record<
   PublicSubmission["status"],
   { label: string; className: string }
 > = {
-  "Awaiting Upload": {
+  awaiting_upload: {
     label: "Awaiting your video",
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
-  New: {
+  new: {
     label: "Video received",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  Assigned: {
+  assigned: {
     label: "With your coach",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  "In Review": {
+  in_review: {
     label: "With your coach",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  Complete: {
+  complete: {
     label: "Feedback ready",
     className: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
@@ -176,9 +176,9 @@ function StatusRow({ submission }: { submission: PublicSubmission }) {
         >
           {meta.label}
         </span>
-        {submission.status === "Complete" && submission.feedbackVideoUrl && (
+        {submission.hasFeedback && (
           <ButtonLink
-            href={submission.feedbackVideoUrl}
+            href={`/api/feedback/${submission.id}`}
             size="md"
             target="_blank"
             rel="noopener noreferrer"

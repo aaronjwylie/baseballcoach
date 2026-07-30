@@ -1,16 +1,15 @@
 /**
  * The submission domain model — the vocabulary the whole app speaks.
  *
- * Deliberately knows nothing about Airtable. Column names, linked records, and
- * every other storage concern live in `src/integrations/airtable/schema.ts`,
- * which is the only file allowed to translate between the two. If storage ever
- * moves off Airtable, this file doesn't change.
+ * Knows nothing about storage. The Postgres column names live in the Drizzle
+ * schema (`shared/db`); the row↔domain mapping lives in `api/submissionRow.ts`.
+ * If storage ever moves, this file doesn't change.
  *
  * One name per concept: a property here is spelled the same way in the form,
- * the API, and the UI. See CLAUDE.md §0.
+ * the API, and the UI.
  */
 
-/** What the player wants coached. Values are stable — they're stored in Airtable. */
+/** What the player wants coached. Matches the `focus` enum in the DB. */
 export const FOCUS_OPTIONS = [
   "Hitting",
   "Pitching",
@@ -22,41 +21,32 @@ export const FOCUS_OPTIONS = [
 export type Focus = (typeof FOCUS_OPTIONS)[number];
 
 /**
- * Submission lifecycle, in order. Mirrored as a single-select in Airtable, so
- * these strings are load-bearing — changing one is a data migration.
+ * Submission lifecycle, in order. Matches the `submission_status` enum.
  *
- * The app only ever sets the first two. `Assigned` and `In Review` are Yuta's
- * to set as he works the queue; `Complete` is what triggers the feedback email.
+ * The app writes the first two — `awaiting_upload` on payment, `new` on upload
+ * complete. The admin drives `assigned` / `in_review` from the portal; a coach
+ * marking their work done sets `complete`, which fires the feedback email.
  */
 export const SUBMISSION_STATUSES = [
-  "Awaiting Upload", // Paid, video not yet uploaded
-  "New", // Video uploaded, needs a coach
-  "Assigned", // Coach assigned, not yet started
-  "In Review", // Coach is working on feedback
-  "Complete", // Feedback delivered
+  "awaiting_upload",
+  "new",
+  "assigned",
+  "in_review",
+  "complete",
 ] as const;
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
 
-/** Statuses the app itself writes. Everything else is set by hand in Airtable. */
-export type AppWrittenStatus = Extract<
-  SubmissionStatus,
-  "Awaiting Upload" | "New"
->;
+/** Statuses the customer-facing flow itself writes. */
+export type AppWrittenStatus = Extract<SubmissionStatus, "awaiting_upload" | "new">;
 
 /**
- * A submission, as the app sees it.
- *
- * `id` is the Airtable record ID — the app's handle on the row, and what
- * travels as the Mux `passthrough` (see ADR 002). `submissionId` is the
- * human-facing autonumber Yuta and customers can quote at each other.
- *
- * Everything optional is genuinely optional: Airtable omits empty fields
- * entirely, so absence is the normal case, not an error.
+ * A submission, as the app sees it. `id` is the row's uuid — the app's handle
+ * on it and the key every other domain links by. Optional fields are genuinely
+ * optional (null in the DB → undefined here).
  */
 export interface Submission {
   id: string;
-  submissionId?: number;
 
   // Who
   customerEmail: string;
@@ -72,30 +62,32 @@ export interface Submission {
   status: SubmissionStatus;
   submittedAt?: string;
 
-  // Payment. Holds a Checkout Session ID today; becomes a PaymentIntent ID
-  // when the Elements rebuild lands (ADR 005). One column either way — the
-  // name describes the role, not the Stripe object.
+  // Payment (Stripe holds the money; we keep the id + amount in cents)
   stripePaymentId?: string;
   stripeAmount?: number;
 
-  // Video
-  muxUploadId?: string;
-  muxAssetId?: string;
-  muxPlaybackId?: string;
+  // Files — storage locators (local key or Blob URL), served via /api routes
+  videoUrl?: string;
+  feedbackUrl?: string;
 
-  // Outcome
-  assignedCoach?: string;
-  feedbackVideoUrl?: string;
+  // Coaching
+  assignedCoachId?: string;
   feedbackEmailedAt?: string;
 }
 
-/** Fields the app is allowed to write. The rest are Airtable's or Yuta's. */
-export type SubmissionPatch = Partial<
-  Omit<Submission, "id" | "submissionId" | "submittedAt" | "assignedCoach">
->;
-
-/** Streaming URL for an uploaded video, or null if it isn't ready yet. */
-export function playbackUrl(submission: Submission): string | null {
-  if (!submission.muxPlaybackId) return null;
-  return `https://stream.mux.com/${submission.muxPlaybackId}.m3u8`;
+/** Everything required to create a submission at payment time. */
+export interface NewSubmission {
+  customerEmail: string;
+  playerName: string;
+  playerAge?: number;
+  focus?: Focus;
+  customerNotes?: string;
+  status?: SubmissionStatus;
+  stripePaymentId?: string;
+  stripeAmount?: number;
 }
+
+/** Fields the app may update on an existing submission. */
+export type SubmissionPatch = Partial<
+  Omit<Submission, "id" | "submittedAt">
+>;

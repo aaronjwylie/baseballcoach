@@ -267,7 +267,7 @@ Preview, with test-mode keys, if you want branch previews to work).
 | `AIRTABLE_TABLE_NAME` | Defaults to `Submissions` | No |
 | `AIRTABLE_WEBHOOK_SECRET` | Random secret — `openssl rand -hex 32`. Also used in step 6 | Yes |
 | `RESEND_API_KEY` | Resend key. **If unset, emails are skipped silently** | No |
-| `EMAIL_FROM` | Verified sender, e.g. `Diamond Path <hello@theirdomain.com>` | No |
+| `EMAIL_FROM` | Verified sender, e.g. `Baseball Sensei <hello@theirdomain.com>` | No |
 
 - [ ] All required vars set for **Production**.
 - [ ] Update the customer-facing content in

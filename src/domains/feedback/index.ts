@@ -1,13 +1,9 @@
 /**
  * The feedback domain — the coach's response coming back.
  *
- * Almost entirely off-platform in v1: the coach records a Loom, Yuta pastes the
- * link into Airtable, and our only job is telling the customer it's ready. The
- * feedback viewer page (CLAUDE.md Sprint 5) is the part still to build.
+ * A coach uploads their feedback file and marks the submission complete from the
+ * coach portal, which stores the file and emails the customer. For now this
+ * slice owns the "feedback ready" email; the send is wired from the coach
+ * portal's complete action.
  */
 export { sendFeedbackReady } from "./api/feedbackEmail";
-export {
-  isAuthorizedFeedbackWebhook,
-  notifyFeedbackReady,
-  type NotifyResult,
-} from "./api/feedbackWebhook";
