@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container } from "@/shared/ui";
 import { listSubmissions, type Submission, type SubmissionStatus } from "@/domains/submission";
 import { listCoaches, assignCoachAction, type Coach } from "@/domains/coach";
@@ -18,23 +19,64 @@ const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }
   complete: { text: "Complete", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
 
-export default async function AdminHomePage() {
+// The filter tabs above the table. "all" plus one per status.
+const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] = [
+  { key: "all", label: "All", match: () => true },
+  { key: "awaiting_upload", label: "Awaiting upload", match: (s) => s.status === "awaiting_upload" },
+  { key: "new", label: "New", match: (s) => s.status === "new" },
+  { key: "assigned", label: "Assigned", match: (s) => s.status === "assigned" },
+  { key: "in_review", label: "In review", match: (s) => s.status === "in_review" },
+  { key: "complete", label: "Complete", match: (s) => s.status === "complete" },
+];
+
+export default async function AdminHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   await requireRole("admin");
-  const [submissions, coaches] = await Promise.all([listSubmissions(), listCoaches()]);
+  const { status } = await searchParams;
+  const [all, coaches] = await Promise.all([listSubmissions(), listCoaches()]);
+
+  const activeKey = TABS.some((t) => t.key === status) ? status! : "all";
+  const rows = all.filter(TABS.find((t) => t.key === activeKey)!.match);
 
   return (
     <section className="py-10">
       <Container>
         <AdminNav active="submissions" />
+
         <div className="mt-6">
           <h1 className="text-2xl font-bold tracking-tight text-ink">Submissions</h1>
-          <p className="mt-1 text-sm text-ink-muted">{submissions.length} total · the coaching queue</p>
+          <p className="mt-1 text-sm text-ink-muted">{all.length} total · the coaching queue</p>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white">
-          {submissions.length === 0 ? (
+        <div className="mt-6 flex flex-wrap gap-2">
+          {TABS.map((t) => {
+            const count = all.filter(t.match).length;
+            const href = t.key === "all" ? "/admin" : `/admin?status=${t.key}`;
+            const isActive = t.key === activeKey;
+            return (
+              <Link
+                key={t.key}
+                href={href}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "border-ink bg-ink text-surface"
+                    : "border-line bg-white text-ink-muted hover:text-ink"
+                }`}
+              >
+                {t.label}
+                <span className={isActive ? "opacity-80" : "text-ink-muted"}>{count}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
+          {rows.length === 0 ? (
             <p className="p-8 text-center text-sm text-ink-muted">
-              No submissions yet. They&apos;ll appear here as customers pay and upload.
+              No submissions in this view.
             </p>
           ) : (
             <table className="w-full min-w-[820px] text-left text-sm">
@@ -49,7 +91,7 @@ export default async function AdminHomePage() {
                 </tr>
               </thead>
               <tbody>
-                {submissions.map((s) => (
+                {rows.map((s) => (
                   <SubmissionRow key={s.id} submission={s} coaches={coaches} />
                 ))}
               </tbody>

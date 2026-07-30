@@ -29,10 +29,13 @@ Invariants:
 - ✅ `LoginForm` + `/login`; stub `/admin` and `/coach` landing pages behind the
   guards.
 - ✅ First admin seeded by `npm run db:seed`.
-- 🔶 `createOperator` exists but isn't wired to a UI yet — the admin
-  coach-management screen (which pairs a `users` row with a `coaches` row) comes
-  with the admin portal.
-- 🔶 No password reset / change-password yet.
+- ✅ `createOperator` is wired to the admin coach-management screen (creates a
+  `users` + `coaches` pair).
+- ✅ **Change password** at `/account` (any signed-in operator) — verifies the
+  current password, then updates the hash. Covers the seeded-admin gap.
+- 🔶 **No forgot-password (unauthenticated email reset) yet** — it needs a reset-token
+  flow and a verified Resend domain. Change-password (authenticated) covers the
+  urgent case for now.
 
 ## Where we came from
 

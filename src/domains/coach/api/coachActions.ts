@@ -10,7 +10,7 @@ import {
   assignSubmissionCoach,
   type Focus,
 } from "@/domains/submission";
-import { createCoach } from "./coachApi";
+import { createCoach, updateCoach } from "./coachApi";
 
 export type CoachFormState = { error: string } | { ok: true } | undefined;
 
@@ -44,6 +44,34 @@ export async function createCoachAction(
   }
 
   revalidatePath("/admin/coaches");
+  return { ok: true };
+}
+
+export async function updateCoachAction(
+  _prev: CoachFormState,
+  formData: FormData,
+): Promise<CoachFormState> {
+  await requireRole("admin");
+
+  const id = String(formData.get("coachId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const specialties = formData.getAll("specialties").map(String).filter(isFocus);
+  const languages = String(formData.get("languages") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const isActive = formData.get("isActive") === "on";
+
+  if (!id || !name) return { error: "A name is required." };
+
+  try {
+    await updateCoach(id, { name, specialties, languages, isActive });
+  } catch {
+    return { error: "Could not update the coach." };
+  }
+
+  revalidatePath("/admin/coaches");
+  revalidatePath(`/admin/coaches/${id}`);
   return { ok: true };
 }
 

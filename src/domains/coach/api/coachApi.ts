@@ -8,6 +8,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db, coaches } from "@/shared/db";
 import { createOperator } from "@/domains/account";
+import type { Focus } from "@/domains/submission";
 import type { Coach, NewCoach } from "../model/coach";
 
 function toCoach(row: typeof coaches.$inferSelect): Coach {
@@ -45,6 +46,27 @@ export async function createCoach(input: NewCoach): Promise<Coach> {
       specialties: input.specialties,
       languages: input.languages,
     })
+    .returning();
+  return toCoach(row);
+}
+
+export async function getCoach(id: string): Promise<Coach | null> {
+  const [row] = await db.select().from(coaches).where(eq(coaches.id, id)).limit(1);
+  return row ? toCoach(row) : null;
+}
+
+export interface CoachPatch {
+  name?: string;
+  specialties?: Focus[];
+  languages?: string[];
+  isActive?: boolean;
+}
+
+export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach> {
+  const [row] = await db
+    .update(coaches)
+    .set(patch)
+    .where(eq(coaches.id, id))
     .returning();
   return toCoach(row);
 }

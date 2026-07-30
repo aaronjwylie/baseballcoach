@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container, Button } from "@/shared/ui";
 import { requireRole, logout } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
@@ -28,11 +29,16 @@ export default async function CoachHomePage() {
               {coach ? `${coach.name}'s reviews` : "Your reviews"}
             </h1>
           </div>
-          <form action={logout}>
-            <Button type="submit" variant="outline">
-              Sign out
-            </Button>
-          </form>
+          <div className="flex items-center gap-4">
+            <Link href="/account" className="text-sm text-ink-muted hover:text-ink">
+              Account
+            </Link>
+            <form action={logout}>
+              <Button type="submit" variant="outline">
+                Sign out
+              </Button>
+            </form>
+          </div>
         </div>
 
         {!coach && (

@@ -18,11 +18,16 @@ export function AdminNav({ active }: { active: "submissions" | "coaches" }) {
           Coaches
         </Link>
       </nav>
-      <form action={logout}>
-        <Button type="submit" variant="outline">
-          Sign out
-        </Button>
-      </form>
+      <div className="flex items-center gap-4">
+        <Link href="/account" className="text-sm text-ink-muted hover:text-ink">
+          Account
+        </Link>
+        <form action={logout}>
+          <Button type="submit" variant="outline">
+            Sign out
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

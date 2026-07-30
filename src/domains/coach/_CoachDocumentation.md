@@ -45,8 +45,11 @@ flowchart LR
 - ✅ **Create a coach** from `/admin/coaches` — login + profile, specialties, languages.
 - ✅ **Assign a coach** to a submission from the admin queue, moving it to `assigned`.
 - ✅ **`getCoachByUserId`** backs the coach portal's "my assigned submissions" view.
-- 🔶 **No edit/deactivate yet** — `isActive` exists on the row but there's no UI to toggle it,
-  and no reassignment beyond picking a different coach on the queue.
+- ✅ **Edit a coach** at `/admin/coaches/[id]` — name, specialties, languages, and the
+  `isActive` toggle (an inactive coach still shows in the assign dropdown; hiding them there
+  is a small follow-up).
+- 🔶 **No delete** — a coach can be deactivated but not removed (their assignments would
+  orphan). Reassignment is by picking a different coach on the queue.
 
 ---
 

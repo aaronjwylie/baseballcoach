@@ -8,11 +8,19 @@
  * the server-only db/bcrypt code; it imports the `login` action directly.
  */
 export { LoginForm } from "./ui/LoginForm";
-export { login, logout } from "./api/auth";
+export { ChangePasswordForm } from "./ui/ChangePasswordForm";
+export { login, logout, changePasswordAction } from "./api/auth";
 export { getSession, requireSession, requireRole } from "./api/dal";
 export {
   verifyCredentials,
   getOperatorById,
   createOperator,
+  changePassword,
 } from "./api/userApi";
-export type { Role, Operator, OperatorSession, LoginState } from "./model/user";
+export type {
+  Role,
+  Operator,
+  OperatorSession,
+  LoginState,
+  ChangePasswordState,
+} from "./model/user";

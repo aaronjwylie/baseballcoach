@@ -8,8 +8,13 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { setSessionCookie, clearSessionCookie } from "@/shared/auth";
-import { verifyCredentials } from "./userApi";
-import type { LoginState, OperatorSession } from "../model/user";
+import { verifyCredentials, changePassword } from "./userApi";
+import { requireSession } from "./dal";
+import type {
+  ChangePasswordState,
+  LoginState,
+  OperatorSession,
+} from "../model/user";
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -43,4 +48,27 @@ export async function login(
 export async function logout(): Promise<void> {
   await clearSessionCookie();
   redirect("/login");
+}
+
+export async function changePasswordAction(
+  _prev: ChangePasswordState,
+  formData: FormData,
+): Promise<ChangePasswordState> {
+  const session = await requireSession();
+
+  const current = String(formData.get("current") ?? "");
+  const next = String(formData.get("next") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (next.length < 8) {
+    return { error: "New password must be at least 8 characters." };
+  }
+  if (next !== confirm) {
+    return { error: "The new passwords don't match." };
+  }
+
+  const ok = await changePassword(session.userId, current, next);
+  if (!ok) return { error: "Your current password is incorrect." };
+
+  return { ok: true };
 }

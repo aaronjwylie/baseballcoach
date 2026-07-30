@@ -55,3 +55,27 @@ export async function createOperator(
     .returning({ id: users.id, email: users.email, role: users.role });
   return rows[0];
 }
+
+/**
+ * Change an operator's password. Verifies the current one first; returns false
+ * if it's wrong (or the user is gone), true on success.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!row) return false;
+
+  const ok = await bcrypt.compare(currentPassword, row.passwordHash);
+  if (!ok) return false;
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  return true;
+}

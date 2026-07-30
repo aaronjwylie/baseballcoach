@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container } from "@/shared/ui";
 import { requireRole } from "@/domains/account";
 import { listCoaches, AddCoachForm } from "@/domains/coach";
@@ -34,11 +35,19 @@ export default async function AdminCoachesPage() {
                 <li key={c.id} className="rounded-2xl border border-line bg-white p-5">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-ink">{c.name}</span>
-                    <span
-                      className={`text-xs font-semibold ${c.isActive ? "text-emerald-600" : "text-ink-muted"}`}
-                    >
-                      {c.isActive ? "Active" : "Inactive"}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`text-xs font-semibold ${c.isActive ? "text-emerald-600" : "text-ink-muted"}`}
+                      >
+                        {c.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <Link
+                        href={`/admin/coaches/${c.id}`}
+                        className="text-xs font-semibold text-accent hover:underline"
+                      >
+                        Edit
+                      </Link>
+                    </div>
                   </div>
                   <div className="mt-1 text-sm text-ink-muted">
                     {c.specialties.length ? c.specialties.join(", ") : "No specialties set"}

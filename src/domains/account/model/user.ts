@@ -23,3 +23,6 @@ export interface Operator {
 
 /** Return shape of the login server action, for `useActionState`. */
 export type LoginState = { error: string } | undefined;
+
+/** Return shape of the change-password server action. */
+export type ChangePasswordState = { error: string } | { ok: true } | undefined;
