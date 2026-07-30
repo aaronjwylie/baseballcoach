@@ -114,6 +114,10 @@ touch the backend. **No Stripe CLI, no Mux account, no tunnel.**
 ```bash
 npm run dev                              # in one terminal
 
+npm run payment                          # a REAL Stripe test payment, no browser
+npm run payment -- --card declined       # the decline path
+npm run payment -- --card 3ds            # one that demands authentication
+
 npm run seed                             # one submission in each of the 5 states
 npm run seed -- --status New -n 3        # three rows in "New"
 npm run seed -- --list                   # what's been seeded (with record ids)
@@ -124,6 +128,12 @@ npm run webhook -- mux <recordId>        # video ready → row moves to "New"
 npm run webhook -- mux-error <recordId>  # processing failed
 npm run webhook -- feedback <recordId>   # the feedback-ready email
 ```
+
+`npm run payment` uses Stripe's canned test payment-method tokens to create *and
+confirm* a real PaymentIntent server-side, then fires the webhook carrying that
+real intent and checks the Airtable row. It **refuses to run against an
+`sk_live_` key** — confirming a live intent moves real money. What it can't cover
+is the `<PaymentElement>` UI itself; that needs a browser.
 
 `npm run webhook` **signs its own payloads** with the secrets in `.env.local`, so
 the handlers verify them exactly as they would in production — a rejected
