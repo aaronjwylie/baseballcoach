@@ -106,6 +106,22 @@ Airtable's API can create and **rename** fields but **cannot convert a field's t
 Renames are therefore safe (data is preserved); the handful of conversions are manual, and
 `--inspect` lists exactly which ones remain.
 
+### The Stripe webhook endpoint
+
+```bash
+npm run stripe -- --list                                 # endpoints + whether events match
+npm run stripe -- --create --url <origin> --apply        # create; prints the signing secret
+npm run stripe -- --repoint <we_…> --apply               # correct an endpoint's event list
+```
+
+The event list comes from `HANDLED_STRIPE_EVENTS` in the payment domain, so what
+Stripe is told to send is the same list the handler switches on. Getting that
+wrong is a **silent** failure — an endpoint still on `checkout.session.completed`
+(what this app used before Elements) takes payments and never creates a row.
+
+Stripe reveals a signing secret **only at creation**, which is why creating
+through the API is worth it. Dry run unless `--apply`.
+
 ### Exercising the flow without paying
 
 Two scripts remove the need to complete a real $149 checkout every time you

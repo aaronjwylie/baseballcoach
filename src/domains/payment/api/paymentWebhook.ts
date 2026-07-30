@@ -11,6 +11,19 @@ import { ensureSubmission } from "../model/fulfillment";
 import { sendPaymentConfirmation } from "./paymentEmail";
 
 /**
+ * The Stripe events this handler acts on — the single home for that fact.
+ *
+ * `scripts/stripe-webhook.ts` configures the dashboard endpoint from this list,
+ * so what Stripe is told to send and what we actually handle cannot drift. That
+ * drift is a silent failure: an endpoint subscribed to the wrong event means
+ * payments succeed and no submission row is ever created.
+ */
+export const HANDLED_STRIPE_EVENTS = [
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
+] as const;
+
+/**
  * Verify a webhook delivery and return the event, or null if it isn't genuine.
  *
  * Takes the **raw, unparsed** body — signature verification is computed over

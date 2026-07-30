@@ -10,7 +10,8 @@
     "seed": "tsx --tsconfig tsconfig.json scripts/seed-airtable.ts",
     "webhook": "tsx --tsconfig tsconfig.json scripts/test-webhook.ts",
     "schema": "tsx --tsconfig tsconfig.json scripts/airtable-schema.ts",
-    "payment": "tsx --tsconfig tsconfig.json scripts/test-payment.ts"
+    "payment": "tsx --tsconfig tsconfig.json scripts/test-payment.ts",
+    "stripe": "tsx --tsconfig tsconfig.json scripts/stripe-webhook.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

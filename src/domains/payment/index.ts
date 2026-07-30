@@ -10,7 +10,11 @@ export {
   type CreatedIntent,
 } from "./api/paymentApi";
 export { sendPaymentConfirmation } from "./api/paymentEmail";
-export { handleStripeEvent, verifyStripeWebhook } from "./api/paymentWebhook";
+export {
+  HANDLED_STRIPE_EVENTS,
+  handleStripeEvent,
+  verifyStripeWebhook,
+} from "./api/paymentWebhook";
 export {
   ensureSubmission,
   submissionFromPaymentIntent,

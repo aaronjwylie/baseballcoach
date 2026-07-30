@@ -287,10 +287,25 @@ misconfiguration surfaces as a clear error rather than a silent failure.
 
 ### Stripe
 
-- [ ] Stripe → Developers → Webhooks → **Add endpoint**
-- [ ] URL: `https://<site>/api/webhooks/stripe`
-- [ ] Events: `payment_intent.succeeded` **and** `payment_intent.payment_failed`
-- [ ] Copy the signing secret → `STRIPE_WEBHOOK_SECRET`
+Do it with the script — the event list comes from the code, so it can't be
+wrong, and Stripe only reveals a signing secret at creation time:
+
+```bash
+npm run stripe -- --list                                   # what exists, and whether it's right
+npm run stripe -- --create --url https://<site> --apply    # create; prints the secret
+npm run stripe -- --repoint <we_…> --apply                 # fix an existing endpoint's events
+```
+
+- [ ] Endpoint created (or `--repoint`ed), and `--list` reports the events match.
+- [ ] Signing secret from the output → `STRIPE_WEBHOOK_SECRET`.
+
+The mode follows the key: `sk_test_` manages test endpoints, `sk_live_` manages
+live ones, and **their secrets are different**. You need both, in their
+respective environments.
+
+By hand instead: Developers → Webhooks → **Add endpoint**, URL
+`https://<site>/api/webhooks/stripe`, events `payment_intent.succeeded` and
+`payment_intent.payment_failed`, then copy the signing secret.
 
 > **Changed in Step 5.** The app used Stripe's hosted Checkout and listened for
 > `checkout.session.completed`. It now uses Elements, so the event is
