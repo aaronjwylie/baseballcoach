@@ -1,0 +1,57 @@
+/**
+ * Operator queries + credential checks against Postgres.
+ *
+ * The only place the app reads the `users` table. Callers get a clean
+ * `Operator` (no password hash), never a raw row.
+ */
+import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
+import { db, users } from "@/shared/db";
+import type { Operator, Role } from "../model/user";
+
+/** Raw row lookup — internal; keeps the password hash contained to this file. */
+async function findRowByEmail(email: string) {
+  const rows = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email.trim().toLowerCase()))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/** Verify an email + password. Returns the operator, or null if either is wrong. */
+export async function verifyCredentials(
+  email: string,
+  password: string,
+): Promise<Operator | null> {
+  const row = await findRowByEmail(email);
+  if (!row) return null;
+  const ok = await bcrypt.compare(password, row.passwordHash);
+  return ok ? { id: row.id, email: row.email, role: row.role } : null;
+}
+
+export async function getOperatorById(id: string): Promise<Operator | null> {
+  const rows = await db
+    .select({ id: users.id, email: users.email, role: users.role })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Create a coach's login. Admin-only (the caller enforces that). Returns the new
+ * operator; the coaches row is created alongside by the coach domain.
+ */
+export async function createOperator(
+  email: string,
+  password: string,
+  role: Role,
+): Promise<Operator> {
+  const passwordHash = await bcrypt.hash(password, 10);
+  const rows = await db
+    .insert(users)
+    .values({ email: email.trim().toLowerCase(), passwordHash, role })
+    .returning({ id: users.id, email: users.email, role: users.role });
+  return rows[0];
+}

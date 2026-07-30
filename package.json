@@ -26,6 +26,7 @@
     "@stripe/stripe-js": "^9.12.1",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.5",
     "next": "16.2.10",
     "postgres": "^3.4.9",
     "react": "19.2.4",

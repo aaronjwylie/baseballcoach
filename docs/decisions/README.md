@@ -15,6 +15,7 @@ A divergence without an ADR is a bug. A divergence with one is a decision.
 | [005](005-stripe-elements-over-checkout.md) | Stripe Elements, not hosted Checkout | Accepted — reaffirms CLAUDE.md §4 |
 | [006](006-object-storage-over-mux.md) | Vercel Blob over Mux for download-only review | Accepted — supersedes Mux in CLAUDE.md §4/§7 |
 | [007](007-portal-and-postgres-retire-airtable.md) | Operator portal + Postgres, retire Airtable | **Accepted — major pivot; reverses CLAUDE.md §1/§2, retires ADR 001/002** |
+| [008](008-jose-sessions-over-authjs.md) | First-party jose sessions over Auth.js | Accepted — settles the ADR 007 auth sub-decision |
 
 ## Format
 

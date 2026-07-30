@@ -263,7 +263,7 @@ If Yuta or Audrey pushes back on this, escalate to Ben before changing the archi
 | Storage    | Vercel Blob                | Video + feedback files; **replaced Mux** — [ADR 006](docs/decisions/006-object-storage-over-mux.md) |
 | Database   | **Vercel Postgres**        | **Replaced Airtable** — [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) |
 | ORM        | **Drizzle** (preferred)    | For Postgres; decide vs Prisma at build                          |
-| Auth       | **Auth.js** (leaning)      | Operator portal only (Yuta admin + coaches); no customer auth    |
+| Auth       | **jose** session cookies   | First-party (not Auth.js) — [ADR 008](docs/decisions/008-jose-sessions-over-authjs.md); operator portal only, no customer auth |
 | Email      | Resend + React Email       | Templates as React components                                    |
 | Automation | **None**                   | **Make.com dropped** — logic lives in the app / portal           |
 | Hosting    | Vercel                     | Free tier for staging, Pro for prod once needed                  |
@@ -410,13 +410,18 @@ No transcoding, no streaming — the coach downloads and scrubs locally.
 - Email is lowercased on write and on lookup, so the status lookup matches
   regardless of case.
 
-### Auth.js — operator identity
+### Auth — operator identity (jose sessions)
+
+First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose-sessions-over-authjs.md)):
 
 - Two roles: `admin` (Yuta) and `coach`. **Customers never authenticate.**
-- The session guards the portal routes: a coach sees only their assigned
-  submissions; the admin sees everything and manages coaches.
-- The first admin is **seeded**, not self-signup; Yuta adds coaches from within
-  the portal.
+- A `jose`-signed HS256 JWT in an httpOnly cookie (`shared/auth`). The DAL in
+  `domains/account` does the secure `requireSession` / `requireRole` checks close
+  to the data; `proxy.ts` (Next 16's renamed Middleware) does an optimistic
+  pre-filter, never the sole defence.
+- Passwords are bcrypt-hashed and never leave `userApi.ts`. The first admin is
+  **seeded** (`npm run db:seed`); Yuta adds coaches from the portal — no
+  self-signup.
 
 ### Resend — transactional email
 
