@@ -100,6 +100,19 @@ async function main() {
   const origin = (flag("--url") ?? "http://localhost:3000").replace(/\/$/, "");
   const fireWebhook = !argv.includes("--no-webhook");
 
+  // Both keys embed their account id after the mode prefix. Keys from two
+  // different Stripe accounts fail at confirmation with an unhelpful error, so
+  // catch the mismatch here where it can be named.
+  const accountOf = (key: string) => key.split("_")[2]?.slice(0, 16) ?? "";
+  const publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "";
+  if (publishable && accountOf(secret) !== accountOf(publishable)) {
+    console.warn(
+      "! The secret and publishable keys look like they're from DIFFERENT Stripe\n" +
+        "  accounts. Payment confirmation will fail in the browser. Check both came\n" +
+        "  from the same dashboard.\n",
+    );
+  }
+
   // Confirm the key actually works, and say which account we're touching.
   // `balance.retrieve` needs no account id and fails loudly on a bad key.
   await stripe().balance.retrieve();
