@@ -1,16 +1,19 @@
-import { Coaches } from "./Coaches";
+import { Coach } from "./Coach";
 import { Faq } from "./Faq";
 import { FooterCta } from "./FooterCta";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import { Pricing } from "./Pricing";
+import { UseCase } from "./UseCase";
 
 /**
  * The landing page composition — section order is the pitch:
- * hook → process → who → price → objections → ask.
+ * hook → process → who → price → objections → proof → ask.
  *
- * Six sections, matching the reference wireframe
- * (`docs/reference/baseball_platform_wireframe.html`). Reordering these is a
+ * Seven sections, in the order of Audrey's approved wireframe
+ * (`docs/reference/Home • Desktop.svg`). Note the proof section lands *after*
+ * the FAQ, not before it: the wireframe answers the objections first, then
+ * shows a sample review as the last thing before the ask. Reordering these is a
  * marketing decision, and this is where it's made.
  */
 export function LandingPage() {
@@ -18,9 +21,10 @@ export function LandingPage() {
     <>
       <Hero />
       <HowItWorks />
-      <Coaches />
+      <Coach />
       <Pricing />
       <Faq />
+      <UseCase />
       <FooterCta />
     </>
   );

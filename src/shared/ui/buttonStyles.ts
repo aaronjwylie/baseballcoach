@@ -4,22 +4,27 @@
  * button acts — but they are the same control to the eye. Principle #8.
  */
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 const SIZES = {
-  md: "px-5 py-2.5 text-sm",
-  lg: "px-7 py-3.5 text-base",
+  md: "px-6 py-2.5 text-sm",
+  lg: "px-7 py-3 text-[15px]",
 } as const;
 
 /**
- * Primary is **ink, not accent**, matching the reference wireframe: the blue is
- * reserved for step numbers and specialty tags, so the call to action stays the
- * darkest thing on the page and nothing competes with it.
+ * Three shapes, one language — the approved wireframe draws every control as a
+ * 12px rounded rectangle in ink and white, and never in a second colour.
+ *
+ * - `outline` is the landing page's call to action: white, ink-bordered.
+ * - `primary` stays a solid ink fill for the app's forms, where an outline
+ *   button would be too quiet to be the thing you're meant to press.
+ * - `onDark` is the same control inverted, for the header and footer bands,
+ *   where an ink border would vanish.
  */
 const VARIANTS = {
   primary: "bg-ink text-surface hover:bg-ink-soft",
-  accent: "bg-accent text-surface hover:bg-accent-dark",
-  outline: "border border-line bg-surface text-ink hover:bg-paper-alt",
+  outline: "border-2 border-ink bg-surface text-ink hover:bg-paper-alt",
+  onDark: "bg-surface text-ink hover:bg-paper-alt",
 } as const;
 
 export type ButtonVariant = keyof typeof VARIANTS;

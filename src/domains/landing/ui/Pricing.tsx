@@ -1,56 +1,50 @@
 import { ButtonLink, Container } from "@/shared/ui";
 import { site } from "@/shared/config/site";
-import { included } from "../model/copy";
+import { pricing } from "../model/copy";
 import { SectionHeading } from "./SectionHeading";
-import { CheckIcon } from "./icons";
 
 /**
- * One card, one price, one action.
+ * The ask, on a full-bleed band so the number can't be scrolled past.
  *
- * The reference wireframe folds "what you get" into this card rather than
- * giving it a section of its own — the value proposition lands hardest next to
- * the number. That's why there's no standalone WhatYouGet section any more.
+ * The price is read from `site.price` — the same field the PaymentIntent is
+ * built from — so the figure on this card and the amount Stripe charges cannot
+ * disagree.
  */
 export function Pricing() {
   return (
-    <section
-      id="pricing"
-      className="scroll-mt-16 border-b border-line bg-surface py-20 sm:py-24"
-    >
-      <Container>
+    <section id="pricing" className="scroll-mt-8 bg-band py-20 lg:py-28">
+      <Container className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
         <SectionHeading
-          title="Simple, upfront pricing"
-          subtitle="Pay once, per review. Send another whenever you're ready."
+          eyebrow={pricing.eyebrow}
+          title={pricing.title}
+          align="center"
         />
-        <div className="mx-auto mt-14 max-w-sm rounded-xl border border-line bg-paper-alt p-8 text-center">
-          <p className="text-sm text-ink-soft">Per video submission</p>
-          <p className="mt-2 text-4xl font-semibold text-ink">
+
+        <div className="rounded-3xl bg-paper-alt px-8 py-12 text-center sm:px-14">
+          <p className="text-5xl font-medium tracking-tight lg:text-[56px]">
             {site.price.label}
-            <span className="ml-1.5 text-base font-normal text-ink-muted">
-              {site.price.currency.toUpperCase()}
-            </span>
           </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Single payment · no subscription
+          <p className="mt-1 text-3xl font-medium tracking-tight lg:text-[40px]">
+            {site.price.unit}
           </p>
 
-          <ul className="mt-7 space-y-3 text-left">
-            {included.map((item) => (
-              <li key={item.title} className="flex items-start gap-2.5">
-                <CheckIcon />
-                <span className="text-sm text-ink-soft">{item.title}</span>
+          <ul className="mx-auto mt-7 inline-block text-left text-[17px] text-ink-soft">
+            {pricing.included.map((item) => (
+              <li key={item} className="flex gap-2.5">
+                <span aria-hidden>•</span>
+                {item}
               </li>
             ))}
           </ul>
 
-          <div className="mt-8">
-            <ButtonLink href="/start" size="lg" className="w-full">
+          <div className="mt-9 flex flex-col items-center gap-4">
+            <ButtonLink href="/start" variant="outline" size="lg">
               Submit a video
             </ButtonLink>
+            <ButtonLink href="/contact" variant="outline" size="lg">
+              Questions? Reach out
+            </ButtonLink>
           </div>
-          <p className="mt-3 text-xs text-ink-muted">
-            Secure checkout via Stripe · no account required
-          </p>
         </div>
       </Container>
     </section>

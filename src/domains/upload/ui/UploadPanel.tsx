@@ -97,7 +97,7 @@ function Confirmation() {
       <p className="mx-auto mt-3 max-w-md text-ink-muted">
         We&apos;ve got it and it&apos;s queued for review. A coach will send a
         personal breakdown to your email within{" "}
-        <strong className="text-ink">{site.turnaroundDays}</strong>. You can
+        <strong className="text-ink">{site.turnaround}</strong>. You can
         close this tab.
       </p>
       <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">

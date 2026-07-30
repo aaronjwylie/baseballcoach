@@ -2,101 +2,170 @@
  * Landing-page section copy. Client-editable — change words here, never in the
  * section components.
  *
+ * Transcribed from Audrey's approved wireframe
+ * (`docs/reference/Home • Desktop.svg`, 2026-07-30). Where the wireframe holds
+ * an obvious typo or an unfinished placeholder, the correction is noted at the
+ * value — see the slice doc for the full list, which needs Audrey's sign-off.
+ *
  * Brand facts used across the whole app (name, price, turnaround) live in
  * `shared/config/site.ts`; this file is only what the landing page says.
  */
 import { site } from "@/shared/config/site";
 
-export const howItWorks = [
-  {
-    step: "01",
-    title: "Record your video",
-    body: "Film your swing, pitch, or fielding rep on your phone. Side-on and front-on angles work best. Under five minutes is plenty.",
-  },
-  {
-    step: "02",
-    title: "Upload and pay",
-    body: "Tell us about the player, check out securely, and drop the video in. The whole thing takes about two minutes.",
-  },
-  {
-    step: "03",
-    title: "Get your breakdown",
-    body: `Your coach reviews the footage and records a personal video walkthrough — mechanics, timing, and the drills to fix it. Back to you in ${site.turnaroundDays}.`,
-  },
-] as const;
+/** The chip above the hero headline. */
+export const heroEyebrow = "Now taking clips";
 
 /**
- * `specialty` is the tag shown on a coach card — it tells a parent at a glance
- * whether this coach covers what their kid needs. The words match the `Focus`
- * options a customer picks at checkout, so the promise on the landing page and
- * the choice in the form use the same vocabulary.
+ * The four claim chips under the hero CTAs. The turnaround one is derived
+ * rather than written, so it can never contradict the pricing card or the
+ * confirmation email.
  */
-export const coaches = [
-  {
-    name: "Coach A",
-    role: "Former NPB infielder",
-    specialty: "Hitting",
-    bio: "Twelve seasons in Japan's top division. Specializes in bat path, timing, and the lower-half mechanics that generate power without losing contact.",
-    initials: "A",
-  },
-  {
-    name: "Coach B",
-    role: "Former NPB right-hander",
-    specialty: "Pitching",
-    bio: "Built his career on command over velocity. Works on delivery repeatability, arm health, and sequencing that holds up deep into games.",
-    initials: "B",
-  },
-  {
-    name: "Coach C",
-    role: "Youth & high school development",
-    specialty: "Hitting & Pitching",
-    bio: "Fifteen years coaching Japanese high school baseball. Focused on fundamentals, discipline, and building mechanics that last.",
-    initials: "C",
-  },
+export const heroClaims = [
+  `${site.turnaround} turnaround`,
+  "1:1 video reply",
+  "No robots",
+  "Real pro coach",
 ] as const;
 
-export const included = [
-  {
-    title: "Frame-by-frame breakdown",
-    body: "Your coach scrubs through the footage and shows you exactly what's happening — not generic tips, your actual mechanics.",
-  },
-  {
-    title: "A personal video walkthrough",
-    body: "A recorded Loom-style walkthrough talking through your swing or delivery, so you can rewatch it as many times as you need.",
-  },
-  {
-    title: "Drills that fix the root cause",
-    body: "Specific, prioritized drills to work on before your next session — the one or two things that will move the needle most.",
-  },
-  {
-    title: "Trained in the Japanese system",
-    body: "Coaching built on the fundamentals, discipline, and mechanical precision that Japanese baseball is known for.",
-  },
-] as const;
+/** The rotated card overlapping the hero image. */
+export const heroHighlights = {
+  title: "Highlights",
+  items: [
+    "Human coaching",
+    "Japanese baseball philosophy",
+    "Personalized advice",
+    "Trusted expertise",
+  ],
+} as const;
+
+export const method = {
+  eyebrow: "Method",
+  title: "Three steps. That’s it.",
+  subtitle: `Send one clip. Get a personal video breakdown in ${site.turnaround}. Real humans, zero robots.`,
+  steps: [
+    {
+      step: "01",
+      title: "Film one rep",
+      body: "One swing or pitch. Side angle. Phone is fine.",
+    },
+    {
+      step: "02",
+      title: "Sensei reviews",
+      body: "A former NPB coach studies your clip frame by frame.",
+    },
+    {
+      // Wireframe reads "Get personalize feedback".
+      step: "03",
+      title: "Get personalized feedback",
+      body: "One personal video. One adjustment. One drill.",
+    },
+  ],
+} as const;
+
+/**
+ * One lead coach and the team under him — the shape the wireframe asks for,
+ * replacing the three equal coach cards that preceded it.
+ *
+ * Every value here is placeholder text drawn straight from the wireframe and
+ * **cannot go live as written** — it needs Yuta's real name, record, and
+ * headshot. The `stats` are unsourced claims for the same reason.
+ */
+export const coach = {
+  // Wireframe reads "HEAD SENSE".
+  eyebrow: "Head sensei",
+  title: "Meet your coach name and his expert team",
+  bio: "Short bio Japanese professional baseball league, but he has a few coaches under him who help with drills etc with number years of experience with these achievements.",
+  quote: "Anyone can say ‘swing earlier.’ I show you what earlier feels like.",
+  /** The rotated card overlapping the coach photo. */
+  card: ["Name", "Position", "Team"],
+  stats: [
+    { value: "NPB", label: "Pro coaches" },
+    { value: "12 yrs", label: "Coaching youth" },
+    { value: "EN / JP", label: "Languages" },
+    { value: "Hit · Pitch", label: "Speciality" },
+  ],
+} as const;
+
+/**
+ * The pricing card's feature list.
+ *
+ * ⚠️ "Written summary of notes" is a promise the pipeline does not currently
+ * back: a submission carries exactly one `feedbackUrl`, so a coach delivers one
+ * file, not a video *and* a document. Selling both needs either a schema change
+ * or a copy change — flagged in the slice doc rather than silently resolved.
+ */
+export const pricing = {
+  eyebrow: "Pricing",
+  title: "One video. No subscription.",
+  included: [
+    "Coach video walkthrough",
+    "Written summary of notes",
+    `Delivered within ${site.turnaround}`,
+  ],
+} as const;
+
+export const useCase = {
+  eyebrow: "Use case",
+  title: "Type of feedback you will receive.",
+  body: "Learn the mindset and techniques that shaped players like Ichiro Suzuki and Shohei Ohtani — with personalized coaching designed for young athletes.",
+} as const;
+
+/**
+ * `answer` is prose, `items` is a list. A question uses one or the other, which
+ * is what lets the "Why Baseball Sensei" row hold its bullets without needing a
+ * second component.
+ *
+ * The wireframe's last four answers are one placeholder sentence repeated, and
+ * it asks the same question twice. The questions are kept; the answers are the
+ * real ones, because shipping four identical answers would be worse than
+ * departing from a greybox.
+ */
+export const faqHeading = {
+  eyebrow: "FAQ",
+  title: "Straight answers.",
+} as const;
 
 export const faqs = [
   {
-    q: "What kind of video should I send?",
-    a: "A phone video is perfect. Film from the side and from the front if you can, and include a few reps. Keep it under five minutes — MP4 or MOV.",
+    q: "What age?",
+    answer: "Players 10 and up — little league to pro-track.",
   },
   {
-    q: "How long until I get feedback?",
-    a: `Most reviews come back in ${site.turnaroundDays}. You'll get an email the moment your coach's breakdown is ready.`,
+    q: "Why Baseball Sensei",
+    items: [
+      "Human coaching",
+      "Japanese baseball philosophy",
+      "Professional experience",
+      "Personalized advice",
+      "Trusted expertise",
+    ],
   },
   {
-    q: "What do I actually receive?",
-    a: "A personal video walkthrough from your coach — going through your footage, pointing out what's working, what isn't, and the specific drills to fix it. Some coaches include a written summary too.",
+    q: "How long does feedback take?",
+    answer: `Personal video reply within ${site.turnaround}.`,
+  },
+  {
+    q: "What do I film?",
+    answer: "One side-angle clip on your phone. We send a guide.",
+  },
+  {
+    q: "What video format should I use?",
+    answer:
+      "MP4 or MOV, straight off the phone. Keep it under five minutes so your coach sees the reps, not the warm-up.",
   },
   {
     q: "Who are the coaches?",
-    a: "Professional coaches and former players from the Japanese system. Every review is done by a real coach — nothing is automated.",
+    answer:
+      "Professional coaches and former players from the Japanese system. Every review is done by a real coach — nothing is automated.",
   },
   {
-    q: "Is this for kids or adults?",
-    a: "Both. Most of our players are 10–18, but we review adult players too. If the player is a minor, a parent or guardian should submit on their behalf.",
-  },
-  {
-    q: "Can I send more than one video?",
-    a: "Yes — each review is purchased individually, so submit as many as you like. Many players send one every few weeks to track progress.",
+    q: "Can I submit more than one video?",
+    answer:
+      "Yes — each review is purchased individually, so send as many as you like. Many players send one every few weeks to track progress.",
   },
 ] as const;
+
+export const finalCta = {
+  title: "Send your first clip.",
+  subtitle: "Fix one thing before your next game.",
+} as const;

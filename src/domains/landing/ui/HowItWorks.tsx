@@ -1,28 +1,38 @@
 import { Container } from "@/shared/ui";
-import { howItWorks } from "../model/copy";
+import { method } from "../model/copy";
 import { SectionHeading } from "./SectionHeading";
 
+/**
+ * The process, on the one dark band in the page. The band is doing work: it
+ * separates the pitch above from the proof below, and it is where a reader
+ * either understands the product in three lines or leaves.
+ */
 export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="scroll-mt-16 border-b border-line bg-surface py-20 sm:py-24"
+      className="scroll-mt-8 bg-ink-soft py-20 text-surface lg:py-28"
     >
       <Container>
         <SectionHeading
-          title="How it works"
-          subtitle="No app to download, no account to manage. Film it, send it, and get a coach's breakdown back."
+          eyebrow={method.eyebrow}
+          title={method.title}
+          subtitle={method.subtitle}
         />
-        <ol className="mt-14 grid gap-10 md:grid-cols-3">
-          {howItWorks.map((step, index) => (
-            <li key={step.step} className="text-center">
-              <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
-                {index + 1}
-              </span>
-              <h3 className="mt-4 text-base font-semibold text-ink">
+
+        <ol className="mt-16 grid gap-6 md:grid-cols-3">
+          {method.steps.map((step) => (
+            <li
+              key={step.step}
+              className="rounded-3xl bg-paper-alt px-8 py-9 text-ink"
+            >
+              <p className="text-3xl font-medium tracking-tight text-ink-soft">
+                {step.step}
+              </p>
+              <h3 className="mt-4 text-[28px] font-medium leading-tight tracking-tight">
                 {step.title}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              <p className="mt-5 text-[15px] leading-relaxed text-ink-soft">
                 {step.body}
               </p>
             </li>

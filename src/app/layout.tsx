@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Jost } from "next/font/google";
 import "./globals.css";
 import { env } from "@/shared/config/env";
 import { site } from "@/shared/config/site";
 import { SiteHeader } from "@/shared/layout/SiteHeader";
 import { SiteFooter } from "@/shared/layout/SiteFooter";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * The wireframe sets its type in a geometric sans — single-storey `a`, tall
+ * ascenders, wedge apostrophe. Jost is the closest freely-licensed match.
+ * TODO(2026-07-30, Ben): confirm the exact face with Audrey before launch.
+ */
+const jost = Jost({
+  variable: "--font-jost",
   subsets: ["latin"],
 });
 
@@ -39,7 +44,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${jost.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
         <SiteHeader />

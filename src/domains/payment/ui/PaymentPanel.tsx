@@ -151,7 +151,7 @@ function PaymentFields({
           <span className="font-semibold text-ink">{amount}</span>
         </div>
         <p className="mt-1 text-xs text-ink-muted">
-          One-time payment · feedback in {site.turnaroundDays}
+          One-time payment · feedback in {site.turnaround}
         </p>
       </div>
 

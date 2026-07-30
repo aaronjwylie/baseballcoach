@@ -12,7 +12,7 @@ export function sendVideoReceived(to: string, playerName?: string) {
     html: emailShell(
       "Your video is in ✅",
       `<p>We've received the video${playerName ? ` for ${playerName}` : ""} and it's queued for review.</p>
-       <p>One of our coaches will break it down and send a personal walkthrough within <strong>${site.turnaroundDays}</strong>. We'll email you the moment it's ready.</p>`,
+       <p>One of our coaches will break it down and send a personal walkthrough within <strong>${site.turnaround}</strong>. We'll email you the moment it's ready.</p>`,
     ),
   });
 }

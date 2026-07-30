@@ -9,15 +9,31 @@
  */
 export const site = {
   name: "Baseball Sensei",
-  tagline: "Elite Japanese baseball coaching, wherever you play.",
+  /** The wireframe's hero headline. Doubles as the page title. */
+  tagline: "Train like Japan's best players",
+  /**
+   * The wireframe's hero subhead, which is also the meta description. Its
+   * first word reads "Seisei" in the wireframe — transcribed here as the brand
+   * name, on the reading that it is a typo for Sensei.
+   */
   subhead:
-    "Upload a video of your swing or delivery. A professional coach trained in the Japanese system breaks it down frame by frame and sends you a personal video walkthrough within days.",
+    "Baseball Sensei provides pitching analysis and batting analysis by a professional baseball coach from Japan.",
   email: "hello@example.com",
+  /**
+   * `amountCents` is what Stripe actually charges — the landing page's price
+   * and the PaymentIntent read the same field, so they cannot disagree.
+   * Set to $80 on 2026-07-30 to match Audrey's approved wireframe.
+   */
   price: {
-    amountCents: 14900,
+    amountCents: 8000,
     currency: "cad",
-    label: "$149",
-    unit: "per video review",
+    label: "$80",
+    unit: "per submission",
   },
-  turnaroundDays: "3–5 days",
+  /**
+   * The customer-facing SLA, in the wireframe's words. Every promise of speed
+   * — landing page, checkout, upload confirmation, emails — reads this, so
+   * tightening or relaxing it is one edit, not a hunt.
+   */
+  turnaround: "48 hours",
 } as const;

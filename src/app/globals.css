@@ -1,41 +1,46 @@
 @import "tailwindcss";
 
 /**
- * Design tokens.
+ * Design tokens — Audrey's approved wireframe
+ * (`docs/reference/Home • Desktop.svg`, 2026-07-30).
  *
- * PROVISIONAL — taken from the reference wireframe in
- * `docs/reference/baseball_platform_wireframe.html` (2026-07-29). A warm
- * off-white ground with a calm blue accent, which reads more "trusted
- * instructor" than the navy/rose these replaced.
+ * The palette is monochrome by design: every hex below is sampled straight out
+ * of the wireframe, which uses exactly six values and no accent hue. Emphasis
+ * is carried by weight and contrast — ink on paper, a dark band, a grey band —
+ * not by colour. That is why `--color-accent` resolves to ink: the token name
+ * survives for the rest of the app, but there is no second colour to point it at.
  *
- * Audrey's brand work supersedes this wholesale. Everything visual is
- * expressed as a token here and consumed by name, so that swap stays a
- * one-file change — no component references a hex value.
+ * Everything visual is a token here and consumed by name, so a brand colour
+ * arriving later stays a one-file change — no component holds a hex value.
  */
 @theme {
-  /* Ground: three warm neutrals, lightest to white */
-  --color-paper: #f7f6f2;
-  --color-paper-alt: #f1efe8;
+  /* Ground */
+  --color-paper: #ffffff;
+  --color-paper-alt: #f2f2f2;
   --color-surface: #ffffff;
 
-  /* Ink */
-  --color-ink: #2c2c2a;
-  --color-ink-soft: #5f5e5a;
-  --color-ink-muted: #888780;
+  /* Ink — the dark header/footer, body copy, and the muted third step down */
+  --color-ink: #161616;
+  --color-ink-soft: #4f4f52;
+  --color-ink-muted: #818184;
 
-  /* Lines */
-  --color-line: #e4e2da;
-  --color-line-strong: #c9c6bc;
+  /* Lines. The wireframe draws borders in ink at 2px, never a hairline grey;
+     `line` exists for the form surfaces the wireframe doesn't cover. */
+  --color-line: #e3e3e3;
 
-  /* Accent — used for step numbers, tags, and links */
-  --color-accent: #185fa5;
-  --color-accent-dark: #124b83;
-  --color-accent-soft: #e6f1fb;
+  /* Band — full-bleed feature bands and the placeholder blocks standing in for
+     photography until real assets land. */
+  --color-band: #b3b3b5;
 
-  /* Affirmative — checkmarks in the pricing list */
+  /* Accent — no hue in the approved design; ink carries every emphasis. */
+  --color-accent: #161616;
+  --color-accent-dark: #000000;
+  --color-accent-soft: #f2f2f2;
+
+  /* Affirmative — not used on the landing page; kept for the app's forms. */
   --color-success: #1d9e75;
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jost), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
