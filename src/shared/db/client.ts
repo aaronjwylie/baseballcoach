@@ -17,7 +17,10 @@ const globalForDb = globalThis as unknown as {
   _pgClient?: ReturnType<typeof postgres>;
 };
 
-const client = globalForDb._pgClient ?? postgres(env.databaseUrl, { max: 10 });
+// `prepare: false` is required for a transaction-mode pooler (Supabase's pooled
+// URL, port 6543) and harmless against the local/direct connection.
+const client =
+  globalForDb._pgClient ?? postgres(env.databaseUrl, { max: 10, prepare: false });
 
 if (process.env.NODE_ENV !== "production") {
   globalForDb._pgClient = client;

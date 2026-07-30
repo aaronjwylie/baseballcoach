@@ -10,6 +10,11 @@ export default defineConfig({
   dialect: "postgresql",
   casing: "snake_case",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "",
+    // Migrations need a direct session (prepared statements), so prefer
+    // Supabase's non-pooling URL in prod; fall back to DATABASE_URL locally.
+    url:
+      process.env.POSTGRES_URL_NON_POOLING ??
+      process.env.DATABASE_URL ??
+      "",
   },
 });

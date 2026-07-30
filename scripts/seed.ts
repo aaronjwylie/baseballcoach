@@ -40,6 +40,16 @@ async function main() {
   const admin = await ensureUser(adminEmail, adminPassword, "admin");
   console.log(`[seed] admin ${adminEmail} ${admin.created ? "created" : "exists"}`);
 
+  // The admin is always seeded. The sample coach + submissions are dev-only
+  // fixtures — never pollute a production database with them.
+  if (process.env.SEED_SAMPLES !== "1") {
+    console.log("[seed] SEED_SAMPLES != 1 — admin only, skipping sample data");
+    if (admin.created && !process.env.SEED_ADMIN_PASSWORD) {
+      console.log(`[seed] default password is "${adminPassword}" — change it after first login`);
+    }
+    return;
+  }
+
   const coachEmail = "coach@example.com";
   const coach = await ensureUser(coachEmail, "changeme123", "coach");
   if (coach.created) {

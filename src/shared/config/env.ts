@@ -31,9 +31,14 @@ export const env = {
     );
   },
 
-  // Postgres — the system of record. Dockerized locally, Vercel Postgres in prod.
+  // Postgres — the system of record. Dockerized locally; in prod, Supabase's
+  // integration provides POSTGRES_URL (pooled), so accept either name.
   get databaseUrl() {
-    return required("DATABASE_URL");
+    return (
+      process.env.DATABASE_URL ||
+      process.env.POSTGRES_URL ||
+      required("DATABASE_URL")
+    );
   },
 
   // Auth.js session/JWT secret for the operator portal.
