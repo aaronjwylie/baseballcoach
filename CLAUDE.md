@@ -8,7 +8,7 @@
 
 This document is the single source of truth for Claude Code building this project. Read it fully before touching any code. When it conflicts with intuition, this file wins. When it conflicts with an SDK's docs, the SDK's docs win — but flag the discrepancy.
 
-**Operational detail lives in [OPERATIONS.md](OPERATIONS.md)** — account setup, the Airtable base, webhook configuration, DNS, and the client's daily workflow. This file owns *intent*; that file owns *what to click*.
+**Operational detail lives in [OPERATIONS.md](OPERATIONS.md)** — account setup, database and storage provisioning, webhook configuration, DNS, and the operator's daily workflow. This file owns *intent*; that file owns *what to click*.
 
 ---
 
@@ -22,7 +22,7 @@ This document is the single source of truth for Claude Code building this projec
 5. [Repository Structure (FSD)](#5-repository-structure-fsd)
 6. [Environment Variables](#6-environment-variables)
 7. [Third-Party Tool Integrations](#7-third-party-tool-integrations)
-8. [Data Model (Airtable)](#8-data-model-airtable)
+8. [Data Model (Postgres)](#8-data-model-postgres)
 9. [Webhook Contracts](#9-webhook-contracts)
 10. [Build Timeline & Sprint Plan](#10-build-timeline--sprint-plan)
 11. [Coding Standards](#11-coding-standards)
@@ -40,43 +40,33 @@ A working, deployed, end-to-end paid flow already exists, and in several places
 it diverges from what's specified below. This section is the reconciliation, so
 that nothing downstream inherits a false premise.
 
-### ⚠️ Platform pivot (2026-07-29) — operator portal + Postgres, Airtable out
+### The 2026-07-29 direction change — operator portal + Postgres
 
-**This is the governing decision. Where the rest of this document conflicts with
-it, this wins.** Full record and rationale: [ADR
-007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
+The biggest move since kickoff, recorded in [ADR
+007](docs/decisions/007-portal-and-postgres-retire-airtable.md) (and storage in
+[ADR 006](docs/decisions/006-object-storage-over-mux.md)). The whole document
+below now reflects it; this note is the one-paragraph orientation.
 
-The project is moving from "thin custom layer over Airtable" toward a real
-**operator platform**:
+The operator side becomes a **custom portal** instead of Airtable:
 
-- **Yuta and the coaches log into a role-based portal** to manage and respond to
-  submissions. Admin (Yuta): all submissions, coach management, assignment.
-  Coach: assigned submissions, download the video, upload feedback, mark
-  complete. **Customers still do not log in** — paid links + `/status` email
-  lookup, unchanged.
-- **Vercel Postgres is the database.** **Airtable and Make.com are dropped.** An
-  ORM (**Drizzle** preferred) is now warranted.
-- **Auth** for the two roles (Yuta + coaches) — leaning **Auth.js**; final call
-  at build. No customer-facing auth.
-- **Storage stays Vercel Blob** ([ADR 006](docs/decisions/006-object-storage-over-mux.md)),
-  now for both the customer video and the coach's feedback file. **Mux is out.**
+- **Yuta and the coaches log in.** Admin (Yuta): all submissions, coach
+  management, assignment. Coach: their assigned submissions — download the video,
+  upload feedback, mark complete. **Customers still don't log in** — paid links +
+  the `/status` email lookup, unchanged.
+- **Vercel Postgres** is the database (via **Drizzle**); **Auth.js** guards the
+  two operator roles. **Airtable, Make.com, and Mux are gone.**
+- **Object storage** (Vercel Blob in prod; local disk in dev) holds both the
+  customer video and the coach's feedback file.
 
-**What this reverses below:** §1's "not a SaaS platform" premise and its
-"Yuta operates from Airtable / coaches never log in" success criteria; §2's
-non-goals banning accounts, a coach portal, an admin dashboard, and a real
-database; §3–§4's "Airtable is the database / Make.com is the glue / do NOT
-introduce Postgres, an ORM, or auth"; and the §8 Airtable schema (replaced by the
-Postgres model sketched in ADR 007). These sections are annotated but not yet
-rewritten in place — **that rewrite happens when the build starts.** ADR 007 +
-this note are the authoritative spec until then.
+Retires [ADR 001](docs/decisions/001-airtable-as-db.md) and
+[ADR 002](docs/decisions/002-passthrough-holds-record-id.md). Still in force: the
+FSD structure, the naming sweep, Zod, and Stripe Elements
+([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) — the pivot
+changes the storage and operator layers, not those. The customer-facing flow
+(pay → upload → status → feedback email) is unchanged.
 
-**Still valid:** the FSD structure, the naming sweep, Zod, and Stripe Elements
-([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) all still apply —
-this pivot changes the storage + operator layer, not those. The customer-facing
-flow (pay → upload → status → feedback email) is unchanged.
-
-**Status: build paused** pending Aaron's word and Yuta/Ben sign-off on the
-operating-model change (Yuta moves from a spreadsheet to a portal we build).
+**Status:** in build, on a feature branch, local-first (dockerized Postgres +
+local storage) ahead of porting to Vercel.
 
 ### What's built and working
 
@@ -156,34 +146,30 @@ Steps 0–3 were the wireframe-independent block; Step 5 is too.
 
 ### What we're building
 
-An online baseball coaching platform where parents pay to submit videos of their kids batting or pitching, and receive expert feedback from coaches based in Japan. The customer experience is smooth and professional; the client (Yuta) operates the workflow manually through Airtable with automation glue between his tools.
+An online baseball coaching platform where parents pay to submit videos of their kids batting or pitching, and receive expert feedback from coaches based in Japan. Two audiences meet on it: **customers** get a smooth, professional funnel — land, pay, upload, and receive feedback — and **operators** (Yuta and his coaches) run the coaching workflow from a custom portal they log into. Payments run on Stripe, video and feedback files on object storage, transactional mail on Resend; everything else — submissions, coaches, assignment, feedback delivery — is our own application on our own database.
 
 ### The single most important sentence in this document
 
-**This is a productized service with a thin custom layer, not a SaaS platform.**
+**Build exactly as much platform as the coaching workflow needs — and not one feature more.**
 
-> **Superseded by the [§0 platform pivot](#0-where-this-project-actually-is).**
-> As of 2026-07-29 the operator side *is* becoming a custom platform (portal +
-> Postgres). The customer-facing thinness below still holds; the "everything else
-> is off-the-shelf" half does not.
-
-Every architectural decision follows from that. The landing page, payment flow, and video upload are custom — they're what customers experience and where the brand lives. Everything else (submission tracking, coach assignment, feedback delivery) is handled by off-the-shelf tools (Airtable, Stripe, Mux, Make.com, Resend) wired together intelligently.
+Every architectural decision follows from that. The customer funnel and the operator portal are both first-class and both custom, because both are where the product lives. But the portal exists to *run this business* — a queue, coach assignment, feedback hand-off — not to become a general SaaS. When a feature would serve scale we don't have yet, it's on the upgrade path, not in v1.
 
 ### The northstar goal
 
-Give Yuta a functional, paying-customer-ready product at roughly 10% of the cost of a full SaaS platform, with a clear upgrade path as demand grows. The MVP validates the concept with ~10 early users before any further investment.
+Give Yuta a functional, paying-customer-ready product he and his coaches operate end-to-end themselves, built lean and kept small. The MVP validates the concept with ~10 early users before any further investment, and has a clear upgrade path as demand grows.
 
 ### What success looks like
 
 - A customer can visit the landing page, pay via Stripe, upload a video, and receive coach feedback by email — all without friction
-- Yuta operates the workflow from an **operator portal** (was: Airtable) — manages coaches, assigns submissions, tracks the queue _(per the [§0 pivot](#0-where-this-project-actually-is))_
-- Coaches **log into the portal** to download videos and upload feedback (was: everything by email) _(per the [§0 pivot](#0-where-this-project-actually-is))_
+- Yuta operates the workflow from his **admin portal** — managing coaches, assigning submissions, and tracking the queue at a glance
+- Coaches **log into their own portal** to download assigned videos and upload their feedback response
+- A submission moves from paid → uploaded → assigned → reviewed → delivered without developer intervention
 - Operating costs are under ~$80 CAD/month at MVP volume
-- The platform can run indefinitely at this scale, or grow into custom systems if demand emerges
+- The platform runs comfortably at this scale, and grows into more only when demand earns it
 
 ### The lean validation philosophy
 
-The client is personally funding this as a side project to validate demand before committing to larger investment. Every decision — scope, tools, architecture — should be evaluated against this. Resist the instinct to build for scale you don't have. Manual steps in the workflow are a feature at this stage, not a bug.
+The client is personally funding this as a side project to validate demand before committing to larger investment. Every decision — scope, tools, architecture — should be evaluated against this. Resist the instinct to build for scale you don't have. The operator portal is the *minimum* needed to run the coaching workflow, not a platform build-out; keep it that way.
 
 ---
 
@@ -191,17 +177,16 @@ The client is personally funding this as a side project to validate demand befor
 
 The following are **intentionally not built**. If a request would require adding any of these, stop and flag it as out of scope before writing code. Do not silently expand scope.
 
-- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — Stripe captures it at checkout; the status lookup identifies returning customers by email. _(Operator logins for Yuta + coaches now exist — see below.)_
+- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — Stripe captures it at checkout; the status lookup identifies returning customers by email. Operator logins (Yuta + coaches) are in scope and are a different thing; customers never get an account.
 - **Customer dashboards** beyond the email lookup for submission status.
-- ~~**Coach login portal or coach-facing application.**~~ **Now in scope** — coaches log into the portal to download videos and upload feedback. [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
-- ~~**Custom admin dashboard.**~~ **Now in scope** — Yuta's admin portal replaces the Airtable admin tool. [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
+- **Operator features beyond running the coaching workflow.** The portal covers submissions, coaches, assignment, and feedback hand-off — not analytics suites, billing consoles, or anything that serves scale we don't have. The line is "does Yuta need it to process a submission today?"
 - **Subscription billing.** Per-submission payment only.
 - **Automated PDF report generation.** Coaches deliver PDFs manually if at all.
 - **Custom video annotation tools** (drawing on frames, slow-motion analysis, side-by-side comparison).
 - **Multilingual UI.** English at launch. Translation module is a separate future engagement.
 - **Stripe Connect for coach payouts.** Yuta pays coaches manually outside the platform.
 - **Native mobile apps.** iOS and Android are Phase 2.
-- **Advanced analytics** beyond what Airtable provides natively.
+- **Advanced analytics** beyond the submission queue and simple counts the portal shows.
 - **Real-time coaching, chat, or live sessions.**
 - **Japanese-specific payment methods** (Konbini, bank transfer). Stripe credit cards only.
 
@@ -211,65 +196,48 @@ If Yuta or Audrey asks for any of these mid-build, respond: "That's outside the 
 
 ## 3. Architecture
 
-> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** The diagram
-> and principles below describe the Airtable + Make.com back office. The operator
-> side is now an **app-owned portal on Vercel Postgres** (Airtable and Make.com
-> gone; Blob for files). "Airtable is the database" and "Make.com is the glue" no
-> longer hold. Full rewrite at build time; [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) governs.
+One Next.js app on Vercel holds everything: the public customer funnel, the
+operator portal, and the API routes that glue them to Stripe, storage, and
+Postgres. There is no external database and no external automation platform —
+the app is the system of record and the glue.
 
 ### System diagram
 
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│                       CUSTOMER-FACING (custom)                    │
-│                                                                   │
-│  Landing page → Submission form → Stripe Elements →              │
-│  Mux upload page → Confirmation → Status lookup page             │
-│                                                                   │
-│  Runs on: Next.js on Vercel                                       │
-└──────────┬────────────────────────────────────────┬───────────────┘
-           │                                        │
-           ▼                                        ▼
-    ┌──────────────┐                        ┌──────────────┐
-    │   Stripe     │                        │     Mux      │
-    │  (payments)  │                        │   (video)    │
-    └──────┬───────┘                        └──────┬───────┘
-           │ webhook                                │ webhook
-           ▼                                        ▼
-    ┌────────────────────────────────────────────────────────┐
-    │           Next.js API routes (Vercel)                  │
-    │      Webhook handlers, email triggers, glue logic      │
-    └───────────────────┬────────────────────────────────────┘
-                        │
-                        ▼
-                ┌──────────────┐
-                │   Airtable   │◄──── Make.com automations
-                │  (database + │      (Stripe → Airtable,
-                │   admin UI)  │       Mux → Airtable,
-                └──────┬───────┘       status → email)
-                       │
-                       ▼
-                ┌──────────────┐
-                │    Resend    │──── Customer emails
-                │ (email API)  │     (confirmation, feedback ready)
-                └──────────────┘
-
-
-         ┌───────────────────────────────────────────┐
-         │       YUTA-OPERATED WORKFLOW              │
-         │                                           │
-         │  Reviews Airtable, assigns coach,         │
-         │  emails coach, uploads feedback,          │
-         │  marks status complete → email fires      │
-         └───────────────────────────────────────────┘
+                        Next.js app on Vercel
+┌──────────────────────────────────────────────────────────────────┐
+│  CUSTOMER  (public, no login)     │  OPERATOR PORTAL  (auth)       │
+│  Landing → Pay → Upload           │  Admin (Yuta): queue,          │
+│  → Confirm → Status lookup        │  coach mgmt, assignment        │
+│                                   │  Coach: download video,        │
+│                                   │  upload feedback, complete     │
+└───────────────┬───────────────────────────────────┬──────────────┘
+                │        API routes + actions        │
+                ▼                                     ▼
+   ┌──────────────────────────┐          ┌───────────────────────────┐
+   │ Stripe (payments)        │          │ Object storage            │
+   │  webhook → PaymentIntent │          │  Blob (prod) / disk (dev) │
+   └───────────┬──────────────┘          │  video + feedback files   │
+               │                         └────────────┬──────────────┘
+               ▼                                      ▼
+        ┌────────────────────────────────────────────────────┐
+        │   Postgres  (system of record, via Drizzle)         │
+        │   users · coaches · submissions                     │
+        └───────────────────────────┬────────────────────────┘
+                                     │
+                                     ▼
+                             ┌──────────────┐
+                             │   Resend     │  customer emails:
+                             │  (email)     │  paid · received · ready
+                             └──────────────┘
 ```
 
 ### Key architectural principles
 
-1. **The front door is custom, everything behind it is off-the-shelf.** Landing page, payment, upload — custom. Database, automation, admin — off-the-shelf.
-2. **Airtable is the database.** Do not introduce Postgres, MySQL, Supabase, or any other real database.
-3. **Make.com is the glue.** For automations that don't require app code (status change → email, admin notifications), Make.com handles it. For webhook receipt and processing, use Next.js API routes.
-4. **Every custom-built feature should justify its existence.** If a $20/month tool can do it, use the tool.
+1. **Both surfaces are custom; the outside dependencies are few.** The customer funnel and the operator portal are ours. Stripe, object storage, and Resend are the only outside services — payments, files, and mail, the things not worth building.
+2. **Postgres is the system of record.** One database, accessed through Drizzle. No second store, no external "database as a service" standing in for it.
+3. **The app is the glue.** Webhook receipt, status transitions, email triggers, and assignment all live in Next.js API routes and server actions — no external automation platform.
+4. **Every custom-built feature should justify its existence.** If a $20/month tool can do it and it isn't part of the product experience, use the tool.
 
 ### Hosting note (important)
 
@@ -304,21 +272,15 @@ If Yuta or Audrey pushes back on this, escalate to Ben before changing the archi
 
 ### Do NOT introduce
 
-> **Updated by the [§0 pivot](#0-where-this-project-actually-is).** A real
-> database, an ORM, and an auth library are now **in scope** (Postgres + Drizzle +
-> Auth.js for the operator portal). The rest of this list still holds.
+- A **second** database or datastore — one Postgres, via Drizzle, is the record.
+- A **different ORM** (Prisma, etc.) — Drizzle is the one.
+- A **different auth library** (Clerk, Supabase Auth) — Auth.js covers the two operator roles, and there is no customer-facing auth at all.
+- A state management library (Redux, Zustand) — React state is sufficient.
+- A UI library beyond shadcn/ui (MUI, Chakra) — Tailwind + shadcn only.
+- A custom email delivery setup (Nodemailer, SES) — use Resend.
+- CSS-in-JS libraries — Tailwind only.
 
-- ~~A real database~~ — **now Vercel Postgres** (was: Airtable). Don't add a
-  *second* one — one Postgres, via Drizzle.
-- ~~An ORM~~ — **Drizzle is in** (was: banned). Don't also add Prisma.
-- ~~An auth library~~ — **Auth.js is in** for the portal (was: no accounts). Keep
-  it to the two operator roles; no customer auth.
-- A state management library (Redux, Zustand) — React state is sufficient
-- A UI library beyond shadcn/ui (MUI, Chakra) — Tailwind + shadcn only
-- A custom email delivery setup (Nodemailer, SES) — use Resend
-- CSS-in-JS libraries — Tailwind only
-
-If anything outside the pivot feels needed, the scope is wrong. Stop and flag it.
+If one of these feels needed, the scope is probably wrong. Stop and flag it.
 
 ---
 
@@ -343,7 +305,7 @@ split.
 
 The two invariants worth memorizing:
 
-- **Every Airtable column name lives in one file** — `domains/submission/api/submissionSchema.ts`.
+- **Every storage column name lives in one place** — the Drizzle schema in `shared/db`, surfaced through `domains/submission/api/`.
 - **Every `process.env` read lives in one file** — `shared/config/env.ts`.
 
 Each domain carries a `_XxxDocumentation.md` — its northstar, its honest current state, and
@@ -354,52 +316,53 @@ slice.** They are kept true in the same commit as the code.
 
 ## 6. Environment Variables
 
-> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** Drop the
-> `AIRTABLE_*` and `MUX_*` vars below; add `DATABASE_URL` (Vercel Postgres),
-> `BLOB_READ_WRITE_TOKEN` (Blob), and `AUTH_SECRET` (+ provider creds if not
-> Auth.js). Stripe/Resend vars stay. `.env.example` is the live source of truth;
-> this block is rewritten at build time.
-
-All env vars go in `.env.local` for dev and Vercel project settings for prod. Document every one in `.env.example`.
+All env vars go in `.env.local` for dev and Vercel project settings for prod.
+`.env.example` is the live source of truth for the full list; this block is the
+shape.
 
 ```bash
-# === Public (safe to expose to browser) ===
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+# === Public (browser-safe) — read via shared/config/publicEnv.ts ===
+NEXT_PUBLIC_SITE_URL="http://localhost:3000"        # no trailing slash
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..."
-NEXT_PUBLIC_MUX_ENV_KEY="..."
 
-# === Server-only ===
+# === Server-only — read via shared/config/env.ts ===
+DATABASE_URL="postgres://app:app@localhost:5432/baseball"  # dockerized in dev, Vercel Postgres in prod
+AUTH_SECRET="..."                                    # Auth.js session/JWT secret
+
 STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
-STRIPE_PRICE_ID="price_..."
+STRIPE_PRICE_ID="price_..."                          # optional — else priced inline from site.ts
 
-MUX_TOKEN_ID="..."
-MUX_TOKEN_SECRET="..."
-MUX_WEBHOOK_SECRET="..."
+# Object storage: local disk in dev, Vercel Blob in prod
+STORAGE_DIR="./.storage"                             # dev only — local-disk root
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."           # prod only
 
-AIRTABLE_API_KEY="pat..."           # Personal access token
-AIRTABLE_BASE_ID="app..."
-AIRTABLE_SUBMISSIONS_TABLE="Submissions"
-AIRTABLE_COACHES_TABLE="Coaches"
-
-RESEND_API_KEY="re_..."
-RESEND_FROM_EMAIL="hello@yourdomain.com"
-
-ADMIN_NOTIFICATION_EMAIL="yuta@yourdomain.com"
+RESEND_API_KEY="re_..."                              # optional — unset = emails skipped, logged
+EMAIL_FROM="Baseball Sensei <hello@yourdomain.com>"
 ```
 
-### env.ts — the ONLY place `process.env` is read
+### `shared/config/` — the ONLY place `process.env` is read
 
-Create `src/config/env.ts` that validates every env var at startup using Zod. Fail loudly if any required var is missing. Import from `env.ts` everywhere else in the codebase — never read `process.env` directly.
+Two files, split by **audience** so a client component never imports a module
+full of secrets (see [structure.md §5](docs/design/structure.md)):
+
+- `shared/config/env.ts` — server-only secrets (`DATABASE_URL`, `AUTH_SECRET`,
+  Stripe secret, Blob token, Resend key). Validated with Zod; required values
+  throw at point of use with a message naming the variable.
+- `shared/config/publicEnv.ts` — the handful of `NEXT_PUBLIC_*` values the
+  browser needs.
+
+Nothing outside that folder reads `process.env`.
 
 ```typescript
-// src/config/env.ts (example structure)
+// shared/config/env.ts (shape)
 import { z } from "zod";
 
 const envSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.string().url(),
+  DATABASE_URL: z.string().url(),
+  AUTH_SECRET: z.string().min(1),
   STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
-  // ... etc
+  // ...
 });
 
 export const env = envSchema.parse(process.env);
@@ -409,110 +372,61 @@ export const env = envSchema.parse(process.env);
 
 ## 7. Third-Party Tool Integrations
 
-> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** **Airtable,
-> Make.com, and Mux are out.** Persistence is **Vercel Postgres** (via Drizzle),
-> files are **Vercel Blob**, and the operator side is an **app portal** with
-> **Auth.js**. Stripe and Resend are unchanged. The Airtable/Make.com/Mux
-> subsections below are historical until the build-time rewrite; [ADR 006](docs/decisions/006-object-storage-over-mux.md)
-> and [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) govern.
+This section is the conceptual guide to each outside service and the two internal
+seams (Postgres, storage). Follow the SDK docs for exact API calls.
 
-This section describes what each tool does, why we chose it, and how to integrate it. Follow the SDK docs for exact API calls; use this as the conceptual guide.
+### Stripe — payments
 
-### Stripe
+- Server: `stripe` SDK for creating PaymentIntents and verifying webhooks.
+- Client: `@stripe/react-stripe-js` + `@stripe/stripe-js` for the embedded
+  `<PaymentElement>` — payment stays on our domain, our branding ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)).
 
-**Role:** Payment processing.
+Flow: `/start` posts to `POST /api/payment/intent`, which creates a PaymentIntent
+carrying the customer/player details in metadata and returns its `clientSecret`.
+`<PaymentElement>` collects the card; on success the browser lands on
+`/upload?payment_intent=…`. Stripe fires `payment_intent.succeeded` to
+`POST /api/webhooks/stripe`, which **creates the submission row in Postgres**
+(status `Awaiting Upload`). Idempotent on the payment-intent id.
 
-**Integration approach:**
+### Object storage — video + feedback files
 
-- Server: `stripe` SDK for creating PaymentIntents and verifying webhooks
-- Client: `@stripe/react-stripe-js` + `@stripe/stripe-js` for the embedded `<PaymentElement>` component
-- We use **Stripe Elements (embedded)**, not Stripe Checkout. This lets us keep the payment step on our own domain with our branding.
+One `shared/storage` seam, two drivers behind a single interface: **local disk**
+in dev (files under `STORAGE_DIR`), **Vercel Blob** in prod ([ADR 006](docs/decisions/006-object-storage-over-mux.md)).
+Both the customer's video and the coach's feedback file go through it.
 
-**Key flow:**
+- Upload: the browser sends the file to an app route that streams it to the
+  active driver and records the resulting URL/key on the submission.
+- Download: the coach's link resolves through `/api/video/[id]`, which checks the
+  row and serves (or redirects to) the file — links stay stable and private
+  across a driver swap.
 
-1. Client posts form data to `/api/stripe/create-intent`
-2. Server creates PaymentIntent with metadata `{ customerEmail, customerName, playerName, playerAge, skillFocus }`
-3. Client renders `<PaymentElement>` with the returned `clientSecret`
-4. On success, redirect to upload page with payment intent ID in URL
-5. Stripe fires `payment_intent.succeeded` webhook to `/api/stripe/webhook`
-6. Webhook handler creates Airtable row with status "Awaiting Upload"
+No transcoding, no streaming — the coach downloads and scrubs locally.
 
-**Idempotency:** Stripe retries webhooks. Check if the Airtable row for this payment intent already exists before creating.
+### Postgres — system of record
 
-### Mux
+- Accessed through **Drizzle**; the connection and schema live in `shared/db`.
+  Every submission / coach / user fact is a column here — one home per fact.
+- Read and written by the domains, never by route files directly (see §3b).
+- Email is lowercased on write and on lookup, so the status lookup matches
+  regardless of case.
 
-**Role:** Video upload, storage, and streaming.
+### Auth.js — operator identity
 
-**Integration approach:**
+- Two roles: `admin` (Yuta) and `coach`. **Customers never authenticate.**
+- The session guards the portal routes: a coach sees only their assigned
+  submissions; the admin sees everything and manages coaches.
+- The first admin is **seeded**, not self-signup; Yuta adds coaches from within
+  the portal.
 
-- Server: `@mux/mux-node` SDK for creating direct upload URLs and verifying webhooks
-- Client: `@mux/mux-uploader-react` for the browser-side upload component
-- **Direct uploads** — the video goes straight from the browser to Mux, never through our server
+### Resend — transactional email
 
-**Key flow:**
-
-1. Client posts to `/api/mux/upload-url` with the payment intent ID
-2. Server verifies the payment intent is paid **by retrieving it from Stripe** — not by trusting our own Airtable row, which may be stale or forged
-3. Server calls `ensureSubmission()` to get (or idempotently create) the Airtable row
-4. Server creates a Mux direct upload URL with `passthrough: <airtableRecordId>`
-5. Client renders `<MuxUploader>` with the upload URL
-6. Upload completes → Mux fires `video.asset.ready` webhook to `/api/mux/webhook`
-7. Webhook handler reads `passthrough`, fetches that Airtable record **directly by ID**, updates it with Mux Asset ID and Playback ID, changes status to "New"
-
-**The `passthrough` field is critical** — it's how we link the video back to the submission. It holds the **Airtable record ID**, so the webhook does a direct record fetch rather than a `filterByFormula` search: cheaper, no formula-escaping surface, and unambiguous. (Earlier drafts of this document said it held the payment intent ID. The code's approach is better and wins — see [ADR 002](docs/decisions/002-passthrough-holds-record-id.md).) Fall back to a lookup on Mux Upload ID if `passthrough` is ever absent.
-
-### Airtable
-
-**Role:** Database and admin UI (Yuta's dashboard).
-
-**Integration approach:**
-
-- Use the `airtable` SDK or direct REST calls to the Airtable API
-- Wrap all Airtable calls in `src/integrations/airtable/` — no raw calls elsewhere
-- Rate limit: Airtable allows 5 requests per second per base. Cache reads where sensible; batch writes when possible
-
-**Key operations:**
-
-- Create submission row (from Stripe webhook)
-- Update submission row (from Mux webhook, and from Make.com when status changes)
-- Read submissions by email (for the status lookup page)
-- Read a single submission by ID (for the feedback viewer)
-
-**Email lookup rule:** Always normalize email to lowercase before writing to Airtable and before comparing on lookup. Airtable formulas are case-sensitive by default.
-
-### Resend
-
-**Role:** Transactional email delivery.
-
-**Integration approach:**
-
-- Server: `resend` SDK for sending
-- Templates: React Email components in `src/emails/`
-- Send domain must be verified in Resend before launch (DNS propagation takes time)
-
-**Emails to send:**
-
-- **Payment Confirmation** — triggered by Stripe webhook, sent immediately after payment
-- **Video Received** — triggered by Mux webhook, sent when upload completes
-- **Feedback Ready** — triggered by Make.com when Yuta changes status to "Complete"
-
-**Note:** This document originally had Make.com sending the Feedback Ready email. **In the built system our app sends all three.** An Airtable automation watches for `Status = Complete` and calls `POST /api/webhooks/airtable`, which re-reads the record, sends the email, and ticks `Feedback Emailed` so a re-fire can't double-send. One less vendor in the path, and the email template lives with the other two.
-
-### Make.com
-
-**Role:** Automation glue between tools that don't need app code.
-
-**Status: we haven't needed it, and probably shouldn't keep it.**
-
-Three scenarios were budgeted:
-
-1. ~~**Feedback Ready**~~ — built instead as an Airtable automation calling our own endpoint (see the Resend note above). Done, working, no Make.com involved.
-2. **Abandoned Upload Reminder** — submissions stuck in "Awaiting Upload" for 24+ hours → reminder email. Not built. A native Airtable automation can do this.
-3. **Admin Daily Digest** (optional) — daily summary for Yuta. Not built. Same.
-
-Since the one scenario that justified the subscription turned out not to need it, **recommend dropping Make.com from the stack**: one fewer vendor, one fewer bill, one fewer place to look when something breaks. That's squarely on-northstar. Flagged for Ben — see [OPERATIONS.md](OPERATIONS.md#make-com).
-
-If Make.com does stay, Claude Code never touches it directly — it only keeps the Airtable schema and webhook contracts compatible with what Make.com reads.
+- Server: `resend` SDK. Templates as React Email components under `shared/email`.
+- **Best-effort by design:** a send failure logs and never breaks a webhook or a
+  portal action ([ADR 004](docs/decisions/004-best-effort-email.md)). If
+  `RESEND_API_KEY` is unset, sends are skipped and logged — honest degradation.
+- Three messages: **payment received** (Stripe webhook), **video received** (on
+  upload complete), **feedback ready** (when a coach marks a submission complete
+  in the portal — no external automation).
 
 ### Vercel
 
@@ -529,82 +443,88 @@ If Make.com does stay, Claude Code never touches it directly — it only keeps t
 
 ---
 
-## 8. Data Model (Airtable)
+## 8. Data Model (Postgres)
 
-> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** The data
-> model moves to **Vercel Postgres** — tables `users`, `coaches`, `submissions`
-> (roles, assignment FK, `videoUrl`/`feedbackUrl` on Blob), with `status` as a
-> real enum. The Postgres sketch is in [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md);
-> it gets promoted into this section (and a Drizzle schema) when the build starts.
-> The Airtable schema below is historical. **Mux ID columns are also gone** —
-> replaced by Blob URLs ([ADR 006](docs/decisions/006-object-storage-over-mux.md)).
+The system of record is one Postgres database, three tables, accessed through
+Drizzle. **Column names live in exactly one place** — the Drizzle schema in
+`shared/db` (surfaced to the domain via `domains/submission/api/`) — and a
+migration is the only way they change. One home per fact.
 
-Airtable is the database. The schema lives in one base with two tables.
+### `submissions`
 
-### Submissions table
+The spine. One row per paid request; every other domain orbits it.
 
-**Field names are load-bearing.** They are declared in exactly one place — [`src/domains/submission/api/submissionSchema.ts`](src/domains/submission/api/submissionSchema.ts) — and nowhere else in the codebase may contain a quoted Airtable column name. A rename is that one file plus a migration on the client's base.
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid, primary key | our own id — the linkage key everywhere (retires the Mux `passthrough` trick) |
+| `customerEmail` | text | always lowercased on write and lookup |
+| `playerName` | text | |
+| `playerAge` | integer | |
+| `focus` | enum | `Hitting` · `Pitching` · `Fielding` · `Catching` · `Other` |
+| `customerNotes` | text | the customer's words, never overwritten |
+| `internalNotes` | text | system messages + operator notes |
+| `status` | enum | see lifecycle below |
+| `stripePaymentId` | text, unique | PaymentIntent id — the webhook's idempotency key |
+| `stripeAmount` | integer (cents) | |
+| `videoUrl` | text, null | storage key/URL for the customer's video |
+| `assignedCoachId` | uuid, FK → `coaches.id`, null | set by the admin on assignment |
+| `feedbackUrl` | text, null | storage key/URL for the coach's response |
+| `feedbackEmailedAt` | timestamptz, null | idempotency guard on the feedback email |
+| `submittedAt` | timestamptz, default `now()` | |
+| `updatedAt` | timestamptz | |
 
-| Field Name          | Type                        | Written by                                  |
-| ------------------- | --------------------------- | ------------------------------------------- |
-| Submission ID       | Autonumber (primary)        | Airtable — read-only to the app             |
-| Customer Email      | Single line text            | App — always lowercased on write and read   |
-| Player Name         | Single line text            | App                                         |
-| Player Age          | Number (integer)            | App                                         |
-| Focus               | Single select               | App — Hitting / Pitching / Fielding / Catching / Other |
-| Customer Notes      | Long text                   | App — the customer's words, never overwritten |
-| Internal Notes      | Long text                   | App (system messages) + Yuta                |
-| Status              | Single select               | App, then Yuta — see below                  |
-| Submitted At        | Created time                | Airtable — read-only to the app             |
-| Stripe Payment ID   | Single line text            | App                                         |
-| Stripe Amount       | Currency (CAD)              | App                                         |
-| Mux Upload ID       | Single line text            | App                                         |
-| Mux Asset ID        | Single line text            | App (Mux webhook)                           |
-| Mux Playback ID     | Single line text            | App (Mux webhook)                           |
-| Assigned Coach      | Single line text            | **Yuta** — app reads only                   |
-| Feedback Video URL  | URL                         | **Yuta** — the coach's Loom/video link      |
-| Feedback Emailed At | Date (with time)            | App — idempotency guard on the feedback email |
+`customerNotes` and `internalNotes` stay separate so an operator can forward a
+customer's words to a coach without hand-cleaning `[system]` lines out of them.
 
-Three columns are **read-only to the app** and the codec refuses to write them even if a caller asks: `Submission ID` and `Submitted At` are computed by Airtable, and `Assigned Coach` is Yuta's to set.
+### `status` lifecycle (enum, in order)
 
-`Stripe Payment ID` holds a Checkout Session ID today and a PaymentIntent ID once the Elements rebuild lands. The name describes the role, not the Stripe object, so that change needs no second migration.
+`awaiting_upload → new → assigned → in_review → complete`
 
-**Splitting `Customer Notes` from `Internal Notes` is deliberate.** They were one column, which meant system messages (`[system] Mux reported an error…`) interleaved with what the parent wrote — so nothing could be forwarded to a coach without being cleaned by hand first.
+The app writes the first two — `awaiting_upload` on payment, `new` on upload
+complete. The admin drives `assigned` and `in_review` from the portal as he works
+the queue; a coach marking their work done sets `complete`, **which fires the
+feedback email.** The status lookup collapses the middle three into calm
+customer-facing language — a parent doesn't need to know their video is
+"unassigned." The transition rules live in `domains/submission`, not scattered
+across the UI.
 
-### Status values (exact strings, in order)
+### `coaches`
 
-1. `"Awaiting Upload"` — Payment succeeded, video not yet uploaded
-2. `"New"` — Video uploaded, ready for coach assignment
-3. `"Assigned"` — Coach assigned by Yuta, awaiting review
-4. `"In Review"` — Coach is working on feedback
-5. `"Complete"` — Feedback delivered
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid, primary key | |
+| `userId` | uuid, FK → `users.id` | the coach's login |
+| `name` | text | |
+| `specialties` | enum[] | matches the `focus` options |
+| `languages` | text[] | e.g. English, Japanese |
+| `isActive` | boolean | Yuta toggles from the portal |
 
-The app only ever writes the first two. `Assigned` and `In Review` are Yuta's to set as he works the queue, and `Complete` is what triggers the feedback email. That split is expressed in the type system as `AppWrittenStatus`.
+### `users`
 
-The status lookup collapses `New`, `Assigned`, and `In Review` into calm customer-facing language — a parent doesn't benefit from knowing their video is "unassigned."
+Operator identity for Auth.js — **operators only, never customers.**
 
-**Never invent new status values in code without updating Airtable and the automations that watch it.**
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid, primary key | |
+| `email` | text, unique | login |
+| `passwordHash` | text | credentials auth |
+| `role` | enum | `admin` · `coach` |
+| `createdAt` | timestamptz | |
 
-### Coaches table — not built, deliberately
-
-**No Coaches table exists.** `Assigned Coach` is a plain text field Yuta types into.
-
-The table below is the upgrade path, not a to-do. A linked record buys referential integrity, per-coach filtered views, and specialty-based routing — none of which matter while there are three coaches Yuta knows by name. Build it when he's routing enough volume that typing a name is error-prone, or when something in the app needs to *answer questions about coaches* rather than just display one. Until then it's an empty table and a join.
-
-When it does get built, `Assigned Coach` changes from text to a linked record, and the pitfall in §12 applies — linked fields return arrays of record IDs, so denormalize the name into a formula field rather than doing a second fetch per row.
-
-| Field Name         | Type                | Notes                     |
-| ------------------ | ------------------- | ------------------------- |
-| Coach Name         | Single line text    | Primary field             |
-| Email              | Email               | For Yuta to contact       |
-| Specialties        | Multiple select     | Match the Focus options   |
-| Languages          | Multiple select     | "English", "Japanese"     |
-| Active             | Checkbox            | Toggle                    |
-| Linked Submissions | Link to Submissions | Reverse link auto-created |
+The first `admin` (Yuta) is **seeded**; coaches are created from the admin portal,
+each paired with a `coaches` row.
 
 ---
 
 ## 9. Webhook Contracts
+
+> **Being reworked with the build.** The **Stripe** webhook stays but now writes
+> the submission row to **Postgres** (not Airtable). The **Mux** webhook is
+> **removed** — object storage replaces it ([§7](#7-third-party-tool-integrations)),
+> and "upload complete → status `new`" becomes an app callback, not a Mux event.
+> The raw-body signature-verification rule below still applies to Stripe. Exact
+> URLs are the wire contract in [structure.md §3b](docs/design/structure.md);
+> this section is rewritten in the same commit as the reworked handlers.
 
 ### Stripe webhook
 
@@ -661,9 +581,14 @@ export async function POST(req: Request) {
 
 Total: **4–6 weeks from kickoff to soft launch.**
 
-> **Progress against this plan.** Sprint 0 ✅ · Sprint 1 ⚠️ restructured to an interim wireframe, awaiting Audrey's design · Sprint 2 ✅ Elements (Step 5), verified against real Stripe in test mode · Sprint 3 ✅ · Sprint 4 ⚠️ raw-HTML templates, not React Email; **Resend has no verified domain, so mail only reaches the account owner** · Sprint 5 ✅ status lookup, rate-limited · ⚠️ feedback viewer outstanding · Sprint 6 ✅ (Airtable automations, not Make.com) · Sprint 7 ⚠️ mobile upload still untested on real devices · Sprint 8 not started.
->
-> The realignment steps in [§0](#0-where-this-project-actually-is) run before picking the sprint plan back up.
+> **This plan predates the [§0 platform pivot](#0-where-this-project-actually-is) and is being reworked.**
+> The customer-funnel sprints (landing, payment, upload, status) largely stand;
+> what changes is the layer beneath — Airtable/Mux/Make.com give way to Postgres,
+> object storage, and Auth.js — plus new work for the **admin and coach portals**.
+> The live build sequence is: docs sweep → dockerized Postgres + Drizzle schema →
+> Auth.js → move persistence/storage off Airtable/Mux → the two portals → retire
+> the old code. The sprint entries below are kept for the customer-funnel detail
+> that's still accurate; treat §0 + the ADRs as the current plan of record.
 
 ### Sprint 0 — Project Initialization (Day 1)
 
@@ -937,6 +862,11 @@ of the same idea.
 
 Read this section before coding. These have bitten similar projects.
 
+> The **Airtable** and **Mux** subsections are historical (both are being
+> retired — [§0](#0-where-this-project-actually-is)). The **Webhooks**, **Stripe**,
+> **Email**, and **Next.js App Router** notes still apply. Postgres, Drizzle,
+> storage, and Auth.js pitfalls get added as those pieces land.
+
 ### Webhooks
 
 - **Stripe and Mux retry failed webhooks.** Idempotency is critical — check if the work is done before doing it.
@@ -990,7 +920,7 @@ A feature is "done" when:
 6. Accessibility basics: form labels, alt text, keyboard navigable
 7. Any new env vars are in `.env.example`
 8. Any new manual setup steps are in OPERATIONS.md
-9. Any Airtable schema changes are documented in section 8 of this doc
+9. Any database schema change ships as a Drizzle migration and is reflected in section 8
 10. Commit message is clear; PR description summarizes what changed and what was tested
 
 ---
@@ -1000,7 +930,7 @@ A feature is "done" when:
 Stop and flag for human review if:
 
 - A request would require adding something from section 2 (Non-Goals)
-- Airtable field names, types, or options need to change
+- The Postgres schema (a table, column, or enum) needs to change
 - Stripe pricing model needs to change (per-submission vs subscription)
 - A new third-party service would be introduced
 - An external dependency's docs contradict this file
@@ -1021,14 +951,14 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 - **Client** — Yuta, who operates the platform day-to-day
 - **Submission** — One paid request from a customer for video feedback
 - **Workflow** — End-to-end process from payment to feedback delivery
-- **Airtable base** — The single Airtable workspace holding Submissions and Coaches tables
+- **Database** — The Postgres instance holding the `users`, `coaches`, and `submissions` tables
 - **The Team** — Ben (frontend), Aaron (backend advisory), Audrey (design + client relations)
 
 ---
 
 ## Related Documents
 
-- **[OPERATIONS.md](OPERATIONS.md)** — Account setup, the Airtable base, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and Yuta's daily workflow
+- **[OPERATIONS.md](OPERATIONS.md)** — Account setup, database + storage provisioning, admin seeding, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and the operator workflow _(being swept to match the pivot as each piece is built)_
 - **[PRINCIPLES.md](PRINCIPLES.md)** — how this codebase is built: the rules the structure rests on
 - **[docs/design/structure.md](docs/design/structure.md)** — the layout, segments, dependency rules, and naming
 - **`src/domains/*/_XxxDocumentation.md`** — per-slice: northstar, honest current state, and the dated decision trail. Read the slice's doc before changing the slice

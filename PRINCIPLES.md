@@ -12,10 +12,11 @@
 
 ## The two laws that outrank everything
 
-**1 · This is a productized service with a thin custom layer, not a SaaS platform.**
-Every principle below is subordinate to this one. If applying a principle would build
-machinery this business doesn't need, don't apply it. A $20/month tool beats a folder of
-our code. ([CLAUDE.md §1](CLAUDE.md#1-project-northstar).)
+**1 · Build exactly as much platform as the coaching workflow needs — and no more.**
+Every principle below is subordinate to this one. Both the customer funnel and the operator
+portal are ours to build — but if applying a principle would add machinery this business
+doesn't have the scale for yet, don't. A $20/month tool beats a folder of our code whenever
+the thing isn't part of the product experience. ([CLAUDE.md §1](CLAUDE.md#1-project-northstar).)
 
 **2 · One home per fact.** Every fact has exactly one owner; every other surface derives or
 reads it. No second copy, no resolution chain. This is the anti-drift law — and the reason
@@ -47,8 +48,8 @@ verb, or both. `submission` is both: the record *exists*, and looking yours up i
 
 ### 5 · Code lives at the highest node where it's still true
 
-The Airtable HTTP transport is true for any table → `shared/`. The knowledge that a
-submission's focus lives in a column called `Focus` is true only for submissions →
+The Postgres connection and the storage-driver seam are true for any domain → `shared/`.
+The knowledge that a submission's focus is one of five values is true only for submissions →
 `domains/submission/`. Push a fact up until it stops being universally true, then stop.
 
 ### 6 · Segments scale with the slice — never pre-create empty ceremony
