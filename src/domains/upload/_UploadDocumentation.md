@@ -1,79 +1,72 @@
 # upload — `src/domains/upload/`
 
-The **upload domain slice** — getting the video to us. All **verb**, and deliberately thin:
-the file goes browser → Mux directly and never touches our server.
+The **upload domain slice** — getting the video to us. All **verb**: the browser sends the
+file to our upload route, which streams it to storage and moves the submission forward.
 
 ---
 
 ## 1 · The northstar
 
-We don't handle video. We mint **permission** to upload, and we react when Mux says the
-asset is ready. That's the whole slice, and keeping it that small is the point — video
-storage, transcoding, and streaming are someone else's problem by design.
+The customer's file comes browser → our route → the `shared/storage` seam (local disk in
+dev, Vercel Blob in prod). We save it, record the locator on the submission, and flip the
+status to `new`. No transcoding, no streaming — the coach downloads and scrubs locally
+([ADR 006](../../../docs/decisions/006-object-storage-over-mux.md)).
 
 ```mermaid
 flowchart LR
-    PANEL["ui/UploadPanel"] -->|"POST /api/mux/upload"| API["api/uploadApi"]
-    API -->|"passthrough = record id"| MUX["Mux direct upload"]
-    PANEL -.->|"the file, direct"| MUX
-    MUX -->|"video.asset.ready"| HOOK["webhook"]
-    HOOK -->|"status → New"| SUB["Submission row"]
-    HOOK --> MAIL["api/uploadEmail"]
+    PANEL["ui/UploadPanel"] -->|"POST /api/upload (the file)"| API["/api/upload"]
+    API -->|"verify paid"| PAY["payment domain"]
+    API -->|"storeVideo"| APIU["api/uploadApi"]
+    APIU -->|"save"| STORE["shared/storage"]
+    APIU -->|"videoUrl + status → new"| SUB["Submission row"]
+    API --> MAIL["api/uploadEmail"]
 ```
 
 ### The invariants
 
-- **`passthrough` holds the Airtable record ID.** That turns the webhook's lookup into a
-  direct fetch by id instead of a formula search — cheaper, no escaping surface, no
-  ambiguity about a miss versus a match. *(See [ADR 002](../../../docs/decisions/002-passthrough-holds-record-id.md).)*
-- **An upload URL is only ever minted against a Stripe-verified paid session.** The gate
-  lives in the route, using the payment domain.
-- **The row must exist before the URL is minted** — that's where `passthrough`'s value comes
-  from. Don't create Mux uploads outside that path.
-- **Wait for `video.asset.ready`, never `video.upload.asset_created`.** An asset isn't
-  playable the moment the upload finishes.
-- **`cors_origin` is set from `NEXT_PUBLIC_SITE_URL`, and Mux enforces it.** If that variable
-  doesn't match the origin the browser is actually on, Mux refuses the upload as a CORS
-  violation — and the customer sees a failed upload with no explanation. Verified 2026-07-29:
-  a locally-minted upload carried `cors_origin: http://localhost:3000`, straight from the
-  variable. **Getting this wrong in production breaks every upload, quietly.**
-- **The received email fires only on the first transition out of `Awaiting Upload`**, so a
-  redelivered webhook can't send it twice.
-- **System messages go to `Internal Notes`, never `Customer Notes`.** The customer's own
-  words stay exactly as they wrote them, so anything forwarded to a coach is clean.
+- **The file is only stored against a Stripe-verified paid PaymentIntent.** The gate lives in
+  the `/api/upload` route, using the payment domain — an unpaid or forged reference stores
+  nothing.
+- **The storage locator is the submission's `videoUrl`** — a local key in dev, a Blob URL in
+  prod. Nothing outside `shared/storage` knows which.
+- **The received email fires only on the first upload** (the transition out of
+  `awaiting_upload`), so a re-upload can't send it twice.
+- **The coach downloads via `/api/video/[id]`, operator-only.** The customer never gets their
+  own raw video back; the coach's response comes via `/api/feedback/[id]`.
 
 ### The pieces
 
-- **the VERB** — `api/uploadApi.ts` (mint the direct upload) ·
-  `api/uploadWebhook.ts` (verify Mux's events, move the status, send the email) ·
-  `ui/UploadPanel.tsx` (the browser uploader) · `api/uploadEmail.ts` ("your video is in").
+- **the VERB** — `api/uploadApi.ts` (`storeVideo`: save to storage, move the status) ·
+  `ui/UploadPanel.tsx` (the browser file uploader) · `api/uploadEmail.ts` ("your video is
+  in"). The HTTP surface is `app/api/upload/route.ts`.
 - No `model/`: **there is no Upload record.** The upload's facts live on the submission
-  (`muxUploadId`, `muxAssetId`, `muxPlaybackId`).
+  (`videoUrl`, `status`).
 
 ---
 
-## 2 · Where we are now — 2026-07-28
+## 2 · Where we are now — 2026-07-29
 
-- ✅ **Direct upload**, gated on a verified payment, with a one-hour URL timeout.
-  **Verified against real Mux 2026-07-29:** credentials accepted, upload minted, and
-  `passthrough` confirmed to carry the Airtable record id — so the ADR 002 linkage holds
-  against actual Mux, not just our own test payloads. Webhook signature verification also
-  confirmed with the real `MUX_WEBHOOK_SECRET`, and a wrong secret rejected with 400.
-- ✅ **`video.asset.ready`** → asset and playback ids stored, status → `New`, email sent.
-  **Verified against a live base 2026-07-29**, including the idempotency guard: a second
-  delivery moves nothing and sends no second email, because the row has already left
-  `Awaiting Upload`.
-- ✅ **`video.asset.errored`** → status back to `Awaiting Upload` with a `[system]` line in
-  `Internal Notes`, so Yuta can spot it and ask for a re-upload.
-- 🔶 **Mobile upload is untested on real devices.** CLAUDE.md Sprint 7 flags this as the
-  highest-risk part of the whole flow, and it's still unverified — most customers will be
-  filming and uploading from a phone.
-- 🔶 **No client-side size or duration guidance** beyond the FAQ's "under five minutes."
-  Mux validates; the customer finds out late.
+- ✅ **Upload → storage**, gated on a verified payment. The file streams to the
+  `shared/storage` driver (local disk in dev), the submission gets its `videoUrl` and moves
+  to `new`, and the "video received" email fires on the first upload.
+- ✅ **Download** — `/api/video/[id]` (operator-only, 401 without a session) streams the file
+  back. Verified end to end against the seeded data: a session gets `200 video/mp4`, no
+  session gets `401`.
+- 🔶 **Mobile upload untested on real devices** — still the highest-risk part of the flow.
+- 🔶 **No upload progress bar** — the plain uploader shows "Uploading…", not a percentage —
+  and **no client-side size/duration guidance** beyond the FAQ.
+- 🔶 **Large files hit the platform body limit on Vercel.** Fine locally; the prod path may
+  need a direct-to-Blob client upload or chunking. Flagged for the port.
 
 ---
 
 ## 3 · Where we came from
+
+**2026-07-29 · Storage cutover** ([ADR 006](../../../docs/decisions/006-object-storage-over-mux.md)).
+Mux is gone. The direct-upload + `<MuxUploader>` + `video.asset.ready` webhook were replaced
+by a plain uploader that POSTs the file to `/api/upload`, which streams it to the
+`shared/storage` seam and moves the status. `passthrough` (ADR 002) is retired — the
+submission's own uuid is the link. Everything below is the Mux era, kept as the trail.
 
 **Before 2026-07-28**, this slice was `lib/mux.ts`, the upload-URL logic inline in
 `app/api/mux/upload/route.ts`, and `app/upload/upload-client.tsx`. Step 2 collected them and

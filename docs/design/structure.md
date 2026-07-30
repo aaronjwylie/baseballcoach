@@ -34,8 +34,9 @@ the Pages Router, and nothing here is a cross-domain widget.
 domains/
   submission/   the paid request for feedback — the spine noun, plus looking yours up
   payment/      paying for one (Stripe)
-  upload/       getting the video to us (Mux)
+  upload/       getting the video to us (storage)
   feedback/     the coach's response coming back
+  account/      operator identity — who logs into the portal
   landing/      the sales pitch
 ```
 
@@ -56,7 +57,7 @@ Worked example — `domains/submission/`:
 submission/
   model/submission.ts          the type family + statuses     ┐ the NOUN — shape + logic
   model/submissionInput.ts     pre-payment input + validation ┘
-  api/submissionSchema.ts      the Airtable codec               I/O — the storage seam
+  api/submissionRow.ts         the row↔domain mapper            I/O — the storage seam
   api/submissionApi.ts         the queries
   ui/StatusLookup.tsx          "show me my submissions"         pixels — the verb
   index.ts                     the barrel (public surface)
@@ -114,10 +115,10 @@ A route file may **not** contain:
 calls, the logic is in the wrong file. Every route here is under 55 lines and none imports an
 SDK — that's the invariant, and it's greppable.
 
-**The URL paths are a wire contract, not a naming choice.** `/api/webhooks/stripe` and
-friends are configured in the Stripe, Mux, and Airtable dashboards. CLAUDE.md §5 once
-proposed different paths (`/api/stripe/webhook`); renaming them now would mean re-pointing
-every webhook — the single failure this project has already hit. They stay as they are.
+**The URL paths are a wire contract, not a naming choice.** `/api/webhooks/stripe` is
+configured in the Stripe dashboard. CLAUDE.md §5 once proposed a different path
+(`/api/stripe/webhook`); renaming it would mean re-pointing the webhook — the single failure
+this project has already hit. It stays as it is.
 
 ---
 
@@ -143,10 +144,9 @@ layout can change freely.
 
 ## 5 · The invariants worth stating out loud
 
-**Every Airtable column name lives in exactly one file** —
-`domains/submission/api/submissionSchema.ts`. No other file in the codebase may contain a
-quoted Airtable column name. If you're typing one, you're in the wrong file. *(Rule #2. This
-is what Step 1 of the realignment bought.)*
+**Every stored column name lives in one place** — the Drizzle schema in `shared/db`,
+surfaced to the domain through `domains/submission/api/submissionRow.ts`. No other file turns
+a DB row into a domain object. A schema change is a migration. *(Rule #2.)*
 
 **Every `process.env` read lives in `shared/config/`** — `env.ts` for server-only secrets,
 `publicEnv.ts` for the handful of `NEXT_PUBLIC_*` values the browser needs. Two files, split

@@ -14,7 +14,7 @@ Its `Status` is the whole workflow in one field.
 
 ```mermaid
 flowchart LR
-    PAY["payment domain<br/>creates one"] --> SUB["Submission<br/>(Airtable row)"]
+    PAY["payment domain<br/>creates one"] --> SUB["Submission<br/>(Postgres row)"]
     UP["upload domain<br/>attaches video"] --> SUB
     FB["feedback domain<br/>completes it"] --> SUB
     SUB --> LOOK["ui/StatusLookup<br/>customer reads theirs"]
@@ -25,14 +25,11 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
 
 ### The invariants
 
-- **Every Airtable column name in this codebase lives in `api/submissionSchema.ts`.** No
-  other file may contain one. A rename is one line here plus a migration on the client's
-  base. *(PRINCIPLES #2.)*
-- **Three columns are read-only to the app** and the codec refuses to write them even if a
-  caller asks: `Submission ID` and `Submitted At` are Airtable-computed; `Assigned Coach` is
-  Yuta's. Enforced at runtime, not just in types — a cast can slip past the compiler.
-- **Email is normalized to lowercase on write and on read.** Airtable's formula comparison
-  is case-sensitive and customers don't type their address the same way twice.
+- **The storage column names live in the Drizzle schema (`shared/db`), and the row↔domain
+  mapping lives in `api/submissionRow.ts`.** No other file turns a DB row into a Submission.
+  A schema change is a Drizzle migration. *(PRINCIPLES #2.)*
+- **Email is normalized to lowercase on write and on lookup**, so a customer who checks out
+  as `Alex@x.com` and later looks up `alex@x.com` finds their own submission.
 - **One schema validates on both sides.** `model/submissionInput.ts` holds the Zod schemas;
   the client form and the API route use the same objects, so they cannot drift into
   disagreeing about what's acceptable. **The server always re-validates** — client validation
@@ -43,16 +40,16 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
   customers by an *unverified* email, so anything on that type is visible to anyone who
   guesses an address. Adding a field to it is a security decision, which is why it lives
   here rather than in the route that serializes it.
-- **Malformed stored data degrades, never crashes.** An unrecognized `Status` or `Focus` —
-  a typo'd select option in the base — is dropped rather than trusted into a bad type.
-- **The app writes only `Awaiting Upload` and `New`.** The other three statuses are Yuta's,
-  expressed in the type system as `AppWrittenStatus`.
+- **`status` and `focus` are Postgres enums**, so the DB itself rejects a bad value — no
+  runtime guard needed the way the Airtable single-selects required one.
+- **The customer-facing flow writes only `awaiting_upload` and `new`.** The other three
+  statuses are driven from the operator portal, expressed as `AppWrittenStatus`.
 
 ### The pieces
 
 - **the NOUN** — `model/submission.ts` (the type family, `SUBMISSION_STATUSES`,
-  `FOCUS_OPTIONS`) · `api/submissionSchema.ts` (the codec — the storage seam) ·
-  `api/submissionApi.ts` (the queries).
+  `FOCUS_OPTIONS`) · `api/submissionRow.ts` (the row↔domain mapper — the storage seam) ·
+  `api/submissionApi.ts` (the Drizzle queries).
 - **the VERB** — `ui/StatusLookup.tsx` (email in, your submissions out) ·
   `model/submissionInput.ts` (validating what a customer types before they pay) ·
   `model/publicSubmission.ts` (the trim-to-safe projection).
@@ -64,30 +61,36 @@ its job.
 
 ---
 
-## 2 · Where we are now — 2026-07-28
+## 2 · Where we are now — 2026-07-29
 
-- ✅ **The type family** — `Submission`, `SubmissionPatch`, `SubmissionStatus`, `Focus`.
-- ✅ **The codec** — bidirectional, with a runtime read-only guard and defensive reads.
-  Covered by a 22-assertion round-trip check — **run ad hoc from a scratchpad; there is
-  still no test framework in the repo**, so it doesn't run in CI and nobody else can run it.
-- ✅ **The queries** — create, update, get, and four finders.
-- ✅ **The status lookup** — `/status` → `POST /api/status` → sanitized list, rate limited.
-  **Verified against a live base 2026-07-29:** returns the projection with
-  `submissionId` and `submittedAt` populated by Airtable, and no Stripe/Mux ids or
-  internal notes crossing the boundary.
+- ✅ **On Postgres via Drizzle.** `Submission`, `NewSubmission`, `SubmissionPatch`, the
+  `submission_status`/`focus` enums, and the `api/submissionRow.ts` mapper.
+- ✅ **The queries** — create, update, get, finders (by payment id, by email, by coach) and
+  `listSubmissions` for the admin queue.
+- ✅ **The status lookup** — `/status` → `POST /api/status` → sanitized `PublicSubmission`
+  list, rate limited. Exposes the row `id` (so the customer can hit their own feedback
+  download) and `hasFeedback`, and nothing internal.
 - ✅ **Zod schemas**, shared by the form and the route, with per-field errors in the UI.
-  Covered by a 37-assertion check alongside the codec's.
 - 🔶 **The rate limit is per-instance.** Five per minute per IP, held in one serverless
   instance's memory — so a caller spread across instances gets more, and a cold start resets
   the window. It stops a script in a loop, which is the realistic threat here; it does not
   stop a distributed one. Shared state (Upstash Redis) is the honest fix and is a scope
   decision for Ben, since it's a new third-party service. See `shared/lib/rateLimit.ts`.
-- 🔶 **`Assigned Coach` is plain text.** Becomes a linked record if a Coaches table ever
-  earns its place (CLAUDE.md §8).
+- ✅ **`assignedCoachId` is a real FK** to `coaches` — set from the admin portal.
 
 ---
 
 ## 3 · Where we came from
+
+**2026-07-29 · Postgres + storage cutover** ([ADR 007](../../../docs/decisions/007-portal-and-postgres-retire-airtable.md)).
+The domain moved off Airtable onto Postgres/Drizzle. The Airtable codec
+(`submissionSchema.ts`) and its column-name registry were replaced by a thin
+`submissionRow.ts` mapper — the DB schema now owns the names. Status values became a
+lowercase Postgres enum; the Mux id columns became `videoUrl`/`feedbackUrl` storage
+locators; `Assigned Coach` (text) became `assignedCoachId` (FK). Client components stopped
+importing the barrel (which now pulls the Postgres client) and import the model directly.
+Everything below is the Airtable era, kept as the trail.
+
 
 **2026-07-28 · Step 1 — the naming sweep.** Column names used to be bare string literals in
 six files, and one concept carried three names: the coaching focus was `focus` in code,

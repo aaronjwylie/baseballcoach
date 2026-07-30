@@ -13,9 +13,10 @@ twice?" but **"is it still true if the domain changes?"**
 
 ```
 shared/
-  airtable/   the REST transport — create/update/get/query any table
+  db/         the Postgres connection + Drizzle schema (any table)
+  storage/    the storage seam — local-disk (dev) + Blob (prod) drivers
+  auth/       the session-cookie seam — jose token + cookie helpers
   stripe/     the SDK singleton
-  mux/        the SDK singleton
   email/      the Resend transport + the brand shell every message wears
   lib/        rateLimit — the domain-less request throttle
   ui/         Button · ButtonLink · Container · Field · Pill
@@ -44,9 +45,10 @@ shared/
 
 ---
 
-## 2 · Where we are now — 2026-07-28
+## 2 · Where we are now — 2026-07-29
 
-- ✅ **Four service seams** (airtable · stripe · mux · email), each wrapping one SDK or API.
+- ✅ **The seams** — `db` (Postgres/Drizzle), `storage` (local + Blob), `auth` (jose
+  sessions), `stripe`, and `email` — each wrapping one boundary. Airtable and Mux are gone.
 - ✅ **Five UI primitives**, with `Button` and `ButtonLink` sharing one style module so they
   can't drift.
 - ✅ **`config/env.ts`** — the only `process.env` reader.
@@ -85,6 +87,11 @@ genuinely domain-less remainder stayed.
 
 Decisions taken, with their reasoning:
 
+- **`shared/db`, `shared/storage`, `shared/auth` added; `shared/airtable` and `shared/mux`
+  removed (2026-07-29).** The platform pivot ([ADR 006](../../docs/decisions/006-object-storage-over-mux.md)/[007](../../docs/decisions/007-portal-and-postgres-retire-airtable.md)/[008](../../docs/decisions/008-jose-sessions-over-authjs.md))
+  swapped the Airtable REST transport for a Postgres connection, Mux for the storage seam,
+  and added first-party session auth. All three stay domain-less — they know a table, a
+  file, a token, never a Submission.
 - **`AirtableRecord` moved down into `shared/airtable/` (Step 2).** It had been declared in
   the submission codec, which meant `shared/airtable/client.ts` imported *up* into a domain
   to type its own return values — a dependency inversion caught by the invariant check
