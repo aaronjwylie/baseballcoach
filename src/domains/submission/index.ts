@@ -33,6 +33,7 @@ export {
 } from "./model/submissionInput";
 
 export {
+  assignSubmissionCoach,
   createSubmission,
   findByCoach,
   findByCustomerEmail,

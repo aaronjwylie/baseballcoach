@@ -77,6 +77,17 @@ export async function updateSubmission(
   return fromRow(row);
 }
 
+/** Assign a coach and move the submission to `assigned`. Admin action. */
+export async function assignSubmissionCoach(
+  submissionId: string,
+  coachId: string,
+): Promise<Submission> {
+  return updateSubmission(submissionId, {
+    assignedCoachId: coachId,
+    status: "assigned",
+  });
+}
+
 export async function getSubmission(id: string): Promise<Submission | null> {
   const [row] = await db
     .select()
