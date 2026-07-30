@@ -40,6 +40,44 @@ A working, deployed, end-to-end paid flow already exists, and in several places
 it diverges from what's specified below. This section is the reconciliation, so
 that nothing downstream inherits a false premise.
 
+### ⚠️ Platform pivot (2026-07-29) — operator portal + Postgres, Airtable out
+
+**This is the governing decision. Where the rest of this document conflicts with
+it, this wins.** Full record and rationale: [ADR
+007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
+
+The project is moving from "thin custom layer over Airtable" toward a real
+**operator platform**:
+
+- **Yuta and the coaches log into a role-based portal** to manage and respond to
+  submissions. Admin (Yuta): all submissions, coach management, assignment.
+  Coach: assigned submissions, download the video, upload feedback, mark
+  complete. **Customers still do not log in** — paid links + `/status` email
+  lookup, unchanged.
+- **Vercel Postgres is the database.** **Airtable and Make.com are dropped.** An
+  ORM (**Drizzle** preferred) is now warranted.
+- **Auth** for the two roles (Yuta + coaches) — leaning **Auth.js**; final call
+  at build. No customer-facing auth.
+- **Storage stays Vercel Blob** ([ADR 006](docs/decisions/006-object-storage-over-mux.md)),
+  now for both the customer video and the coach's feedback file. **Mux is out.**
+
+**What this reverses below:** §1's "not a SaaS platform" premise and its
+"Yuta operates from Airtable / coaches never log in" success criteria; §2's
+non-goals banning accounts, a coach portal, an admin dashboard, and a real
+database; §3–§4's "Airtable is the database / Make.com is the glue / do NOT
+introduce Postgres, an ORM, or auth"; and the §8 Airtable schema (replaced by the
+Postgres model sketched in ADR 007). These sections are annotated but not yet
+rewritten in place — **that rewrite happens when the build starts.** ADR 007 +
+this note are the authoritative spec until then.
+
+**Still valid:** the FSD structure, the naming sweep, Zod, and Stripe Elements
+([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)) all still apply —
+this pivot changes the storage + operator layer, not those. The customer-facing
+flow (pay → upload → status → feedback email) is unchanged.
+
+**Status: build paused** pending Aaron's word and Yuta/Ben sign-off on the
+operating-model change (Yuta moves from a spreadsheet to a portal we build).
+
 ### What's built and working
 
 Landing page, player-info form, payment, Mux upload, status lookup, three
@@ -124,6 +162,11 @@ An online baseball coaching platform where parents pay to submit videos of their
 
 **This is a productized service with a thin custom layer, not a SaaS platform.**
 
+> **Superseded by the [§0 platform pivot](#0-where-this-project-actually-is).**
+> As of 2026-07-29 the operator side *is* becoming a custom platform (portal +
+> Postgres). The customer-facing thinness below still holds; the "everything else
+> is off-the-shelf" half does not.
+
 Every architectural decision follows from that. The landing page, payment flow, and video upload are custom — they're what customers experience and where the brand lives. Everything else (submission tracking, coach assignment, feedback delivery) is handled by off-the-shelf tools (Airtable, Stripe, Mux, Make.com, Resend) wired together intelligently.
 
 ### The northstar goal
@@ -133,8 +176,8 @@ Give Yuta a functional, paying-customer-ready product at roughly 10% of the cost
 ### What success looks like
 
 - A customer can visit the landing page, pay via Stripe, upload a video, and receive coach feedback by email — all without friction
-- Yuta can operate the entire workflow from Airtable in ~10–15 minutes per submission
-- Coaches never log in anywhere; they receive videos by email and return feedback by email
+- Yuta operates the workflow from an **operator portal** (was: Airtable) — manages coaches, assigns submissions, tracks the queue _(per the [§0 pivot](#0-where-this-project-actually-is))_
+- Coaches **log into the portal** to download videos and upload feedback (was: everything by email) _(per the [§0 pivot](#0-where-this-project-actually-is))_
 - Operating costs are under ~$80 CAD/month at MVP volume
 - The platform can run indefinitely at this scale, or grow into custom systems if demand emerges
 
@@ -148,10 +191,10 @@ The client is personally funding this as a side project to validate demand befor
 
 The following are **intentionally not built**. If a request would require adding any of these, stop and flag it as out of scope before writing code. Do not silently expand scope.
 
-- **User accounts with passwords, signup flows, or login screens.** Email-based identity only. Stripe captures the email at checkout; the status lookup page identifies returning users by email.
-- **User dashboards** beyond a simple email lookup for submission status.
-- **Coach login portal or coach-facing application.** Coaches receive videos by email and return feedback by email.
-- **Custom admin dashboard.** Airtable is the admin tool.
+- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — Stripe captures it at checkout; the status lookup identifies returning customers by email. _(Operator logins for Yuta + coaches now exist — see below.)_
+- **Customer dashboards** beyond the email lookup for submission status.
+- ~~**Coach login portal or coach-facing application.**~~ **Now in scope** — coaches log into the portal to download videos and upload feedback. [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
+- ~~**Custom admin dashboard.**~~ **Now in scope** — Yuta's admin portal replaces the Airtable admin tool. [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md).
 - **Subscription billing.** Per-submission payment only.
 - **Automated PDF report generation.** Coaches deliver PDFs manually if at all.
 - **Custom video annotation tools** (drawing on frames, slow-motion analysis, side-by-side comparison).
@@ -167,6 +210,12 @@ If Yuta or Audrey asks for any of these mid-build, respond: "That's outside the 
 ---
 
 ## 3. Architecture
+
+> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** The diagram
+> and principles below describe the Airtable + Make.com back office. The operator
+> side is now an **app-owned portal on Vercel Postgres** (Airtable and Make.com
+> gone; Blob for files). "Airtable is the database" and "Make.com is the glue" no
+> longer hold. Full rewrite at build time; [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) governs.
 
 ### System diagram
 
@@ -243,25 +292,33 @@ If Yuta or Audrey pushes back on this, escalate to Ben before changing the archi
 | Styling    | Tailwind CSS + shadcn/ui   | Copy-in components, no UI library lock-in                        |
 | Forms      | React Hook Form + Zod      | Schema-first validation, shared client + server                  |
 | Payments   | Stripe Elements (embedded) | Not Stripe Checkout — embedded for brand control                 |
-| Video      | Mux direct upload          | Browser uploads straight to Mux, server never sees the file      |
-| Database   | Airtable (via REST API)    | Treat as the "backend"                                           |
+| Storage    | Vercel Blob                | Video + feedback files; **replaced Mux** — [ADR 006](docs/decisions/006-object-storage-over-mux.md) |
+| Database   | **Vercel Postgres**        | **Replaced Airtable** — [§0 pivot](#0-where-this-project-actually-is) / [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) |
+| ORM        | **Drizzle** (preferred)    | For Postgres; decide vs Prisma at build                          |
+| Auth       | **Auth.js** (leaning)      | Operator portal only (Yuta admin + coaches); no customer auth    |
 | Email      | Resend + React Email       | Templates as React components                                    |
-| Automation | Make.com                   | External, documented in `/docs/operations.md` (create if needed) |
+| Automation | **None**                   | **Make.com dropped** — logic lives in the app / portal           |
 | Hosting    | Vercel                     | Free tier for staging, Pro for prod once needed                  |
 | Domain     | GoDaddy                    | Yuta's registrar of choice, DNS points to Vercel                 |
 | Repo       | Single Next.js repo        | Not a monorepo                                                   |
 
 ### Do NOT introduce
 
-- A real database (Postgres, MySQL, Supabase) — Airtable is the database
-- An ORM (Prisma, Drizzle) — there's nothing to ORM
-- An auth library (NextAuth, Clerk, Supabase Auth) — no accounts in v1
+> **Updated by the [§0 pivot](#0-where-this-project-actually-is).** A real
+> database, an ORM, and an auth library are now **in scope** (Postgres + Drizzle +
+> Auth.js for the operator portal). The rest of this list still holds.
+
+- ~~A real database~~ — **now Vercel Postgres** (was: Airtable). Don't add a
+  *second* one — one Postgres, via Drizzle.
+- ~~An ORM~~ — **Drizzle is in** (was: banned). Don't also add Prisma.
+- ~~An auth library~~ — **Auth.js is in** for the portal (was: no accounts). Keep
+  it to the two operator roles; no customer auth.
 - A state management library (Redux, Zustand) — React state is sufficient
 - A UI library beyond shadcn/ui (MUI, Chakra) — Tailwind + shadcn only
 - A custom email delivery setup (Nodemailer, SES) — use Resend
 - CSS-in-JS libraries — Tailwind only
 
-If any of these feels needed, the scope is wrong. Stop and flag it.
+If anything outside the pivot feels needed, the scope is wrong. Stop and flag it.
 
 ---
 
@@ -296,6 +353,12 @@ slice.** They are kept true in the same commit as the code.
 ---
 
 ## 6. Environment Variables
+
+> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** Drop the
+> `AIRTABLE_*` and `MUX_*` vars below; add `DATABASE_URL` (Vercel Postgres),
+> `BLOB_READ_WRITE_TOKEN` (Blob), and `AUTH_SECRET` (+ provider creds if not
+> Auth.js). Stripe/Resend vars stay. `.env.example` is the live source of truth;
+> this block is rewritten at build time.
 
 All env vars go in `.env.local` for dev and Vercel project settings for prod. Document every one in `.env.example`.
 
@@ -345,6 +408,13 @@ export const env = envSchema.parse(process.env);
 ---
 
 ## 7. Third-Party Tool Integrations
+
+> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** **Airtable,
+> Make.com, and Mux are out.** Persistence is **Vercel Postgres** (via Drizzle),
+> files are **Vercel Blob**, and the operator side is an **app portal** with
+> **Auth.js**. Stripe and Resend are unchanged. The Airtable/Make.com/Mux
+> subsections below are historical until the build-time rewrite; [ADR 006](docs/decisions/006-object-storage-over-mux.md)
+> and [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md) govern.
 
 This section describes what each tool does, why we chose it, and how to integrate it. Follow the SDK docs for exact API calls; use this as the conceptual guide.
 
@@ -460,6 +530,14 @@ If Make.com does stay, Claude Code never touches it directly — it only keeps t
 ---
 
 ## 8. Data Model (Airtable)
+
+> **Superseded by the [§0 pivot](#0-where-this-project-actually-is).** The data
+> model moves to **Vercel Postgres** — tables `users`, `coaches`, `submissions`
+> (roles, assignment FK, `videoUrl`/`feedbackUrl` on Blob), with `status` as a
+> real enum. The Postgres sketch is in [ADR 007](docs/decisions/007-portal-and-postgres-retire-airtable.md);
+> it gets promoted into this section (and a Drizzle schema) when the build starts.
+> The Airtable schema below is historical. **Mux ID columns are also gone** —
+> replaced by Blob URLs ([ADR 006](docs/decisions/006-object-storage-over-mux.md)).
 
 Airtable is the database. The schema lives in one base with two tables.
 
