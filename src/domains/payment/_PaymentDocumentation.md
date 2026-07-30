@@ -67,12 +67,21 @@ flowchart LR
 
 - ✅ **Stripe Elements on our own page** (Step 5, 2026-07-29) — player details, then payment
   in place, then `/upload`. Our layout, our order summary, our domain.
-- 🔴 **The payment path is UNVERIFIED against real Stripe.** `.env.local` has placeholder
-  keys, so this was built and typechecked but never run against a live test payment. It needs
-  a `pk_test_`/`sk_test_` pair, a `4242…` card, and a check that the row appears. **Until
-  then, treat Elements as written-but-untested.**
-- 🔴 **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` must be set in Vercel** or the payment step
-  renders a "payments aren't configured" notice instead of a card field.
+- ✅ **Verified against real Stripe 2026-07-29** (test mode, via `npm run payment`):
+  `createPaymentIntent` → confirmed with `pm_card_visa` → `succeeded` →
+  `getSucceededPaymentIntent` ✓ (and `null` for a bogus id) → signed webhook 200 → Airtable
+  row correct in every field → **re-delivery produced no duplicate**.
+  A declined card (`pm_card_chargeDeclined`) created **no row**, which is the important
+  negative: a failed payment must never look like a submission. A 3-D Secure card returned
+  `requires_action`, correctly.
+- 🔶 **The `<PaymentElement>` UI is still unverified.** Everything server-side is proven, but
+  that the card field renders, that the appearance variables took, and that the 3-D Secure
+  modal behaves all need a human in a browser. **That's the remaining gap in this slice.**
+- 🔴 **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` must be set in Vercel** or the deployed payment
+  step renders a "payments aren't configured" notice instead of a card field.
+- 🔴 **The live-mode webhook endpoint doesn't exist yet.** A test endpoint was created
+  (`we_1TyhuB…`, correct events); live mode is a separate object with a different secret and
+  needs the live key.
 - ✅ **Idempotent fulfillment**, shared by both entry paths.
 - ✅ **Payment confirmation email.**
 - ✅ **Inline pricing from `shared/config/site.ts`** when `STRIPE_PRICE_ID` is unset, so the
