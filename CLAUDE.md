@@ -65,19 +65,22 @@ FSD structure, the naming sweep, Zod, and Stripe Elements
 changes the storage and operator layers, not those. The customer-facing flow
 (pay → upload → status → feedback email) is unchanged.
 
-**Status:** the pivot is **built** on branch `build/operator-portal`, verified
-locally; the Vercel deploy is the remaining step ([OPERATIONS.md](OPERATIONS.md)).
+**Status:** **deployed to production** at `baseball-sensei.vercel.app` (merged to
+`main`). Supabase Postgres, Vercel Blob, jose auth, and Resend email are all wired
+and working; Stripe keys + webhook are the last piece before the funnel can take
+real payments ([OPERATIONS.md](OPERATIONS.md)).
 
 ### What's built — the platform pivot is done
 
 The customer funnel (landing, player-info + Stripe Elements, upload, status)
 **and** the operator portal (admin + coach) run end to end on **Postgres + object
-storage + jose auth** — Airtable and Mux are gone. Verified locally against
-dockerized Postgres and local-disk storage: login + roles, the admin submissions
-queue, coach management + assignment, the coach's video download + feedback
-delivery, and the customer's status lookup + feedback download. `next build` and
-`eslint` are clean. The production Supabase schema has been migrated and the first
-admin seeded.
+storage + jose auth**, live in production — Airtable and Mux are gone. Verified:
+login + roles, the admin submissions queue with **status filters**, **editable
+coaches** + assignment, the coach's video download + **feedback delivery**, the
+customer's status lookup + feedback download, and **operator change-password**
+(`/account`). `next build` and `eslint` are clean. Production runs on Supabase
+(schema migrated, admin seeded), Vercel Blob, and **Resend email** (verified
+`baseball-sensei.com` — a real "feedback ready" email delivered to a Gmail inbox).
 
 ### Decisions that outlived the pivot
 
@@ -403,13 +406,50 @@ First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose
 
 ### Resend — transactional email
 
-- Server: `resend` SDK. Templates as React Email components under `shared/email`.
-- **Best-effort by design:** a send failure logs and never breaks a webhook or a
-  portal action ([ADR 004](docs/decisions/004-best-effort-email.md)). If
-  `RESEND_API_KEY` is unset, sends are skipped and logged — honest degradation.
-- Three messages: **payment received** (Stripe webhook), **video received** (on
-  upload complete), **feedback ready** (when a coach marks a submission complete
-  in the portal — no external automation).
+Sending goes through **`shared/email`**, never the Resend SDK directly:
+
+- `sendEmail({ to, subject, html })` — the transport. **Best-effort**: a non-2xx
+  logs and never throws ([ADR 004](docs/decisions/004-best-effort-email.md)); if
+  `RESEND_API_KEY` is unset it skips-and-logs. The **from** address is
+  `EMAIL_FROM`, set once in env — never passed per-send.
+- `emailShell(heading, bodyHtml, cta?)` — wraps body HTML in the brand shell
+  (header, type, an optional `{ label, url }` button, footer).
+
+Each message lives in the domain that owns it, as `api/xEmail.ts`:
+**payment received** (`domains/payment/api/paymentEmail.ts`), **video received**
+(`domains/upload/api/uploadEmail.ts`), **feedback ready**
+(`domains/feedback/api/feedbackEmail.ts`).
+
+**Adding a new email** (e.g. a signup verification email) is one file plus a
+best-effort call from the flow — no per-send `from`, no SDK:
+
+```typescript
+// domains/<slice>/api/verificationEmail.ts
+import { emailShell, sendEmail } from "@/shared/email";
+import { site } from "@/shared/config/site";
+
+export function sendVerificationEmail(to: string, link: string) {
+  return sendEmail({
+    to,
+    subject: `${site.name} — verify your email`,
+    html: emailShell(
+      "Confirm your email",
+      `<p>Tap below to verify your email and finish signing up.</p>`,
+      { label: "Verify email", url: link },
+    ),
+  });
+}
+```
+
+Call it best-effort — don't let a mail hiccup fail the surrounding mutation.
+
+**Config (live in production):** `baseball-sensei.com` is **verified in Resend**
+(DKIM + SPF on the `send.` subdomain, region us-east-1), sending enabled,
+`RESEND_API_KEY` set in Vercel, and
+`EMAIL_FROM = "Baseball Sensei <contact@baseball-sensei.com>"`. **Receiving** is
+Google Workspace (root MX) — independent of Resend, so both coexist, and a
+customer reply lands in Yuta's `contact@` inbox. Dashboard/DNS detail:
+[OPERATIONS.md §8](OPERATIONS.md).
 
 ### Vercel
 
@@ -557,31 +597,40 @@ endpoint table in [OPERATIONS.md](OPERATIONS.md).
 ## 10. Build Status
 
 The original 8-sprint plan is retired — the platform pivot reshaped it, and git
-holds the history. Here's where the build actually stands, on branch
-`build/operator-portal`.
+holds the history. The build is **live in production** at `baseball-sensei.vercel.app`.
 
-**Built and verified locally:**
+**Built, deployed, and verified:**
 
-- ✅ **Customer funnel** — landing, `/start` (info + Stripe Elements), `/upload`
-  (video → storage), confirmation, `/status`, feedback download.
-- ✅ **Foundation** — dockerized Postgres, Drizzle schema + migration, seed.
-- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`.
+- ✅ **Customer funnel** — landing (Audrey's design), `/start` (info + Stripe
+  Elements), `/upload` (video → storage), confirmation, `/status`, feedback download.
+- ✅ **Foundation** — Postgres (Supabase in prod), Drizzle migrations, seed.
+- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`,
+  operator **change-password** (`/account`).
 - ✅ **Persistence + storage** — submissions on Postgres, files on the storage
-  seam (local disk / Blob); Airtable + Mux retired.
-- ✅ **Admin portal** — submissions queue, coach management, coach assignment.
+  seam (local disk / Vercel Blob); Airtable + Mux retired.
+- ✅ **Admin portal** — submissions queue with **status filters**, coach
+  management + **editing**, coach assignment.
 - ✅ **Coach portal** — assigned reviews, video download, feedback delivery →
   complete → customer email.
-- ✅ **Transactional email** — payment received, video received, feedback ready.
+- ✅ **Transactional email** — payment received, video received, feedback ready,
+  on **Resend** with the verified `baseball-sensei.com` domain.
 
 **Remaining:**
 
-- The **Vercel production deploy** (Supabase schema migrated + admin seeded) —
-  runbook in [OPERATIONS.md](OPERATIONS.md).
-- A **verified Resend domain** + a **live-mode Stripe webhook** before real customers.
-- **Reformat to Audrey's approved design** when it lands.
-- Deferred: an in-app `/feedback/[id]` viewer, coach edit/deactivate, resumable
-  large-file uploads, React Email, shadcn/ui, and upload-before-payment
-  ([ADR 009](docs/decisions/009-upload-before-payment.md)).
+- **Stripe** — production keys + the `payment_intent.succeeded` webhook, so real
+  payments create submissions ([OPERATIONS.md](OPERATIONS.md) §5–§6). This is the
+  last thing before the funnel can take money.
+- Set `EMAIL_FROM` in Vercel (if not already) so the deployed app sends from
+  `contact@baseball-sensei.com`.
+- Point the site at the `baseball-sensei.com` domain (optional; it's on the
+  `.vercel.app` URL today) and update `NEXT_PUBLIC_SITE_URL`.
+- Deferred: an in-app `/feedback/[id]` viewer, forgot-password (email reset),
+  coach deactivation UI, resumable large-file uploads, React Email, shadcn/ui, and
+  upload-before-payment ([ADR 009](docs/decisions/009-upload-before-payment.md)).
+
+> **In flight (Ben):** customer **signup + email verification** and the
+> **upload-and-pay** section. The email how-to for the verification mail is in
+> §7 (Resend); the operator-account/auth patterns are in `domains/account`.
 
 > **Handoff runbook:** the step-by-step go-live — accounts, env vars, migrations,
 > the Stripe webhook, DNS, and the end-to-end test — is in [OPERATIONS.md](OPERATIONS.md).

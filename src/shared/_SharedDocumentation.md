@@ -61,12 +61,12 @@ shared/
   wireframe lands, since the design will decide whether shadcn's primitives fit.
 - 🔶 **No React Email.** CLAUDE.md §4 specifies it; `email/shell.ts` builds HTML strings.
   Works and has no dependency cost, but templates are harder to preview and edit.
-- 🔴 **Resend has no verified sending domain.** Observed 2026-07-29: every send returns
-  `403 validation_error` — *"You can only send testing emails to your own email address."*
-  So mail reaches the account owner and **nobody else**. `EMAIL_FROM` is also unset, so
-  sends fall back to Resend's onboarding sender. Both must be fixed before a real
-  customer; DNS propagation can take hours, so it's a start-early item
-  ([OPERATIONS.md §8](../../OPERATIONS.md)).
+- ✅ **Resend domain verified + sending live (2026-07-30).** `baseball-sensei.com`
+  is verified (DKIM + SPF on the `send.` subdomain); a real "feedback ready" email
+  delivered to a Gmail inbox. `EMAIL_FROM` = `contact@baseball-sensei.com` (Google
+  Workspace handles receiving). To add a new transactional email, one `api/xEmail.ts`
+  using `sendEmail` + `emailShell` — see [OPERATIONS.md §8](../../OPERATIONS.md) /
+  [CLAUDE.md §7](../../CLAUDE.md#7-third-party-tool-integrations).
 - 🔶 **Design tokens are provisional.** `app/globals.css` carries the warm-neutral/blue set
   taken from the reference wireframe (2026-07-29), replacing an invented navy/rose. Audrey's
   approved design supersedes it. `email/shell.ts` mirrors the same hex values by hand, since

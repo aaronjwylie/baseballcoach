@@ -13,6 +13,24 @@ or payments succeed with no submission row appearing — a silent failure.
 
 ---
 
+## Production status (2026-07-30)
+
+**Live at `baseball-sensei.vercel.app`** (deploys from `main`).
+
+| Piece | State |
+| --- | --- |
+| Hosting | Vercel — auto-deploys `main` |
+| Database | **Supabase** Postgres — schema migrated; admin `yuta@example.com` seeded; ~8 demo submissions + 2 demo coaches seeded |
+| Storage | **Vercel Blob** (`BLOB_READ_WRITE_TOKEN` set) |
+| Auth | `AUTH_SECRET` set; login working |
+| Email | **Resend**, domain `baseball-sensei.com` verified + sending (§8); receiving via Google Workspace `contact@` |
+| **Stripe** | **Not set up yet** — keys + webhook pending (§5–§6). Until then the funnel can't take payments or record submissions. |
+
+Every env-var change needs a **redeploy** to take effect — this has bitten us
+repeatedly (AUTH_SECRET, EMAIL_FROM).
+
+---
+
 ## Table of contents
 
 1. [Ownership model](#1-ownership-model)
@@ -168,15 +186,36 @@ Do this **after** the domain is final.
 
 ---
 
-## 8. Verify the email domain
+## 8. Email — Resend (✅ done)
 
-- [ ] Resend → Domains → add the client's domain; add the DKIM/SPF records to DNS
-- [ ] Wait for **Verified**; set `EMAIL_FROM` to an address on that domain; redeploy
+**`baseball-sensei.com` is verified in Resend and sending is live** (2026-07-30).
+A real "feedback ready" email was delivered to a Gmail inbox.
 
-Until this is done, sends either fail or land in spam. If `RESEND_API_KEY` is
-unset the app logs a warning and carries on — the flow still works, the customer
-just never hears from us. **This is the most launch-blocking item that fails
-quietly.**
+Current setup:
+
+| Piece | Value |
+| --- | --- |
+| Verified domain | `baseball-sensei.com` (Resend, region **us-east-1**) |
+| DNS records | DKIM `TXT` `resend._domainkey`; SPF `MX` + `TXT` on the **`send.`** subdomain — added in **GoDaddy** (auto-configured) |
+| Send from | `EMAIL_FROM = "Baseball Sensei <contact@baseball-sensei.com>"` (set in Vercel → redeploy) |
+| API key | `RESEND_API_KEY` (set in Vercel) |
+| **Receiving** | **Google Workspace** on `contact@baseball-sensei.com` (root MX) — replies to transactional email land in Yuta's inbox |
+
+**Why Google + Resend coexist:** Resend's records live on the `send.` subdomain
+and `resend._domainkey`; Google's MX/SPF live on the **root** and
+`google._domainkey`. Different hosts → no conflict. Sending (Resend) and receiving
+(Google) are independent.
+
+**How the app sends email** (for adding new ones — e.g. a signup verification
+mail): everything goes through `shared/email` — `sendEmail({ to, subject, html })`
+(best-effort; the `from` is `EMAIL_FROM`, never per-send) + `emailShell(heading,
+body, cta?)` for the brand wrapper. Each message is one `domains/<slice>/api/
+xEmail.ts` file. Full pattern + a copy-paste example: **[CLAUDE.md §7 → Resend](CLAUDE.md#7-third-party-tool-integrations)**.
+
+**To move it to a different domain/client:** repeat in that Resend account (add
+domain → add the DNS records → verify → set `EMAIL_FROM` on the domain →
+redeploy). Sends skip-and-log if `RESEND_API_KEY` is unset, and land only in the
+account owner's inbox until a domain is verified.
 
 ---
 
@@ -291,10 +330,14 @@ The Stripe webhook URL. See the warning at the top.
 
 | Change | Status |
 | --- | --- |
-| **Upload before payment** ([ADR 009](docs/decisions/009-upload-before-payment.md)) | Proposed — needs abuse guards + a new status |
-| **Verify the Resend domain + set `EMAIL_FROM`** | Blocks launch — mail otherwise silent |
+| **Stripe keys + webhook** (§5–§6) | **The last launch blocker** — no payments/submissions until done |
+| ~~**Verify the Resend domain + set `EMAIL_FROM`**~~ | ✅ Done — domain verified, sending live (§8) |
+| ~~**Coach edit**~~ | ✅ Done — `/admin/coaches/[id]`. (Coach *deactivate toggle* exists; hiding inactive coaches from the assign list is a small follow-up) |
+| **Customer signup + email verification**, **upload-and-pay** | In flight (Ben) — email how-to in [CLAUDE.md §7](CLAUDE.md#7-third-party-tool-integrations) |
+| **Upload before payment** ([ADR 009](docs/decisions/009-upload-before-payment.md)) | Proposed — needs abuse guards + a new status; overlaps Ben's upload-and-pay work |
+| **Point the site at `baseball-sensei.com`** + update `NEXT_PUBLIC_SITE_URL` | Optional — on the `.vercel.app` URL today |
+| **Forgot-password** (email reset) | Deferred — needs a token flow (change-password already shipped) |
 | **Large-file uploads** — direct-to-Blob client upload or chunking for the prod body limit | Fine locally; revisit for prod |
-| **Coach edit / deactivate** — `isActive` exists, no UI yet | Deferred |
 
 ---
 
