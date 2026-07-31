@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
 import { getSubmission } from "@/domains/submission";
-import { storeFeedbackAndComplete } from "@/domains/feedback";
+import { storeFeedback } from "@/domains/feedback";
 
 /**
- * A coach delivers feedback for a submission: stores the file, marks the
- * submission complete, emails the customer. A coach may only deliver for their
- * own assignments; the admin may deliver for anyone.
+ * A coach delivers feedback for a submission: stores the file and parks it at
+ * `awaiting_approval` for Yuta to review before the customer is emailed. A coach
+ * may only deliver for their own assignments; the admin may deliver for anyone.
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     }
     const contentType =
       request.headers.get("content-type") || "application/octet-stream";
-    await storeFeedbackAndComplete(submissionId, filename, bytes, contentType);
+    await storeFeedback(submissionId, filename, bytes, contentType);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[feedback upload] failed:", err);

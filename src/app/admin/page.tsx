@@ -19,6 +19,7 @@ import { requireRole } from "@/domains/account";
 import { RowActionForm } from "./RowActionForm";
 import {
   archiveSubmissionAction,
+  completeSubmissionAction,
   unarchiveSubmissionAction,
 } from "./adminActions";
 
@@ -38,6 +39,7 @@ const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }
   new: { text: "New — needs a coach", className: "bg-blue-50 text-blue-700 border-blue-200" },
   assigned: { text: "Assigned", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   in_review: { text: "In review", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  awaiting_approval: { text: "Coach submitted", className: "bg-purple-50 text-purple-700 border-purple-200" },
   complete: { text: "Complete", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
 };
 
@@ -55,6 +57,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
   { key: "new", label: "New", match: (s) => s.status === "new" && !s.archivedAt },
   { key: "assigned", label: "Assigned", match: (s) => s.status === "assigned" && !s.archivedAt },
   { key: "in_review", label: "In review", match: (s) => s.status === "in_review" && !s.archivedAt },
+  { key: "awaiting_approval", label: "Coach submitted", match: (s) => s.status === "awaiting_approval" && !s.archivedAt },
   { key: "complete", label: "Complete", match: (s) => s.status === "complete" && !s.archivedAt },
   { key: "archived", label: "Archived", match: (s) => !!s.archivedAt },
 ];
@@ -191,6 +194,23 @@ function SubmissionRow({
                 label="Send email → In review"
                 className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
               />
+            )}
+
+            {submission.status === "awaiting_approval" && (
+              <>
+                <a
+                  href={`/api/feedback/${submission.id}`}
+                  className="text-xs font-semibold text-accent hover:underline"
+                >
+                  Review feedback ↓
+                </a>
+                <RowActionForm
+                  action={completeSubmissionAction}
+                  submissionId={submission.id}
+                  label="Approve & send →"
+                  className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                />
+              </>
             )}
 
             {submission.status === "complete" && (

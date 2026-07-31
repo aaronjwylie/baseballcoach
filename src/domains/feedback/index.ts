@@ -1,9 +1,10 @@
 /**
  * The feedback domain — the coach's response coming back.
  *
- * A coach uploads their feedback file and marks the submission complete
- * (`storeFeedbackAndComplete`), which stores the file and emails the customer.
+ * Two steps: the coach uploads their file (`storeFeedback`), which parks the
+ * submission at `awaiting_approval`; then Yuta reviews and `approveAndComplete`s
+ * it, which marks it complete and emails the customer their download link.
  */
 export { sendFeedbackReady } from "./api/feedbackEmail";
-export { storeFeedbackAndComplete } from "./api/feedbackApi";
+export { storeFeedback, approveAndComplete } from "./api/feedbackApi";
 export { UploadFeedback } from "./ui/UploadFeedback";

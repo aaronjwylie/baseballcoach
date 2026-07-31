@@ -12,6 +12,7 @@ import {
   getSubmission,
   unarchiveSubmission,
 } from "@/domains/submission";
+import { approveAndComplete } from "@/domains/feedback";
 
 export async function archiveSubmissionAction(formData: FormData): Promise<void> {
   await requireRole("admin");
@@ -36,5 +37,21 @@ export async function unarchiveSubmissionAction(
   if (!id) return;
 
   await unarchiveSubmission(id);
+  revalidatePath("/admin");
+}
+
+/**
+ * Yuta approves the coach's uploaded feedback: complete the submission and send
+ * the customer their download link. Guarded to `awaiting_approval` inside
+ * `approveAndComplete`, so it's safe to call from a button.
+ */
+export async function completeSubmissionAction(
+  formData: FormData,
+): Promise<void> {
+  await requireRole("admin");
+  const id = String(formData.get("submissionId") ?? "");
+  if (!id) return;
+
+  await approveAndComplete(id);
   revalidatePath("/admin");
 }

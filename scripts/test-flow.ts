@@ -28,7 +28,7 @@ import {
 import { issueCode, verifyCode } from "@/domains/verification";
 import { getSettings } from "@/domains/settings";
 import { runRetentionSweep, storeUploadedFile } from "@/domains/upload";
-import { storeFeedbackAndComplete } from "@/domains/feedback";
+import { storeFeedback, approveAndComplete } from "@/domains/feedback";
 
 const pass = (msg: string) => console.log(`   ✓ ${msg}`);
 const fail = (msg: string) => {
@@ -129,20 +129,21 @@ async function main() {
     `a fresh paid submission is not swept (${beforeSweep.submissionsSwept} swept)`,
   );
 
-  // Complete it the way the coach portal does, then assert the clock actually
-  // started. An earlier version of this probe set `completedAt` by hand, which
-  // hid a bug: the portal set the status without the timestamp, so a completed
+  // Deliver the way the portal does: the coach uploads (→ awaiting_approval),
+  // then Yuta approves (→ complete). Assert the approval stamps completedAt —
+  // an earlier version set the status without the timestamp, so a completed
   // submission was never due for sweeping.
-  await storeFeedbackAndComplete(
+  await storeFeedback(
     submission.id,
     "feedback.mp4",
     new TextEncoder().encode("probe feedback bytes"),
     "video/mp4",
   );
+  await approveAndComplete(submission.id);
   const completed = await getSubmission(submission.id);
   check(
     !!completed?.completedAt,
-    "completing via the coach path stamps completedAt",
+    "completing via the coach + approval path stamps completedAt",
   );
 
   // Backdate it past the retention window and sweep again.

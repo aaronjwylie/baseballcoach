@@ -200,7 +200,15 @@ export async function listSubmissions(): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissions)
-    .where(inArray(submissions.status, ["new", "assigned", "in_review", "complete"]))
+    .where(
+      inArray(submissions.status, [
+        "new",
+        "assigned",
+        "in_review",
+        "awaiting_approval",
+        "complete",
+      ]),
+    )
     .orderBy(desc(submissions.submittedAt));
   return rows.map(fromRow);
 }

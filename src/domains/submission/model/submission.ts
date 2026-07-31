@@ -43,6 +43,7 @@ export const SUBMISSION_STATUSES = [
   "new",
   "assigned",
   "in_review",
+  "awaiting_approval",
   "complete",
 ] as const;
 

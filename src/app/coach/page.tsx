@@ -25,8 +25,14 @@ export default async function CoachHomePage() {
     submissions.map((s) => s.id),
   );
 
-  const open = submissions.filter((s) => s.status !== "complete");
-  const done = submissions.filter((s) => s.status === "complete");
+  // A coach's work is "open" until they upload; once uploaded it's awaiting
+  // Yuta's approval (or delivered), and out of their hands.
+  const open = submissions.filter(
+    (s) => s.status === "assigned" || s.status === "in_review",
+  );
+  const done = submissions.filter(
+    (s) => s.status === "awaiting_approval" || s.status === "complete",
+  );
 
   return (
     <Container className="max-w-3xl">
@@ -61,7 +67,7 @@ export default async function CoachHomePage() {
         {done.length > 0 && (
           <>
             <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-ink-muted">
-              Delivered ({done.length})
+              Submitted ({done.length})
             </h2>
             <ul className="mt-3 space-y-3">
               {done.map((s) => (
@@ -73,7 +79,11 @@ export default async function CoachHomePage() {
                     {s.playerName}
                     {s.focus ? <span className="text-ink-muted"> · {s.focus}</span> : null}
                   </span>
-                  <span className="font-semibold text-emerald-600">Delivered ✓</span>
+                  {s.status === "complete" ? (
+                    <span className="font-semibold text-emerald-600">Delivered ✓</span>
+                  ) : (
+                    <span className="font-semibold text-purple-600">Awaiting review</span>
+                  )}
                 </li>
               ))}
             </ul>

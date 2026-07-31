@@ -160,6 +160,13 @@ const STATUS_META: Record<
     label: "With your coach",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
+  // The coach has submitted; Yuta is doing a final check before it's released.
+  // The customer doesn't need to know about that internal step — still "with
+  // your coach" from their side, until it's actually ready.
+  awaiting_approval: {
+    label: "With your coach",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
   complete: {
     label: "Feedback ready",
     className: "bg-emerald-50 text-emerald-700 border-emerald-200",

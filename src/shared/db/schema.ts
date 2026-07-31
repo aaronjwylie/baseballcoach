@@ -48,6 +48,7 @@ export const submissionStatus = pgEnum("submission_status", [
   "new",
   "assigned",
   "in_review",
+  "awaiting_approval",
   "complete",
 ]);
 
