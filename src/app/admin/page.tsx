@@ -178,6 +178,20 @@ function SubmissionRow({
             label="Unarchive"
             className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
           />
+        ) : submission.status === "complete" ? (
+          // Completed — the coach is locked in. Show the name, not a reassign
+          // dropdown; from here Yuta can archive it.
+          <div className="flex flex-col items-start gap-2">
+            <span className="font-medium text-ink">
+              {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
+            </span>
+            <RowActionForm
+              action={archiveSubmissionAction}
+              submissionId={submission.id}
+              label="Archive"
+              className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+            />
+          </div>
         ) : (
           <div className="flex flex-col items-start gap-2">
             <AssignCoachSelect
@@ -211,15 +225,6 @@ function SubmissionRow({
                   className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                 />
               </>
-            )}
-
-            {submission.status === "complete" && (
-              <RowActionForm
-                action={archiveSubmissionAction}
-                submissionId={submission.id}
-                label="Archive"
-                className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-              />
             )}
           </div>
         )}
