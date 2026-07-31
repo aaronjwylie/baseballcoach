@@ -50,7 +50,7 @@ below now reflects it; this note is the one-paragraph orientation.
 The operator side becomes a **custom portal** instead of Airtable:
 
 - **Yuta and the coaches log in.** Admin (Yuta): all submissions, coach
-  management, assignment. Coach: their assigned submissions — download the video,
+  management, assignment. Coach: their assigned submissions — download the files,
   upload feedback, mark complete. **Customers still don't log in** — paid links +
   the `/status` email lookup, unchanged.
 - **Vercel Postgres** is the database (via **Drizzle**); **Auth.js** guards the
@@ -130,7 +130,9 @@ the wrong file.
 
 ### What we're building
 
-An online baseball coaching platform where parents pay to submit videos of their kids batting or pitching, and receive expert feedback from coaches based in Japan. Two audiences meet on it: **customers** get a smooth, professional funnel — land, pay, upload, and receive feedback — and **operators** (Yuta and his coaches) run the coaching workflow from a custom portal they log into. Payments run on Stripe, video and feedback files on object storage, transactional mail on Resend; everything else — submissions, coaches, assignment, feedback delivery — is our own application on our own database.
+An online baseball coaching platform where parents submit a **pack of files** — clips of their kid batting or pitching, plus any stills or documents that help — and receive expert feedback from coaches based in Japan. One submission is one review of that pack, not one video. Two audiences meet on it: **customers** get a smooth, professional funnel — land, verify their email, upload, pay, and receive feedback — and **operators** (Yuta and his coaches) run the coaching workflow from a custom portal they log into. Payments run on Stripe, uploads and feedback files on object storage, transactional mail on Resend; everything else — submissions, coaches, assignment, feedback delivery — is our own application on our own database.
+
+**Payment comes last.** Nobody pays for a submission whose upload then fails ([ADR 009](docs/decisions/009-upload-before-payment.md)), and nothing is retained until it clears — before that a submission is a scratch pad the customer can scrub by refreshing or walking away.
 
 ### The single most important sentence in this document
 
@@ -450,7 +452,7 @@ Each message lives in the domain that owns it, as `api/xEmail.ts`.
 
 **The agreed set is six messages; three are built** — the full matrix, the gaps,
 and the workflow change two of them require are pinned in
-[docs/design/emails.md](docs/design/emails.md). Built today:
+[`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md). Built today:
 
 - **verification code** (`domains/verification/api/verificationEmail.ts`) — step 2
   of the flow;
@@ -740,6 +742,9 @@ behind an HTTP Basic Auth gate while it's being finished.
   `draft` in the enum).
 - ✅ ~~`CRON_SECRET`~~ — **set and deployed** (`/api/cron/sweep` answers 401, not
   503).
+- 🔴 **`BLOB_READ_WRITE_TOKEN` is unset, and it blocks the funnel.** Production
+  serves `uploadMode: "proxy"`, so uploads fall back to local disk — which on a
+  serverless host cannot work at all. Create the Blob store and redeploy.
 - ⚠️ **Confirm `NEXT_PUBLIC_SITE_URL` is `https://www.baseball-sensei.com`** in
   Vercel. It builds the links inside customer emails *and* the redirect target
   for `/api/payment/return`. The flow cookie is host-only, so if this names the
@@ -758,7 +763,7 @@ behind an HTTP Basic Auth gate while it's being finished.
 - A **human test of the card field and 3-D Secure** — everything around it is
   proven, but a real card needs a real person.
 - The **remaining three emails + Yuta's approval step**
-  ([docs/design/emails.md](docs/design/emails.md)) — agreed, not built.
+  ([`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md)) — agreed, not built.
 - Deferred: an in-app `/feedback/[id]` viewer, forgot-password (email reset),
   coach deactivation UI, resumable uploads across a reload, React Email,
   shadcn/ui.
@@ -929,7 +934,7 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 - **Player** — The child whose video is being reviewed (customer's child)
 - **Coach** — The expert in Japan providing feedback
 - **Client** — Yuta, who operates the platform day-to-day
-- **Submission** — One paid request from a customer for video feedback
+- **Submission** — One paid request from a customer for coaching feedback, carrying a **pack of files** (video, images, documents) reviewed together — not one video
 - **Workflow** — End-to-end process from payment to feedback delivery
 - **Database** — The Postgres instance holding the `users`, `coaches`, and `submissions` tables
 - **The Team** — Ben (frontend), Aaron (backend advisory), Audrey (design + client relations)

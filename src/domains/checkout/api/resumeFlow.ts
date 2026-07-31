@@ -1,15 +1,18 @@
 /**
  * Where an arriving customer should be put down.
  *
- * The flow lives on one route, so `/start` has to answer "which step?" on every
- * request. The answer comes from the submission's own state, never from the URL
- * — which is what makes a refresh, a re-opened tab, or a redirect back from
- * 3-D Secure land exactly where the customer left off instead of at the top.
+ * **Only a completed payment survives a page load** (Yuta, 2026-07-30). A cold
+ * load — first visit, refresh, re-opened tab — starts a fresh attempt, because
+ * until the money clears a submission is a scratch pad and scrubbing it is fair
+ * game. The abandoned row is discarded when the next attempt begins, and the
+ * retention sweep catches anything left behind.
  *
- * A paid submission resolves to `done` rather than to a fresh form. That is what
- * makes the 3-D Secure return trip work: the customer comes back on a cold page
- * load with no client state at all, and the confirmation is rebuilt from the
- * submission the flow cookie still names. "Send another" is what lets go of it.
+ * A **paid** submission resolves to `done` instead. That is not an exception to
+ * the rule, it *is* the rule — and it's also what makes the 3-D Secure return
+ * trip safe: `/api/payment/return` marks the submission paid *before* it
+ * redirects here, so the customer comes back on a cold load to a submission that
+ * has already earned its retention. A payment can never be scrubbed out from
+ * under someone who has just been charged.
  */
 import { storage, submissionFolder } from "@/shared/storage";
 import { getSettings } from "@/domains/settings";
@@ -51,37 +54,22 @@ export async function resolveFlowState(): Promise<FlowResumeState> {
   const submissionId = await readFlowSession();
   const submission = submissionId ? await getSubmission(submissionId) : null;
 
-  if (!submission) return { ...base, step: "details", uploadFolder: "" };
-
-  const details: Partial<SubmissionInputDraft> = {
-    customerEmail: submission.customerEmail,
-    playerName: submission.playerName,
-    playerAge: submission.playerAge ? String(submission.playerAge) : "",
-    focus: submission.focus ?? "",
-    customerNotes: submission.customerNotes ?? "",
-  };
-
-  const shared = {
-    ...base,
-    email: submission.customerEmail,
-    playerName: submission.playerName,
-    details,
-    uploadFolder: submissionFolder(submission.id),
-  };
-
-  const files = await listSubmissionFiles(submission.id);
-
-  // Already paid — the confirmation, with enough detail to be meaningful. The
-  // flow cookie survives payment precisely so this page can be rebuilt after a
-  // redirect; "Send another" is what lets go of it.
-  if (isPaid(submission)) {
-    return { ...shared, step: "done", files: files.map(toClientFile) };
+  // Paid: show the confirmation, rebuilt from the record.
+  if (submission && isPaid(submission)) {
+    const files = await listSubmissionFiles(submission.id);
+    return {
+      ...base,
+      step: "done",
+      email: submission.customerEmail,
+      playerName: submission.playerName,
+      files: files.map(toClientFile),
+      uploadFolder: submissionFolder(submission.id),
+    };
   }
 
-  // Not yet proven they can read their email — back to the code.
-  if (!submission.emailVerifiedAt) return { ...shared, step: "verify" };
-
-  return { ...shared, step: "upload", files: files.map(toClientFile) };
+  // Anything else starts over. The stale row (if any) is discarded when the
+  // next attempt is submitted — see `startSubmissionAction`.
+  return { ...base, step: "details", uploadFolder: "" };
 }
 
 function toClientFile(file: SubmissionFile) {

@@ -38,7 +38,8 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-medium text-ink">What you&rsquo;re buying</h2>
             <p className="mt-3">
-              One review of one video by one coach, for {site.price.label}{" "}
+              One review, by one coach, of the files you attach to a single
+              submission — video, images, or documents — for {site.price.label}{" "}
               {site.price.unit}. There is no subscription and no recurring
               charge. Payment is taken once, at checkout, by Stripe.
             </p>
@@ -48,19 +49,21 @@ export default function TermsPage() {
             <h2 className="text-xl font-medium text-ink">What you receive</h2>
             <p className="mt-3">
               A personal response from your coach, delivered within{" "}
-              {site.turnaround} of your video reaching us. We email you the
+              {site.turnaround} of your files reaching us. We email you the
               moment it&rsquo;s ready, and it stays available at the link in that
               email.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-medium text-ink">Your video</h2>
+            <h2 className="text-xl font-medium text-ink">Your files</h2>
             <p className="mt-3">
-              We store your video so the coach assigned to your submission can
-              review it. It is not published, and it is not shared outside the
-              coaching team. If the player is a minor, the video should be
-              submitted by a parent or guardian.
+              We store the files you upload so the coach assigned to your
+              submission can review them. They are not published, and they are
+              not shared outside the coaching team. If the player is a minor, the
+              files should be submitted by a parent or guardian. Your uploads are
+              deleted after your review is delivered; the coach&rsquo;s response
+              stays available at the link we email you.
             </p>
           </section>
 

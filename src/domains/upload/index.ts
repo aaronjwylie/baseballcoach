@@ -12,6 +12,7 @@
  */
 export { registerUpload, storeUploadedFile } from "./api/uploadApi";
 export { runRetentionSweep, type SweepReport } from "./api/retentionSweep";
+export { discardUnpaidSubmission } from "./api/discardSubmission";
 export {
   authorizeUpload,
   checkFile,

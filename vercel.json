@@ -2,8 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
+      "//": "Hourly, not daily. The retention rule is already relative to each submission's own completedAt/submittedAt — but a job that runs once a day can only notice that a 24h window elapsed up to 24h late, so 'delete 24h after completion' silently meant 24-48h. Hourly narrows that to 24-25h. The sweep is idempotent and skips already-purged rows, so running it more often costs a query and nothing else.",
       "path": "/api/cron/sweep",
-      "schedule": "0 4 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

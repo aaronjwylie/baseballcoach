@@ -43,12 +43,13 @@ export default async function StartPage({
       <Container className="max-w-xl">
         <div className="text-center">
           <h1 className="text-3xl font-medium tracking-tight text-ink sm:text-4xl">
-            Send a video for review
+            Send your clips for review
           </h1>
           <p className="mt-4 text-ink-soft">
-            {site.price.label} {site.price.unit} · personal feedback from a
-            professional coach in {site.turnaround}. You pay at the end, once
-            your files are safely in.
+            {site.price.label} {site.price.unit} · attach your clips, and any
+            stills or documents that help. Personal feedback from a professional
+            coach in {site.turnaround}, and you pay at the end — once your files
+            are safely in.
           </p>
         </div>
 

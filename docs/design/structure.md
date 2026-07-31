@@ -81,6 +81,14 @@ submission/
   _SubmissionDocumentation.md
 ```
 
+**Where slice docs live.** Every domain carries one. `shared/` normally carries a single doc
+for the whole floor (`_SharedDocumentation.md`), because its seams are small and domain-less
+— a seam earns its own `_XxxDocumentation.md` only when it owns a *decision* rather than just
+a mechanism. `shared/email` is the one that does: "which messages exist, who receives them,
+and which aren't built yet" is a product question no single domain can answer, so it lives
+with the seam rather than in a `docs/` folder nobody opens while writing code. Don't split
+the rest on principle.
+
 **The segments** (a slice uses as few as it needs — rule #6):
 
 | Segment | Holds | Rule |
@@ -189,7 +197,7 @@ Adopted from `wrld-sandbox/Nomenclature.md` so the two codebases read alike.
 | Domain slice folder | `camelCase` | `submission` · `payment` · `verification` |
 | Segment folder | fixed lowercase set | `model` · `api` · `ui` · `lib` · `config` |
 | Barrel | `index.ts` | |
-| Slice doc | `_<Slice>Documentation.md` | `_SubmissionDocumentation.md` |
+| Slice doc | `_<Slice>Documentation.md` | `_SubmissionDocumentation.md` · `_EmailDocumentation.md` |
 | id field | `xId`, `camelCase` | `muxAssetId` · `stripePaymentId` |
 | boolean field | `isX` / `hasX` | `isFirstTransition` |
 | ISO-string field | `xAt`, a `string` | `submittedAt` · `feedbackEmailedAt` |

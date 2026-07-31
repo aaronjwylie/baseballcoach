@@ -71,6 +71,19 @@ export const env = {
     return optional("BLOB_READ_WRITE_TOKEN");
   },
 
+  /**
+   * Whether we're running on Vercel's serverless platform.
+   *
+   * Matters for one thing only: the local-disk storage driver cannot work
+   * there. The filesystem is read-only outside `/tmp`, and `/tmp` doesn't
+   * survive between invocations — so "fall back to local disk" silently becomes
+   * "lose the customer's file". The upload route uses this to refuse loudly
+   * instead. Vercel sets `VERCEL=1` on every deployment.
+   */
+  get isServerless() {
+    return process.env.VERCEL === "1";
+  },
+
   // Stripe
   get stripeSecretKey() {
     return required("STRIPE_SECRET_KEY");

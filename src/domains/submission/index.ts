@@ -49,6 +49,7 @@ export {
   archiveSubmission,
   assignSubmissionCoach,
   createSubmission,
+  deleteSubmission,
   findByCoach,
   findByCustomerEmail,
   findByStripePaymentId,
@@ -58,7 +59,6 @@ export {
   lookupPublicSubmissions,
   markSubmissionInReview,
   unarchiveSubmission,
-  updateDraftDetails,
   updateSubmission,
 } from "./api/submissionApi";
 
@@ -73,9 +73,11 @@ export {
 } from "./api/submissionFileApi";
 
 export {
+  FLOW_MAX_AGE_S,
   clearFlowSession,
   readFlowSession,
   setFlowSession,
+  touchFlowSession,
 } from "./api/flowSession";
 
 export { StatusLookup } from "./ui/StatusLookup";

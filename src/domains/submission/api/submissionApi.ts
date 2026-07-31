@@ -82,34 +82,13 @@ export async function updateSubmission(
 }
 
 /**
- * Re-open a draft with edited details.
+ * Delete a submission outright. `submissionFiles` rows cascade with it.
  *
- * A customer who goes back from the verification step to fix a typo in their
- * email must land on an *unverified* submission — otherwise changing the address
- * after verifying would leave a row verified against an email nobody proved.
+ * Only for submissions that were never paid for — the guard lives in
+ * `discardUnpaidSubmission`, which is the only thing that should call this.
  */
-export async function updateDraftDetails(
-  id: string,
-  input: NewSubmission,
-): Promise<Submission> {
-  const [row] = await db
-    .update(submissions)
-    .set({
-      customerEmail: input.customerEmail.trim().toLowerCase(),
-      playerName: input.playerName,
-      playerAge: input.playerAge ?? null,
-      focus: input.focus ?? null,
-      customerNotes: input.customerNotes ?? null,
-      status: "draft",
-      emailVerifiedAt: null,
-      verificationCodeHash: null,
-      verificationExpiresAt: null,
-      verificationAttempts: 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(submissions.id, id))
-    .returning();
-  return fromRow(row);
+export async function deleteSubmission(id: string): Promise<void> {
+  await db.delete(submissions).where(eq(submissions.id, id));
 }
 
 /** Assign a coach and move the submission to `assigned`. Admin action. */

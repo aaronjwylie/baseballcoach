@@ -1,17 +1,31 @@
 # submission — `src/domains/submission/`
 
 The **submission domain slice** — one folder holding both what a Submission **is** (the noun)
-and what a customer **does** with it (looks theirs up). The paid request for video feedback:
+and what a customer **does** with it (looks theirs up). One request for coaching feedback:
 the record every other domain orbits.
 
 ---
 
 ## 1 · The northstar
 
-A submission is **one request for one video review**. It is created at the *first* step of
-the flow — before verification, before files, before money — and it accumulates: the proof
-of email, then the files, then the payment, then the coach's response. Its `status` is the
-whole workflow in one field.
+A submission is **one request for coaching feedback, carrying a pack of files** — not one
+video. A customer attaches whatever shows the problem: a clip or two, a still of their grip,
+a PDF from a previous coach. Up to `maxFilesPerSubmission`, each up to `maxFileSizeMb`, both
+set by the operator. One payment buys one *review of the pack*, and the coach answers it with
+a single response.
+
+That plural is the shape of the data, not a detail: it's why `submissionFiles` is a table and
+not a column, and why anything phrased as "the video" is a bug in the making. The single
+`videoUrl` field this replaced could only ever hold one locator.
+
+It is created at the *first* step of the flow — before verification, before files, before
+money — and it accumulates: the proof of email, then the files, then the payment, then the
+coach's response. Its `status` is the whole workflow in one field.
+
+**Nothing is retained until the payment clears.** Before that a submission is a scratch pad:
+a refresh, a ten-minute idle timeout, or "Start over" discards it — files and record together
+(`discardUnpaidSubmission`). Only a paid submission earns a place in the queue, and only a
+paid one is safe from being scrubbed.
 
 ```mermaid
 flowchart LR
@@ -93,12 +107,20 @@ its job.
 - ✅ **`assignedCoachId` is a real FK** to `coaches` — set from the admin portal.
 - ✅ **`submissionFiles`** — one row per uploaded file, replacing the single `videoUrl`.
   `listFilesForSubmissions` fetches a whole portal page in one query rather than one per row.
-- ✅ **The flow cookie** (`api/flowSession.ts`) — a signed, httpOnly, 6-hour capability
-  naming the one submission a browser started. It is what the upload gate checks now that
-  payment no longer comes first.
+- ✅ **The flow cookie** (`api/flowSession.ts`) — a signed, httpOnly capability naming the
+  one submission a browser started. It is what the upload gate checks now that payment no
+  longer comes first. **Ten minutes, sliding**: every action re-issues it, so the clock
+  measures idleness. An absolute ten minutes would expire people mid-upload, which on a slow
+  connection means losing a 50 MB file at 99%.
+- ✅ **A cold page load starts fresh.** `resolveFlowState` resumes *only* a paid submission
+  (to show its confirmation); anything unpaid returns an empty step 1. Refresh, a new tab,
+  and an expired cookie all mean a new attempt.
 - ✅ **Drafts are hidden from both readers.** `listSubmissions` (the admin queue) and
   `findByCustomerEmail` (the status lookup) both exclude `draft`: an abandoned first step is
   noise in a work queue and alarming in a customer's list.
+- ⚠️ **`deleteSubmission` has no guard of its own.** The "never delete something paid for"
+  check lives one level up, in `discardUnpaidSubmission`, which is the only thing that should
+  call it. Calling this directly would be a way to destroy a paid customer's record.
 - 🔶 **`findSweepable` is the one query written for a job rather than a screen.** It encodes
   the two retention rules, which means the rules are expressed in SQL here and in prose in
   [ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md). Keep them in
@@ -107,6 +129,15 @@ its job.
 ---
 
 ## 3 · Where we came from
+
+**2026-07-30 (later) · Only payment earns retention.** Yuta's rule: until the money clears,
+a submission is fair game to scrub. So the flow session dropped from six hours to **ten
+sliding minutes**, a cold page load no longer resumes an unpaid submission, and
+`startSubmissionAction` **discards and recreates** rather than editing in place.
+
+That last one deleted code rather than adding it: `updateDraftDetails` existed to clear the
+verification when a customer changed their email, and a submission that is always freshly
+created is unverified by construction. The invariant became structural instead of remembered.
 
 **2026-07-30 · The flow inverted** ([ADR 009](../../../docs/decisions/009-upload-before-payment.md)).
 The submission is no longer born paid, which changed what this slice means.

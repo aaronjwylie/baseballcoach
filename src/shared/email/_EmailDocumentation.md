@@ -1,11 +1,31 @@
-# Transactional email — who gets told what
+# email — `src/shared/email/`
+
+The **email seam** — transport plus the brand shell — and the matrix of who gets
+told what.
+
+The transport is domain-less: `sendEmail()` and `emailShell()` know how to send
+and how a message should look, and nothing about what any particular message
+means. Each message itself lives in the domain that owns its event, as
+`api/xEmail.ts`. This doc is where the whole set is accounted for, because "which
+emails exist and which don't" is a question no single domain can answer.
+
+---
+
+## Where we are now — 2026-07-30
+
+Four of six built. The transport is stable; what's missing is a workflow change,
+not templates. Detail below.
+
+---
+
+## Who gets told what
 
 **Status: partly built.** This is the agreed target (Yuta, 2026-07-30), pinned
 here so the gaps are visible rather than remembered. **Four of the six exist**;
 two of the missing three need a workflow change, not just a template.
 
 Every send is **best-effort** — a failure logs and never throws into a webhook or
-a portal action ([ADR 004](../decisions/004-best-effort-email.md)). The one
+a portal action ([ADR 004](../../../docs/decisions/004-best-effort-email.md)). The one
 exception in spirit is the verification code: it can't fail silently and leave a
 usable product, because the customer is blocked on it.
 
@@ -54,7 +74,7 @@ That requires:
 
 Until (2) exists, `feedbackEmailedAt` and the customer email fire from the wrong
 place. Note the ordering trap: `completedAt` is what the retention sweep counts
-from ([ADR 012](../decisions/012-retention-and-operator-settings.md)), so
+from ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)), so
 whichever action ends up owning "complete" **must** stamp it. That exact omission
 was a live bug on 2026-07-30 — the status was set without the timestamp, and
 completed submissions were never swept.

@@ -22,9 +22,11 @@ import {
   readFlowSession,
   setFlowSession,
   clearFlowSession,
-  updateDraftDetails,
+  touchFlowSession,
   type SubmissionFile,
 } from "@/domains/submission";
+import { submissionFolder } from "@/shared/storage";
+import { discardUnpaidSubmission } from "@/domains/upload";
 import {
   VERIFICATION_MESSAGES,
   codeSchema,
@@ -57,16 +59,21 @@ async function identify(): Promise<string> {
 /* ---- Step 1 — player details -------------------------------------------- */
 
 /**
- * Open (or re-open) a draft, then send the verification code.
+ * Discard whatever came before, open a fresh submission, and send the code.
  *
- * Re-entrant on purpose: a customer who goes back from step 2 to fix a typo
- * updates the same row rather than leaving a litter of drafts behind. Editing
- * the details clears any previous verification, so a changed email address must
- * be proven again.
+ * **Always a new row, never an edit.** Until a payment clears, a submission is a
+ * scratch pad; starting again throws the old one away — files and record —
+ * rather than reusing it. That makes two guarantees fall out for free: a fresh
+ * submission is unverified by construction, so a changed email address can never
+ * inherit a verification it didn't earn; and there is no half-edited row for the
+ * queue or the sweep to trip over.
+ *
+ * `discardUnpaidSubmission` refuses to touch anything already paid for, so a
+ * customer returning to `/start` after checking out keeps their receipt.
  */
 export async function startSubmissionAction(
   raw: unknown,
-): Promise<ActionResult<{ email: string }>> {
+): Promise<ActionResult<{ email: string; uploadFolder: string }>> {
   const limit = rateLimit(`start:${await identify()}`, {
     limit: 10,
     windowSeconds: 60 * 10,
@@ -76,22 +83,22 @@ export async function startSubmissionAction(
   const parsed = parseSubmissionInput(raw);
   if (!parsed.ok) return fail(parsed.error);
 
-  const existingId = await readFlowSession();
-  const existing = existingId ? await getSubmission(existingId) : null;
+  const previousId = await readFlowSession();
+  if (previousId) await discardUnpaidSubmission(previousId);
 
-  // A paid submission is finished; starting again means starting a new one.
-  const reusable = existing && !isPaid(existing) ? existing : null;
-
-  const submission = reusable
-    ? await updateDraftDetails(reusable.id, parsed.value)
-    : await createSubmission(parsed.value);
-
+  const submission = await createSubmission(parsed.value);
   await setFlowSession(submission.id);
 
   const sent = await sendCode(submission.id, submission.customerEmail);
   if (!sent) return fail("We couldn't send your code. Please try again.");
 
-  return { ok: true, data: { email: submission.customerEmail } };
+  return {
+    ok: true,
+    data: {
+      email: submission.customerEmail,
+      uploadFolder: submissionFolder(submission.id),
+    },
+  };
 }
 
 /* ---- Step 2 — email verification ---------------------------------------- */
@@ -119,6 +126,7 @@ export async function resendCodeAction(): Promise<ActionResult> {
   if (!submission) return fail("Your session has expired. Please start again.");
   if (isPaid(submission)) return fail("This submission is already complete.");
 
+  await touchFlowSession();
   const sent = await sendCode(submission.id, submission.customerEmail);
   return sent ? DONE : fail("We couldn't send your code. Please try again.");
 }
@@ -139,6 +147,7 @@ export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
   if (!submissionId) return fail("Your session has expired. Please start again.");
 
   const result = await verifyCode(submissionId, parsed.data);
+  if (result.ok) await touchFlowSession();
   return result.ok ? DONE : fail(VERIFICATION_MESSAGES[result.reason]);
 }
 
@@ -153,6 +162,7 @@ export async function listFlowFilesAction(): Promise<
 > {
   const submissionId = await readFlowSession();
   if (!submissionId) return fail("Your session has expired. Please start again.");
+  await touchFlowSession();
   return { ok: true, data: await listSubmissionFiles(submissionId) };
 }
 
@@ -176,6 +186,8 @@ export async function createIntentAction(): Promise<ActionResult<CreatedIntent>>
   const files = await listSubmissionFiles(submission.id);
   if (files.length === 0) return fail("Please attach at least one file first.");
 
+  await touchFlowSession();
+
   try {
     return { ok: true, data: await createPaymentIntent(submission) };
   } catch (err) {
@@ -198,13 +210,15 @@ export async function confirmPaymentAction(
 }
 
 /**
- * Let go of a finished submission so `/start` offers a fresh one.
+ * Let go of the current submission.
  *
- * The flow cookie deliberately survives payment — it's what lets the
- * confirmation screen still name the player and count the files after a
- * redirect. This is the customer saying they're done looking at it.
+ * Two callers, one verb: "Start over" mid-flow, and "Send another video" from
+ * the confirmation. The discard is a no-op on anything already paid for, so the
+ * second case clears the cookie without touching the customer's record.
  */
 export async function startAnotherAction(): Promise<ActionResult> {
+  const submissionId = await readFlowSession();
+  if (submissionId) await discardUnpaidSubmission(submissionId);
   await clearFlowSession();
   return DONE;
 }

@@ -15,6 +15,30 @@ Four numbers, one row, one admin form:
 | `retainResolvedHours` | 24 | when a completed review's uploads are deleted |
 | `retainUnpaidHours` | 24 | when an abandoned submission's uploads are deleted |
 
+### The timers, and why they aren't one mechanism
+
+Three clocks govern a submission, and they are implemented three different ways.
+Worth knowing before anyone asks for "a timer in admin":
+
+| Clock | Value | How it's enforced |
+| --- | --- | --- |
+| **Session expiry** — abandon an unfinished attempt | 10 min, sliding | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
+| **Deferred cleanup** — delete uploads after a review completes | `retainResolvedHours` | the hourly sweep, comparing against that submission's own `completedAt` |
+| **Deferred cleanup** — delete an abandoned submission's uploads | `retainUnpaidHours` | same sweep, against its own `submittedAt` |
+
+Both cleanup clocks are **relative to the submission**, never to a wall-clock
+schedule — "24 hours after *it* completed", not "at 4am". The cron cadence is a
+separate question: the job can only notice an elapsed window when it runs, so a
+daily job silently turned 24 hours into 24–48. It runs hourly for that reason.
+
+**A fourth kind doesn't exist yet and isn't cheap.** "Email the coach if a
+submission sits untouched for 48h" is not another row here — nothing on the
+submission implies it, so it needs per-item scheduled state, once-only delivery,
+and a decision about what happens when the submission changes while the timer is
+pending. The two kinds above are cheap precisely because they're *derivable* from
+a timestamp already on the row. Add named timers when a concrete one is wanted;
+a generic rules engine is the platform build-out CLAUDE.md §2 rules out.
+
 ### Why these aren't env vars
 
 **Env vars are the developer's configuration; these are the operator's.**

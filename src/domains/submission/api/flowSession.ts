@@ -15,13 +15,21 @@
  * verified lives on the row (`emailVerifiedAt`), so there is one home for that
  * fact and a stale cookie can never claim a verification that didn't happen.
  *
- * Six hours: long enough to find the code, dig out the clips, and pay, without
- * leaving an upload capability lying around on a shared machine overnight.
+ * **Ten minutes, and it slides.** Every action the customer takes re-issues the
+ * cookie, so the clock measures *idleness*, not total time — which matters
+ * because uploading a 50 MB clip on hotel wifi can legitimately take longer than
+ * the whole window. An absolute ten minutes would expire people mid-upload.
+ *
+ * It was six hours; Yuta asked for ten minutes (2026-07-30) so an abandoned
+ * half-finished submission doesn't greet the next person on a shared machine.
+ * The sliding behaviour is what makes that short window survivable.
  */
 import { readSignedCookie, setSignedCookie, clearSignedCookie } from "@/shared/auth";
 
 const FLOW_COOKIE = "bs_flow";
-const FLOW_MAX_AGE_S = 60 * 60 * 6;
+
+/** Idle timeout. Refreshed by `touchFlowSession` on every action. */
+export const FLOW_MAX_AGE_S = 60 * 10;
 
 interface FlowPayload {
   submissionId: string;
@@ -29,6 +37,21 @@ interface FlowPayload {
 
 export async function setFlowSession(submissionId: string): Promise<void> {
   return setSignedCookie(FLOW_COOKIE, { submissionId }, FLOW_MAX_AGE_S);
+}
+
+/**
+ * Push the expiry back, if there's still a live session.
+ *
+ * Called by anything the customer actively does. Deliberately a no-op when the
+ * cookie has already expired — reviving a dead session would defeat the point.
+ *
+ * Only usable where cookies can be written: Server Actions and Route Handlers.
+ * A Server Component render cannot, which is why simply *looking* at the page
+ * doesn't extend the window.
+ */
+export async function touchFlowSession(): Promise<void> {
+  const submissionId = await readFlowSession();
+  if (submissionId) await setFlowSession(submissionId);
 }
 
 /** The submission this browser is working on, or null. */

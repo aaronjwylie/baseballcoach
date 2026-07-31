@@ -131,7 +131,7 @@ export function StatusLookup() {
  *
  * "New" and "Assigned" are queue states that exist for Yuta, not the customer —
  * telling a parent their video is "unassigned" is alarming and not actionable.
- * They collapse into honest, calm language about where the video actually is.
+ * They collapse into honest, calm language about where the submission actually is.
  */
 const STATUS_META: Record<
   PublicSubmission["status"],

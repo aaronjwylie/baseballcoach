@@ -45,6 +45,11 @@ shared/
 
 ---
 
+> **`shared/email` has its own doc.** The transport lives here, but *which messages exist and
+> who receives them* is a product question spanning several domains — see
+> [`email/_EmailDocumentation.md`](email/_EmailDocumentation.md). It's the only seam under
+> `shared/` that owns a decision rather than just a mechanism.
+
 ## 2 · Where we are now — 2026-07-29
 
 - ✅ **The seams** — `db` (Postgres/Drizzle), `storage` (local + Blob), `auth` (jose

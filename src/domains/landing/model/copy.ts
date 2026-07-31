@@ -159,9 +159,9 @@ export const faqs = [
       "Professional coaches and former players from the Japanese system. Every review is done by a real coach — nothing is automated.",
   },
   {
-    q: "Can I submit more than one video?",
+    q: "Can I send more than one file?",
     answer:
-      "Yes — each review is purchased individually, so send as many as you like. Many players send one every few weeks to track progress.",
+      "Yes. One submission carries a pack of files, so send a couple of angles, a still, or an old report together — your coach reviews them as one. Need a second opinion later? Each review is purchased individually, so send another whenever you like.",
   },
 ] as const;
 

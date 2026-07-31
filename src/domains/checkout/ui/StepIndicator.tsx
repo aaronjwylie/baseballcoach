@@ -14,10 +14,24 @@ import {
  * asks for money, and a customer who can't see how much is left reads the extra
  * steps as the process going wrong rather than as three short steps.
  *
+ * **Completed steps are buttons, not decoration.** A customer who spots a typo
+ * in their email at step 3, or wants one more clip while looking at the payment
+ * form, can go straight back. Only backwards — a step you haven't reached isn't
+ * a link, because skipping the gate is exactly what the flow exists to prevent.
+ * The parent decides what's reachable via `canGoTo`; this only draws it.
+ *
  * The full labels are hidden below `sm` — on a phone the counter and the current
  * step's name carry the same information without wrapping to three lines.
  */
-export function StepIndicator({ current }: { current: CheckoutStep }) {
+export function StepIndicator({
+  current,
+  canGoTo,
+  onGoTo,
+}: {
+  current: CheckoutStep;
+  canGoTo?: (step: CheckoutStep) => boolean;
+  onGoTo?: (step: CheckoutStep) => void;
+}) {
   const currentNumber = stepNumber(current);
 
   return (
@@ -31,6 +45,24 @@ export function StepIndicator({ current }: { current: CheckoutStep }) {
           const position = index + 1;
           const done = position < currentNumber;
           const active = position === currentNumber;
+          const reachable = done && !!onGoTo && (canGoTo?.(step.key) ?? true);
+
+          const bar = (
+            <div
+              className={`h-1.5 rounded-full transition-colors ${
+                done || active ? "bg-ink" : "bg-paper-alt"
+              } ${reachable ? "group-hover:bg-ink-soft" : ""}`}
+            />
+          );
+          const label = (
+            <span
+              className={`mt-2 hidden text-xs sm:block ${
+                active ? "font-semibold text-ink" : "text-ink-muted"
+              } ${reachable ? "group-hover:text-ink group-hover:underline" : ""}`}
+            >
+              {step.label}
+            </span>
+          );
 
           return (
             <li
@@ -38,18 +70,22 @@ export function StepIndicator({ current }: { current: CheckoutStep }) {
               className="flex-1"
               aria-current={active ? "step" : undefined}
             >
-              <div
-                className={`h-1.5 rounded-full ${
-                  done || active ? "bg-ink" : "bg-paper-alt"
-                }`}
-              />
-              <span
-                className={`mt-2 hidden text-xs sm:block ${
-                  active ? "font-semibold text-ink" : "text-ink-muted"
-                }`}
-              >
-                {step.label}
-              </span>
+              {reachable ? (
+                <button
+                  type="button"
+                  onClick={() => onGoTo?.(step.key)}
+                  className="group block w-full cursor-pointer text-left"
+                >
+                  <span className="sr-only">Go back to </span>
+                  {bar}
+                  {label}
+                </button>
+              ) : (
+                <>
+                  {bar}
+                  {label}
+                </>
+              )}
             </li>
           );
         })}

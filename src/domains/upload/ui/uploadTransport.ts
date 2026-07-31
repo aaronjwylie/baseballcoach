@@ -80,10 +80,29 @@ async function viaBlob({
     file?: UploadedFile;
     error?: string;
   };
-  if (!res.ok || !json.file) {
-    throw new Error(json.error ?? "We couldn't save that file. Please try again.");
-  }
+  if (!res.ok || !json.file) throw uploadError(res, json.error);
   return json.file;
+}
+
+/**
+ * Turn a failed response into something a person can act on.
+ *
+ * A body we can't parse means the response didn't come from our own route —
+ * it's the platform, and the one that actually happens is a 413 when a request
+ * body exceeds the serverless limit. Reporting that as "we couldn't save that
+ * file" sent a real debugging session chasing the database instead of the
+ * missing Blob store, so the status now survives into the message.
+ */
+function uploadError(res: Response, serverMessage?: string): Error {
+  if (serverMessage) return new Error(serverMessage);
+  if (res.status === 413) {
+    return new Error(
+      "That file was rejected as too large by the server before it reached us. This is a setup problem on our side, not yours.",
+    );
+  }
+  return new Error(
+    `We couldn't save that file (error ${res.status}). Please try again.`,
+  );
 }
 
 /**
@@ -120,10 +139,18 @@ function viaProxy({
       if (xhr.status >= 200 && xhr.status < 300 && json.file) {
         onProgress(100);
         resolve(json.file);
+      } else if (json.error) {
+        reject(new Error(json.error));
+      } else if (xhr.status === 413) {
+        reject(
+          new Error(
+            "That file was rejected as too large by the server before it reached us. This is a setup problem on our side, not yours.",
+          ),
+        );
       } else {
         reject(
           new Error(
-            json.error ?? "We couldn't save that file. Please try again.",
+            `We couldn't save that file (error ${xhr.status}). Please try again.`,
           ),
         );
       }

@@ -1,14 +1,21 @@
 /**
  * Deleting uploaded files once they've served their purpose.
  *
- * Two rules, both on operator-tunable clocks:
+ * Two rules, both on operator-tunable clocks, and both **relative to the
+ * submission's own timestamps** — never to a wall-clock schedule:
  *
  * - **resolved** — a completed review's source files go `retainResolvedHours`
- *   after it completed. The coach is done with them and the customer has their
+ *   after *it* completed. The coach is done with them and the customer has their
  *   feedback.
- * - **abandoned** — an unpaid submission's files go `retainUnpaidHours` after it
- *   was opened. This is the cost of taking files before taking money (ADR 009):
- *   without it, anyone can park storage on us for free, forever.
+ * - **abandoned** — an unpaid submission's files go `retainUnpaidHours` after
+ *   *it* was opened. This is the cost of taking files before taking money
+ *   (ADR 009): without it, anyone can park storage on us for free, forever.
+ *
+ * The cron cadence is a separate question from the rule. The job only *notices*
+ * that a window elapsed when it runs, so a daily job made "24 hours after
+ * completion" mean 24–48 hours in practice. It runs hourly (`vercel.json`),
+ * which narrows that to 24–25. Running more often is cheap — the sweep skips
+ * rows it has already purged, so an extra run is one query.
  *
  * **The coach's feedback file is never swept.** The customer's only route to it
  * is the link in their email, and that link has to keep working; deleting it a

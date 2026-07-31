@@ -39,6 +39,21 @@ flowchart LR
 
 ---
 
+> **Updated 2026-07-30.** Two things changed under this slice without changing its code much:
+>
+> - **Completing now starts a clock.** `storeFeedbackAndComplete` stamps `completedAt` as
+>   well as the status, because the retention sweep counts from it. It briefly didn't, and
+>   completed submissions were never swept — the status said finished while the clock never
+>   started. If another action ever takes over "complete", it must stamp it too.
+> - **The customer's uploads are deleted `retainResolvedHours` after that stamp; the coach's
+>   feedback file never is.** The customer's only route to what they bought is the link in
+>   their email, so sweeping `feedbackUrl` would delete the deliverable
+>   ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)).
+>
+> Still pending: **Yuta's approval gate**. Today a coach's upload completes the submission and
+> emails the customer directly. The agreed design puts an approval step in between — see
+> [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
+
 ## 2 · Where we are now — 2026-07-29
 
 - ✅ **The feedback-ready email template** (`sendFeedbackReady`), ready to fire from the coach

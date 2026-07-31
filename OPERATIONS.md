@@ -147,10 +147,19 @@ production credential, so none of it can be done from a repo checkout alone.
       doesn't send their cookie and sees "session expired". Check the apex
       redirects to `www` too, so there's one canonical host. `NEXT_PUBLIC_*` is
       inlined at build time — changing it needs a redeploy.
-- [ ] **Confirm `BLOB_READ_WRITE_TOKEN` is set.** Without it the app falls back
-      to local disk, which on a serverless host means uploads vanish between
-      requests. This matters more than it used to: the browser now uploads
-      *directly* to Blob in production.
+- [ ] 🔴 **Create the Blob store and set `BLOB_READ_WRITE_TOKEN`**, then
+      redeploy. **This is currently broken and blocks the funnel** — confirmed
+      2026-07-30: production serves `uploadMode: "proxy"`, which is the app
+      saying no Blob store is configured.
+
+      With no token the storage seam falls back to local disk, and on Vercel
+      *no upload can succeed*: a file over ~4.5 MB is rejected by the platform
+      before it reaches our code, and a smaller one hits a filesystem that is
+      read-only outside `/tmp`. Vercel → Storage → Create Blob store, connect it
+      to the project, redeploy.
+
+      To check from outside: `curl -su USER:PASS <site>/start | grep -o
+      'uploadMode[^,}]*'` — it must say `blob`, not `proxy`.
 - [ ] **Live-mode Stripe keys + webhook**, when going live. Test and live are
       separate endpoints with separate signing secrets.
 
@@ -402,7 +411,7 @@ submissions (`new` and later) appear in the queue — a `draft` or an abandoned
 ### Admin (Yuta) — `/admin`
 
 1. The **Submissions** queue lists every submission, newest first. A `new` row
-   means a video is in and needs a coach.
+   means a paid submission is in, with its files, and needs a coach.
 2. **Download** any of the customer's files from the queue if you want to look
    first. A file struck through has been deleted by the retention sweep.
 3. **Assign a coach** from the row's Coach dropdown → the row becomes `assigned`.
@@ -491,7 +500,7 @@ The Stripe webhook URL. See the warning at the top.
 | ~~**Large-file uploads**~~ | ✅ **Built** — the browser uploads direct to Blob ([ADR 011](docs/decisions/011-client-direct-uploads.md)). It was not a "revisit for prod": at ~4.5 MB per request body, video upload could never have worked in production |
 | **Test a real card + 3-D Secure in a browser** | Everything around it is proven; a card needs a human |
 | **Real coach content + photography** for the landing page | Blocks launch — the current copy is wireframe placeholder |
-| **The remaining 3 emails + Yuta's approval step** ([docs/design/emails.md](docs/design/emails.md)) | Agreed, not built — needs a new status and an admin approve action |
+| **The remaining 3 emails + Yuta's approval step** ([`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md)) | Agreed, not built — needs a new status and an admin approve action |
 | **Point the site at `baseball-sensei.com`** + update `NEXT_PUBLIC_SITE_URL` | Optional — on the `.vercel.app` URL today |
 | **Forgot-password** (email reset) | Deferred — needs a token flow (change-password already shipped) |
 

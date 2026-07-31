@@ -7,6 +7,11 @@
  *
  * One name per concept: a property here is spelled the same way in the form,
  * the API, and the UI.
+ *
+ * **A submission carries a pack of files, not one video.** Its uploads are rows
+ * in `submissionFiles` (see `./submissionFile.ts`); nothing here holds a single
+ * locator, and phrasing anything as "the video" is how the old one-column model
+ * crept back in.
  */
 
 /** What the player wants coached. Matches the `focus` enum in the DB. */

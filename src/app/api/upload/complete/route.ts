@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { touchFlowSession } from "@/domains/submission";
 import { authorizeUpload, checkFile, registerUpload } from "@/domains/upload";
 
 /**
@@ -39,6 +40,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    // A landed file is activity: push the idle timeout back.
+    await touchFlowSession();
+
     const file = await registerUpload(permit.submission.id, parsed.data);
     if (!file) {
       return NextResponse.json(

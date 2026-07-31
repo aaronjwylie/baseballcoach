@@ -1,7 +1,8 @@
 # Baseball Sensei
 
-An online baseball coaching platform. Parents pay to submit a video of their kid
-batting or pitching and get an expert coach's feedback back. Two audiences:
+An online baseball coaching platform. Parents pay to submit a **pack of files** —
+clips of their kid batting or pitching, plus any stills or documents that help —
+and get an expert coach's feedback back. Two audiences:
 
 - **Customers** — a public funnel: land → verify email → upload → pay → check status → download feedback. No account, ever.
 - **Operators** — Yuta (admin) and coaches log into a portal to run the coaching workflow.

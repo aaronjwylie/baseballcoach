@@ -25,7 +25,8 @@ import {
   startSubmissionAction,
   verifyCodeAction,
 } from "../api/checkoutActions";
-import type { FlowStep } from "../model/steps";
+import type { CheckoutStep, FlowStep } from "../model/steps";
+import { stepNumber } from "../model/steps";
 import { StepIndicator } from "./StepIndicator";
 
 /**
@@ -73,6 +74,16 @@ export function CheckoutFlow({
   const [email, setEmail] = useState(initialEmail);
   const [playerName, setPlayerName] = useState(initialPlayerName);
   const [files, setFiles] = useState<UploadedFile[]>(initialFiles);
+  /*
+    Both of these live here rather than coming from the server, because a cold
+    load no longer resumes an unpaid submission — the server has deliberately
+    forgotten it. Within a single visit they're what makes "go back to step 1"
+    show the customer their own answers instead of an empty form.
+  */
+  const [details, setDetails] = useState<Partial<SubmissionInputDraft> | undefined>(
+    initialDetails,
+  );
+  const [folder, setFolder] = useState(uploadFolder);
   const [intent, setIntent] = useState<CreatedIntent | null>(null);
   const [error, setError] = useState<string | null>(paymentNotice ?? null);
 
@@ -97,7 +108,16 @@ export function CheckoutFlow({
       return;
     }
     setEmail(result.data.email);
+    setFolder(result.data.uploadFolder);
     setPlayerName(values.playerName);
+    // Remember what they typed, so stepping back shows it again.
+    setDetails({
+      customerEmail: values.customerEmail,
+      playerName: values.playerName,
+      playerAge: values.playerAge ? String(values.playerAge) : "",
+      focus: values.focus ?? "",
+      customerNotes: values.customerNotes ?? "",
+    });
     setStep("verify");
   }
 
@@ -141,9 +161,29 @@ export function CheckoutFlow({
     setStep("done");
   }
 
+  /*
+    Which completed steps a customer may jump back to.
+
+    `verify` is excluded once the email is proven: there is nothing to edit
+    there and no code in hand, so sending someone back to it would be a dead
+    end. Changing the email is done by going back to `details`, which clears the
+    verification and re-sends a code — handled server-side in
+    `updateDraftDetails`, so the two can't disagree.
+  */
+  function canGoTo(target: CheckoutStep): boolean {
+    if (stepNumber(target) >= stepNumber(step as CheckoutStep)) return false;
+    return target !== "verify";
+  }
+
+  function goTo(target: CheckoutStep) {
+    if (!canGoTo(target)) return;
+    setError(null);
+    setStep(target);
+  }
+
   return (
     <div className="space-y-8">
-      <StepIndicator current={step} />
+      <StepIndicator current={step} canGoTo={canGoTo} onGoTo={goTo} />
 
       {/* The verify panel shows its own errors inline, next to the input. */}
       {error && step !== "verify" && (
@@ -157,7 +197,7 @@ export function CheckoutFlow({
 
       {step === "details" && (
         <PlayerInfoForm
-          defaultValues={initialDetails}
+          defaultValues={details}
           submitLabel="Continue to email verification"
           pendingLabel="Sending your code…"
           onSubmit={submitDetails}
@@ -176,12 +216,34 @@ export function CheckoutFlow({
       {step === "upload" && (
         <UploadPanel
           mode={uploadMode}
-          folder={uploadFolder}
+          folder={folder}
           maxFileSizeMb={maxFileSizeMb}
           maxFiles={maxFiles}
           initialFiles={files}
           onDone={toPayment}
         />
+      )}
+
+      {/*
+        An explicit way out. A customer on a shared machine, or one who simply
+        wants to start again, shouldn't have to clear cookies or wait out the
+        timeout — and refreshing deliberately does NOT reset (see the comment on
+        `initialStep`), so without this there'd be no way to abandon a
+        half-finished submission on purpose.
+      */}
+      {step !== "details" && (
+        <p className="text-center text-sm text-ink-muted">
+          <button
+            type="button"
+            onClick={async () => {
+              await startAnotherAction();
+              router.refresh();
+            }}
+            className="underline hover:text-ink"
+          >
+            Start over
+          </button>
+        </p>
       )}
 
       {step === "pay" && intent && (

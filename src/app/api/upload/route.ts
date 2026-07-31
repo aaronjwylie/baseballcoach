@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { env } from "@/shared/config/env";
+import { touchFlowSession } from "@/domains/submission";
 import { authorizeUpload, checkFile, storeUploadedFile } from "@/domains/upload";
 
 /**
@@ -13,6 +15,30 @@ import { authorizeUpload, checkFile, storeUploadedFile } from "@/domains/upload"
  * email, and room under the file limit. Same gate as the direct path.
  */
 export async function POST(request: Request) {
+  /*
+    Refuse rather than degrade. Reaching this route on Vercel means no Blob
+    store is configured, so the storage seam fell back to local disk — and there
+    the filesystem is read-only outside /tmp, and /tmp doesn't survive between
+    invocations. Worse, the platform caps a request body near 4.5 MB and rejects
+    a real video with a non-JSON 413 before this code ever runs, which the
+    browser can only report as a vague "we couldn't save that file".
+
+    That is honest degradation gone wrong: it degrades into something broken
+    while looking configured. Say what's actually wrong instead.
+  */
+  if (env.isServerless) {
+    console.error(
+      "[upload] proxied upload attempted on Vercel — BLOB_READ_WRITE_TOKEN is unset, so uploads cannot work. Create a Blob store and redeploy.",
+    );
+    return NextResponse.json(
+      {
+        error:
+          "Uploads aren't configured on this server. This is a setup problem on our side, not yours — please let us know.",
+      },
+      { status: 503 },
+    );
+  }
+
   const decision = await authorizeUpload();
   if (!decision.ok) {
     return NextResponse.json(
@@ -38,6 +64,9 @@ export async function POST(request: Request) {
         { status: refusal.status },
       );
     }
+
+    // A landed file is activity: push the idle timeout back.
+    await touchFlowSession();
 
     const file = await storeUploadedFile(
       permit.submission.id,
