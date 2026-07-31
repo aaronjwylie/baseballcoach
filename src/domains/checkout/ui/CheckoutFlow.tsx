@@ -36,33 +36,31 @@ import { StepIndicator } from "./StepIndicator";
  * ADR 005 gave when there were two of them: a full page navigation between
  * "your details" and "pay" reintroduces exactly the seam Elements was chosen to
  * remove, and the client secret would have to travel through a URL to survive
- * it. What makes that safe across four steps is that the *server* remembers
- * which submission this browser owns, in the flow cookie — so a refresh, a
- * closed tab, or a redirect home from 3-D Secure all resume where they left off
- * rather than starting over. `initialStep` is that answer.
+ * it.
+ *
+ * **The state is entirely client-side, and dies with the page.** There is no
+ * resume — a refresh, a re-opened tab, or a shared machine always begins at step
+ * 1. That is deliberate: only a completed payment earns retention, so a
+ * half-finished submission is a scratch pad, and resuming one dropped customers
+ * into somebody's abandoned attempt.
+ *
+ * The flow cookie still exists, but it is a *capability*, not a memory: the
+ * server uses it to answer "which submission may this request touch" when
+ * verifying a code or accepting an upload. Nothing reads it to decide which step
+ * to show. The 3-D Secure return trip — the one case that used to need resuming
+ * — lands on `/start?paid=1` instead, a standalone confirmation that reads no
+ * state at all.
  *
  * This component owns the sequence and nothing else. Each step's panel belongs
  * to the domain that owns its subject.
  */
 export function CheckoutFlow({
-  initialStep,
-  initialEmail,
-  initialPlayerName,
-  initialDetails,
-  initialFiles,
   uploadMode,
-  uploadFolder,
   maxFileSizeMb,
   maxFiles,
   paymentNotice,
 }: {
-  initialStep: FlowStep;
-  initialEmail: string;
-  initialPlayerName: string;
-  initialDetails?: Partial<SubmissionInputDraft>;
-  initialFiles: UploadedFile[];
   uploadMode: UploadMode;
-  uploadFolder: string;
   maxFileSizeMb: number;
   maxFiles: number;
   /** Set when the redirect return trip couldn't be confirmed. */
@@ -70,22 +68,22 @@ export function CheckoutFlow({
 }) {
   const router = useRouter();
 
-  const [step, setStep] = useState<FlowStep>(initialStep);
-  const [email, setEmail] = useState(initialEmail);
-  const [playerName, setPlayerName] = useState(initialPlayerName);
-  const [files, setFiles] = useState<UploadedFile[]>(initialFiles);
-  /*
-    Both of these live here rather than coming from the server, because a cold
-    load no longer resumes an unpaid submission — the server has deliberately
-    forgotten it. Within a single visit they're what makes "go back to step 1"
-    show the customer their own answers instead of an empty form.
-  */
-  const [details, setDetails] = useState<Partial<SubmissionInputDraft> | undefined>(
-    initialDetails,
-  );
-  const [folder, setFolder] = useState(uploadFolder);
+  const [step, setStep] = useState<FlowStep>("details");
+  const [email, setEmail] = useState("");
+  const [playerName, setPlayerName] = useState("");
+  const [files, setFiles] = useState<UploadedFile[]>([]);
   const [intent, setIntent] = useState<CreatedIntent | null>(null);
   const [error, setError] = useState<string | null>(paymentNotice ?? null);
+  /*
+    Held in client state because nothing is resumed from the server: a page load
+    always starts at step 1, so these only ever describe the attempt happening
+    right now. `folder` arrives with step 1's result — it can't exist before the
+    submission does.
+  */
+  const [details, setDetails] = useState<Partial<SubmissionInputDraft> | undefined>(
+    undefined,
+  );
+  const [folder, setFolder] = useState("");
 
   if (step === "done") {
     return (

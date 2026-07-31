@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Container } from "@/shared/ui";
+import { ButtonLink, Container } from "@/shared/ui";
 import { site } from "@/shared/config/site";
 import { resolveFlowState } from "@/domains/checkout";
 import { CheckoutFlow } from "@/domains/checkout/ui/CheckoutFlow";
@@ -23,20 +23,62 @@ const PAYMENT_NOTICE: Record<string, string> = {
 /**
  * The whole customer flow, on one route.
  *
- * Dynamic by necessity: which step to show is read from the flow cookie, so this
- * page cannot be prerendered. `resolveFlowState` answers that question in one
- * place — including which upload path the browser should take, which depends on
- * whether a Blob store is configured.
+ * **Always starts at step 1.** There is no resume: `resolveFlowState` reads no
+ * cookie and returns only the operator's limits and which upload path this
+ * environment supports. A refresh, a re-opened tab, or a shared machine all get
+ * a clean form.
+ *
+ * `?paid=1` is the exception, and it isn't a resume — it's where
+ * `/api/payment/return` sends a customer after a redirect payment it has already
+ * confirmed and cleared the cookie for. It renders a standalone confirmation
+ * that reads no state at all.
+ *
+ * Dynamic because the settings come from the database, not because of any
+ * session.
  */
 export default async function StartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; paid?: string }>;
 }) {
   const [state, params] = await Promise.all([
     resolveFlowState(),
     searchParams,
   ]);
+
+  if (params.paid === "1") {
+    return (
+      <section className="py-14 sm:py-20">
+        <Container className="max-w-xl text-center">
+          <div
+            aria-hidden
+            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-paper-alt text-2xl"
+          >
+            ✓
+          </div>
+          <h1 className="mt-6 text-3xl font-medium tracking-tight text-ink sm:text-4xl">
+            Payment received
+          </h1>
+          <p className="mt-4 text-ink-soft">
+            Your submission is in and paid for. A receipt is on its way to your
+            inbox, listing everything you sent.
+          </p>
+          <p className="mt-2 text-ink-soft">
+            A coach will send a personal video walkthrough — we&rsquo;ll email you
+            the moment it&rsquo;s ready.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <ButtonLink href="/status" variant="outline">
+              Check your status
+            </ButtonLink>
+            <ButtonLink href="/start" variant="outline">
+              Send another
+            </ButtonLink>
+          </div>
+        </Container>
+      </section>
+    );
+  }
 
   return (
     <section className="py-14 sm:py-20">
@@ -55,13 +97,7 @@ export default async function StartPage({
 
         <div className="mt-10 rounded-3xl bg-paper-alt p-6 sm:p-8">
           <CheckoutFlow
-            initialStep={state.step}
-            initialEmail={state.email}
-            initialPlayerName={state.playerName}
-            initialDetails={state.details}
-            initialFiles={state.files}
             uploadMode={state.uploadMode}
-            uploadFolder={state.uploadFolder}
             maxFileSizeMb={state.maxFileSizeMb}
             maxFiles={state.maxFiles}
             paymentNotice={

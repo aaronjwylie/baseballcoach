@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/shared/config/env";
 import { confirmPaymentForFlow } from "@/domains/checkout/api/confirmPayment";
+import { clearFlowSession } from "@/domains/submission";
 
 /**
  * Where Stripe sends a customer back after a payment method that needed a
@@ -13,8 +14,10 @@ import { confirmPaymentForFlow } from "@/domains/checkout/api/confirmPayment";
  * sets state on mount, which is both slower and the thing React tells you not to
  * do.
  *
- * The submission is left in the flow cookie so `/start` can render the
- * confirmation with the player's name and file count still in hand.
+ * **The flow cookie is cleared on the way through.** The confirmation it lands
+ * on is standalone — `/start?paid=1` — so nothing needs to be resumed from a
+ * cookie, and a customer who reloads afterwards gets a clean step 1 rather than
+ * being dropped back inside a finished submission.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -28,7 +31,10 @@ export async function GET(request: Request) {
   }
 
   const outcome = await confirmPaymentForFlow(paymentIntentId);
-  if (!outcome.ok) {
+  if (outcome.ok) {
+    await clearFlowSession();
+    start.searchParams.set("paid", "1");
+  } else {
     console.error("[payment/return] confirmation failed:", outcome.error);
     start.searchParams.set("payment", "failed");
   }

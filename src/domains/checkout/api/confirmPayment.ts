@@ -16,7 +16,7 @@ import {
   getSucceededPaymentIntent,
   markSubmissionPaid,
 } from "@/domains/payment";
-import { readFlowSession } from "@/domains/submission";
+import { clearFlowSession, readFlowSession } from "@/domains/submission";
 
 export type ConfirmOutcome =
   | { ok: true }
@@ -47,6 +47,12 @@ export async function confirmPaymentForFlow(
   // Best-effort receipt, gated on `justPaid` inside — the webhook may already
   // have sent it.
   await completePayment(result);
+
+  // Let go of the submission. The confirmation the customer sees next is either
+  // client state (inline card) or `/start?paid=1` (redirect); neither reads this
+  // cookie, and leaving it set would mean a later reload landed on a finished
+  // submission.
+  await clearFlowSession();
 
   return { ok: true };
 }
