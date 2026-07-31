@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { assignCoachAction } from "../api/coachActions";
 
 /**
  * The coach-assignment control on the admin queue.
  *
- * Controlled (`value`/`onChange`) rather than an uncontrolled `defaultValue` on
- * purpose: an uncontrolled `<select>` in a Server-Action form doesn't reliably
- * carry the user's new pick across React's submit re-render, so Save was posting
- * the *previous* coach id — the assignment looked like it "reverted." Holding the
- * choice in state makes the submitted value always match what's on screen.
+ * Two things a plain `<form action={serverAction}>` got wrong here:
+ *
+ * 1. **Controlled, not `defaultValue`.** An uncontrolled `<select>` in a
+ *    Server-Action form didn't reliably carry the user's new pick across the
+ *    submit re-render, so Save posted the *previous* coach id and the row looked
+ *    unchanged. Holding the choice in state fixes what gets submitted.
+ * 2. **`router.refresh()` after the action.** `revalidatePath` clears the server
+ *    cache, but the current page keeps serving its cached RSC until a real
+ *    navigation — so the row showed the old coach until a manual refresh. The
+ *    explicit refresh re-fetches the row we're looking at.
  */
 export function AssignCoachSelect({
   submissionId,
@@ -22,9 +28,16 @@ export function AssignCoachSelect({
   coaches: { id: string; name: string }[];
 }) {
   const [coachId, setCoachId] = useState(assignedCoachId ?? "");
+  const router = useRouter();
 
   return (
-    <form action={assignCoachAction} className="flex items-center gap-2">
+    <form
+      action={async (formData) => {
+        await assignCoachAction(formData);
+        router.refresh();
+      }}
+      className="flex items-center gap-2"
+    >
       <input type="hidden" name="submissionId" value={submissionId} />
       <select
         name="coachId"

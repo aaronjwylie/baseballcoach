@@ -23,12 +23,18 @@ function optional(name: string): string | undefined {
 }
 
 export const env = {
-  // Public site URL, e.g. https://diamondpath.example.com
+  // Public base URL for absolute links in emails and Stripe return URLs, e.g.
+  // https://baseball-sensei.com. `NEXT_PUBLIC_SITE_URL` is the source of truth
+  // (set it to the live domain, Production env). It's inlined at build time,
+  // so if a build lacks it we fall back to Vercel's own runtime host rather
+  // than shipping `localhost` links to real customers and coaches.
   get siteUrl(): string {
-    return (
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      "http://localhost:3000"
-    );
+    const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+    if (explicit) return explicit.replace(/\/$/, "");
+    const vercelHost =
+      process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+    if (vercelHost) return `https://${vercelHost}`;
+    return "http://localhost:3000";
   },
 
   // Postgres — the system of record. Dockerized locally; in prod, Supabase's
