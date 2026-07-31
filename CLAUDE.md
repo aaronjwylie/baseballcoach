@@ -589,18 +589,27 @@ a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 
 ### `status` lifecycle (enum, in order)
 
-`draft → awaiting_payment → new → assigned → in_review → complete`
+`draft → awaiting_payment → new → assigned → in_review → awaiting_approval → complete`
 
 The customer flow writes the first three — `draft` at step 1, `awaiting_payment`
 once the email is verified, `new` when the payment clears. The admin drives
-`assigned` and `in_review` from the portal as he works the queue; a coach marking
-their work done sets `complete`, **which fires the feedback email** and starts
-the retention clock.
+`assigned` and `in_review` from the portal as he works the queue. A coach
+delivering their file sets **`awaiting_approval`** — it does *not* reach the
+customer yet — and Yuta approving it sets `complete`, **which fires the feedback
+email** and starts the retention clock.
+
+**`isPaid()` is the line that matters, and it is not "status === complete".**
+Everything from `new` onwards has been paid for, including `awaiting_approval`.
+Several places act destructively on the answer — discarding an unfinished
+submission, deciding whether a redelivered Stripe webhook is a fresh payment — so
+paid-ness is a `Record<SubmissionStatus, boolean>` in `domains/submission`, not a
+list. Adding a status without answering the question is a compile error. It was a
+list once, and `awaiting_approval` slipped through it.
 
 There is no "paid but no file yet" state any more: files arrive before payment,
 so `awaiting_upload` was retired with the flow that needed it. The status lookup
 collapses the middle states into calm customer-facing language — a parent doesn't
-need to know their video is "unassigned." The transition rules live in
+need to know their submission is "unassigned." The transition rules live in
 `domains/submission`, not scattered across the UI.
 
 ### `coaches`

@@ -61,15 +61,36 @@ export type AppWrittenStatus = Extract<
 >;
 
 /** Statuses that mean money has changed hands. */
-export const PAID_STATUSES: readonly SubmissionStatus[] = [
-  "new",
-  "assigned",
-  "in_review",
-  "complete",
-];
+/**
+ * Has money changed hands by this point?
+ *
+ * **A Record, not a list, deliberately** — adding a status to
+ * `SUBMISSION_STATUSES` without answering this question is now a compile error.
+ *
+ * It was a list, and that cost us: `awaiting_approval` was added to the
+ * lifecycle without being added here, which silently meant a *paid* submission
+ * sitting on Yuta's desk read as unpaid. Six call sites believe `isPaid`, and
+ * two of them act destructively on a `false` — `discardUnpaidSubmission` would
+ * have deleted it outright, and `markSubmissionPaid` would have treated a
+ * redelivered Stripe webhook as a fresh payment, walking the status backwards
+ * over the coach's work and sending a second receipt. Nothing failed loudly;
+ * the list just quietly stopped being complete.
+ */
+const PAID_AT_STATUS: Record<SubmissionStatus, boolean> = {
+  draft: false,
+  awaiting_payment: false,
+  new: true,
+  assigned: true,
+  in_review: true,
+  awaiting_approval: true,
+  complete: true,
+};
+
+export const PAID_STATUSES: readonly SubmissionStatus[] =
+  SUBMISSION_STATUSES.filter((status) => PAID_AT_STATUS[status]);
 
 export function isPaid(submission: Pick<Submission, "status">): boolean {
-  return PAID_STATUSES.includes(submission.status);
+  return PAID_AT_STATUS[submission.status];
 }
 
 /**

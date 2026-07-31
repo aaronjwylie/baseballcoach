@@ -50,9 +50,11 @@ flowchart LR
 >   their email, so sweeping `feedbackUrl` would delete the deliverable
 >   ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)).
 >
-> Still pending: **Yuta's approval gate**. Today a coach's upload completes the submission and
-> emails the customer directly. The agreed design puts an approval step in between — see
-> [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
+> - **Yuta's approval gate landed.** A coach's upload now moves the submission to
+>   `awaiting_approval` rather than completing it; `approveAndComplete` is what sets
+>   `complete`, stamps `completedAt`, and emails the customer. The coach no longer reaches the
+>   customer directly. Still missing: anything that *tells* Yuta a response is waiting — see
+>   [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
 
 ## 2 · Where we are now — 2026-07-29
 

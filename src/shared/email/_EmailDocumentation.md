@@ -13,16 +13,21 @@ emails exist and which don't" is a question no single domain can answer.
 
 ## Where we are now — 2026-07-30
 
-Four of six built. The transport is stable; what's missing is a workflow change,
-not templates. Detail below.
+Four of six built. The transport is stable and the approval gate has landed, so
+the remaining three are templates plus one small decision each. Detail below.
 
 ---
 
 ## Who gets told what
 
 **Status: partly built.** This is the agreed target (Yuta, 2026-07-30), pinned
-here so the gaps are visible rather than remembered. **Four of the six exist**;
-two of the missing three need a workflow change, not just a template.
+here so the gaps are visible rather than remembered. **Four of the six exist.**
+
+The approval gate this doc used to call "not built" now *is* built — a coach's
+upload moves the submission to `awaiting_approval`, and `approveAndComplete`
+releases it. So what's left is templates, not workflow: tell Yuta when a payment
+lands (#2's other half), tell Yuta and the coach when a response is submitted
+(#4), and the resolved follow-up (#6).
 
 Every send is **best-effort** — a failure logs and never throws into a webhook or
 a portal action ([ADR 004](../../../docs/decisions/004-best-effort-email.md)). The one
@@ -38,39 +43,42 @@ usable product, because the customer is blocked on it.
 | 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
 | 2 | Payment succeeded, submission accepted | customer **+ Yuta** | 🔶 **half** — the customer receipt is built; Yuta is not told |
 | 3 | Coach assigned to a submission | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
-| 4 | Coach uploaded their response | Yuta **+ coach** | ❌ **not built** — and today this step emails the *customer* instead |
-| 5 | Yuta approved the response → released | customer | ❌ **not built** — **needs an approval gate that doesn't exist** |
+| 4 | Coach uploaded their response | Yuta **+ coach** | ❌ **not built** — the status moves to `awaiting_approval`, but nobody is told, so Yuta has to notice |
+| 5 | Yuta approved the response → released | customer | ✅ **built** — `approveAndComplete` → `feedback/api/feedbackEmail.ts` |
 | 6 | Yuta marks the submission resolved | customer + coach | ❌ **not built** — trigger decided, see below |
 
-Target lifecycle once the gate exists (additions in bold):
+Lifecycle as built:
 
-`draft → awaiting_payment → new → assigned → in_review → `**`awaiting_approval`**` → complete`,
-plus a **`resolvedAt`** timestamp for #6.
+`draft → awaiting_payment → new → assigned → in_review → awaiting_approval → complete`
+
+Still to add for #6: a **`resolvedAt`** timestamp (not a status — see below).
 
 ---
 
-## What #4 and #5 actually change
+## The approval gate — built 2026-07-30
 
-They are not two templates. Together they insert **an approval step into the
-coach workflow.**
+*Kept because the reasoning still explains the shape of the workflow.*
 
-**Today:** the coach uploads their feedback file → `storeFeedbackAndComplete`
-sets `status: "complete"`, stamps `completedAt`, and emails **the customer**
-immediately. Yuta never sees it.
+These were never two templates. Together they inserted **an approval step into
+the coach workflow**, which is now in place:
 
-**Target:** the coach uploads → Yuta is told → Yuta reviews and approves → *then*
-the customer is told.
+**Before:** the coach uploaded their feedback file and it went straight to the
+customer. Yuta never saw it.
 
-That requires:
+**Now:** the coach uploads → the submission sits at `awaiting_approval` → Yuta
+approves → the customer is told. The one piece still missing is *telling* Yuta
+it's waiting (#4); today he has to spot it in the queue.
 
-1. **A new status** between `in_review` and `complete` — `awaiting_approval`.
-   A Postgres enum change, so a migration (CLAUDE.md §14: stop and flag).
-2. **Coach upload stops completing the submission.** It sets `awaiting_approval`
-   and emails Yuta + the coach. `completedAt` must **not** be stamped here — it
-   starts the retention clock, and the files are still needed for review.
-3. **An admin approve action** — a button in `/admin` that sets `complete`,
-   stamps `completedAt`, and sends message #5 to the customer.
-4. ~~**Message #3 on assignment**~~ — done; `assignCoachAction` sends it.
+What it took:
+
+1. ✅ **A new status** between `in_review` and `complete` — `awaiting_approval`.
+2. ✅ **Coach upload stops completing the submission.** It sets
+   `awaiting_approval` and correctly does *not* stamp `completedAt` — that starts
+   the retention clock, and the files are still needed for review.
+3. ✅ **An admin approve action** — `approveAndComplete` sets `complete`, stamps
+   `completedAt`, and sends message #5.
+4. ✅ **Message #3 on assignment** — `assignCoachAction` sends it.
+5. ❌ **Message #4** — nobody tells Yuta the response is waiting.
 
 Until (2) exists, `feedbackEmailedAt` and the customer email fire from the wrong
 place. Note the ordering trap: `completedAt` is what the retention sweep counts
