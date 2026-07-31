@@ -172,12 +172,17 @@ function SubmissionRow({
       </td>
       <td className="px-4 py-3">
         {submission.archivedAt ? (
-          <RowActionForm
-            action={unarchiveSubmissionAction}
-            submissionId={submission.id}
-            label="Unarchive"
-            className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-          />
+          <div className="flex flex-col items-start gap-2">
+            <span className="font-medium text-ink">
+              {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
+            </span>
+            <RowActionForm
+              action={unarchiveSubmissionAction}
+              submissionId={submission.id}
+              label="Unarchive"
+              className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+            />
+          </div>
         ) : submission.status === "complete" ||
           submission.status === "awaiting_approval" ? (
           // The coach is locked in once they've submitted — show the name, not a
