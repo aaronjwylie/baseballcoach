@@ -33,7 +33,7 @@ import {
   createPaymentIntent,
   getSucceededPaymentIntent,
 } from "@/domains/payment";
-import { findByStripePaymentId } from "@/domains/submission";
+import { createSubmission, getSubmission } from "@/domains/submission";
 
 /** Stripe's canned test payment methods. */
 const CARDS = {
@@ -119,14 +119,22 @@ async function main() {
   console.log(`Stripe key accepted · TEST mode\n`);
 
   // ── 1 · our own createPaymentIntent ─────────────────────────────────────
+  //
+  // Payment is the last step now, so the submission has to exist before there
+  // is anything to charge for. The probe creates one directly, standing in for
+  // the three steps a real customer would have walked first.
   const email = `seed+payment-${Date.now()}@seed.test`;
-  const created = await createPaymentIntent({
+  const submission = await createSubmission({
     customerEmail: email,
     playerName: "Payment Probe",
     playerAge: 12,
     focus: "Hitting",
     customerNotes: "Created by scripts/test-payment.ts",
+    status: "awaiting_payment",
   });
+  console.log(`0 · submission ${submission.id}`);
+
+  const created = await createPaymentIntent(submission);
   console.log(`1 · created  ${created.paymentIntentId}`);
   console.log(
     `             ${(created.amountCents / 100).toFixed(2)} ${created.currency.toUpperCase()} · client secret ${created.clientSecret.slice(0, 18)}…`,
@@ -138,7 +146,7 @@ async function main() {
   try {
     confirmed = await stripe().paymentIntents.confirm(created.paymentIntentId, {
       payment_method: card.token,
-      return_url: `${origin}/upload`,
+      return_url: `${origin}/start`,
     });
   } catch (err) {
     // A decline arrives as an exception, and for this script that's a PASS when
@@ -147,13 +155,13 @@ async function main() {
     console.log(`   → rejected: ${message.split("\n")[0]}`);
     if (cardName === "declined") {
       console.log(
-        "\n✓ Declined exactly as expected. No row should exist for this payment.",
+        "\n✓ Declined exactly as expected. The submission should still be unpaid.",
       );
-      const orphan = await findByStripePaymentId(created.paymentIntentId);
+      const after = await getSubmission(submission.id);
       console.log(
-        orphan
-          ? `✗ but a row EXISTS (${orphan.id}) — a failed payment should never create one`
-          : "✓ and no Airtable row was created",
+        after?.status === "awaiting_payment"
+          ? "✓ and it is still awaiting_payment"
+          : `✗ but its status is "${after?.status}" — a failed payment must not mark it paid`,
       );
       return;
     }
@@ -176,7 +184,7 @@ async function main() {
     return;
   }
 
-  // ── 3 · our succeeded-intent check (what /api/mux/upload gates on) ──────
+  // ── 3 · our succeeded-intent check (what the confirm action gates on) ───
   const verified = await getSucceededPaymentIntent(created.paymentIntentId);
   console.log(
     `\n3 · getSucceededPaymentIntent → ${
@@ -222,18 +230,19 @@ async function main() {
   console.log(`   → ${response.status} ${await response.text()}`);
 
   // ── 5 · did fulfillment land? ───────────────────────────────────────────
-  const row = await findByStripePaymentId(created.paymentIntentId);
-  console.log("\n5 · Airtable row");
+  const row = await getSubmission(submission.id);
+  console.log("\n5 · the submission after the webhook");
   if (!row) {
-    console.log("   ✗ none found — fulfillment did not run");
+    console.log("   ✗ the submission vanished");
     process.exit(1);
   }
   console.log(`   ✓ ${row.id}`);
-  console.log(`     status:  ${row.status}        (expect "Awaiting Upload")`);
+  console.log(`     status:  ${row.status}        (expect "new")`);
   console.log(`     email:   ${row.customerEmail}`);
   console.log(`     player:  ${row.playerName}, age ${row.playerAge}, ${row.focus}`);
   console.log(`     amount:  ${row.stripeAmount}`);
   console.log(`     payment: ${row.stripePaymentId}`);
+  console.log(`     paid at: ${row.paidAt}`);
 
   // Idempotency: the same delivery twice must not double-create.
   console.log("\n6 · re-delivering the same event (must not duplicate)");
@@ -246,15 +255,14 @@ async function main() {
     body,
   });
   console.log(`   → ${again.status} ${await again.text()}`);
-  const after = await findByStripePaymentId(created.paymentIntentId);
+  const after = await getSubmission(submission.id);
   console.log(
-    after?.id === row.id
-      ? `   ✓ still one row (${after.id}) — idempotent`
-      : `   ✗ row changed or duplicated`,
+    after?.paidAt === row.paidAt
+      ? `   ✓ paidAt unchanged (${after?.paidAt}) — idempotent`
+      : `   ✗ the redelivery re-ran fulfillment`,
   );
 
-  console.log(`\nNext, to carry this submission through upload:
-  npm run webhook -- mux ${row.id} --url ${origin}`);
+  console.log(`\nThe submission is now in the admin queue: ${origin}/admin`);
 }
 
 main().catch(reportAndExit);

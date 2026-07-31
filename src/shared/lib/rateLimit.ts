@@ -104,10 +104,21 @@ function sweep(now: number): void {
  * conservative than to hand out a free pass keyed on nothing.
  */
 export function clientIdentifier(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
+  return clientIdentifierFrom(request.headers);
+}
+
+/**
+ * The same answer, from a bare header bag.
+ *
+ * Server Actions have no `Request` to hand around — they read `headers()` from
+ * `next/headers` instead. Both callers land here so "who is this?" is answered
+ * one way, not two.
+ */
+export function clientIdentifierFrom(headers: Headers): string {
+  const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
     const first = forwarded.split(",")[0]?.trim();
     if (first) return first;
   }
-  return request.headers.get("x-real-ip")?.trim() || "unknown";
+  return headers.get("x-real-ip")?.trim() || "unknown";
 }

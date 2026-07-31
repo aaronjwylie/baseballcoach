@@ -83,9 +83,11 @@ admin seeded.
 
 These predate the platform pivot but still hold — each has an ADR:
 
-- **One idempotent `ensureSubmission()`, two callers** (webhook + upload) — handles
-  the race between the customer returning from payment and the webhook landing
-  ([ADR 003](docs/decisions/003-shared-idempotent-fulfillment.md)). Now writes to Postgres.
+- **One idempotent fulfillment, two callers** (webhook + the browser confirming) —
+  handles the race between the customer returning from payment and the webhook
+  landing ([ADR 003](docs/decisions/003-shared-idempotent-fulfillment.md)). It
+  inverted with the flow — `ensureSubmission` became `markSubmissionPaid` — but
+  the contract is unchanged.
 - **Payment is verified against Stripe, never our own row** — a stale or forged row
   can't mint an upload.
 - **Transactional email is best-effort, never throws** into a webhook or a portal
@@ -110,9 +112,10 @@ the wrong file.
 
 ### Still open
 
-- **Reformat to Audrey's approved design** when it lands — the current look is the
-  reference wireframe, explicitly provisional.
-- **Upload before payment** ([ADR 009](docs/decisions/009-upload-before-payment.md)) — proposed, not built.
+- **The landing page is now Audrey's approved wireframe** (2026-07-30). Its coach
+  section and photography are still placeholder and cannot go live as written.
+- ~~Upload before payment~~ — **built** 2026-07-30
+  ([ADR 009](docs/decisions/009-upload-before-payment.md)).
 - **The Vercel production deploy**, a verified Resend domain, and a live-mode
   Stripe webhook ([OPERATIONS.md](OPERATIONS.md)).
 - Nice-to-haves: coach edit/deactivate, resumable large-file uploads, React Email,
@@ -155,9 +158,10 @@ The client is personally funding this as a side project to validate demand befor
 
 The following are **intentionally not built**. If a request would require adding any of these, stop and flag it as out of scope before writing code. Do not silently expand scope.
 
-- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — Stripe captures it at checkout; the status lookup identifies returning customers by email. Operator logins (Yuta + coaches) are in scope and are a different thing; customers never get an account.
+- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — the status lookup identifies returning customers by an unverified email. Operator logins (Yuta + coaches) are in scope and are a different thing; customers never get an account.
+  - **The 6-digit email verification in the flow is not an account** and was checked against this line before it was built: no password, no profile, nothing to sign into, one submission, expires in hours. It proves reachability so we can deliver what was bought. See [ADR 010](docs/decisions/010-verification-gates-upload.md) — including how to tell if that line ever gets crossed.
 - **Customer dashboards** beyond the email lookup for submission status.
-- **Operator features beyond running the coaching workflow.** The portal covers submissions, coaches, assignment, and feedback hand-off — not analytics suites, billing consoles, or anything that serves scale we don't have. The line is "does Yuta need it to process a submission today?"
+- **Operator features beyond running the coaching workflow.** The portal covers submissions, coaches, assignment, feedback hand-off, and the handful of upload/retention limits Yuta tunes — not analytics suites, billing consoles, or anything that serves scale we don't have. The line is "does Yuta need it to process a submission today?"
 - **Subscription billing.** Per-submission payment only.
 - **Automated PDF report generation.** Coaches deliver PDFs manually if at all.
 - **Custom video annotation tools** (drawing on frames, slow-motion analysis, side-by-side comparison).
@@ -185,29 +189,34 @@ the app is the system of record and the glue.
                         Next.js app on Vercel
 ┌──────────────────────────────────────────────────────────────────┐
 │  CUSTOMER  (public, no login)     │  OPERATOR PORTAL  (auth)       │
-│  Landing → Pay → Upload           │  Admin (Yuta): queue,          │
-│  → Confirm → Status lookup        │  coach mgmt, assignment        │
-│                                   │  Coach: download video,        │
+│  Landing → /start, 4 steps:       │  Admin (Yuta): queue,          │
+│    1 details  2 verify email      │  coach mgmt, assignment,       │
+│    3 upload   4 pay               │  settings (limits/retention)   │
+│  → Confirm → Status lookup        │  Coach: download files,        │
 │                                   │  upload feedback, complete     │
 └───────────────┬───────────────────────────────────┬──────────────┘
-                │        API routes + actions        │
+                │     Server Actions + API routes    │
                 ▼                                     ▼
    ┌──────────────────────────┐          ┌───────────────────────────┐
-   │ Stripe (payments)        │          │ Object storage            │
+   │ Stripe (payments, LAST)  │          │ Object storage            │
    │  webhook → PaymentIntent │          │  Blob (prod) / disk (dev) │
-   └───────────┬──────────────┘          │  video + feedback files   │
+   └───────────┬──────────────┘          │  uploads + feedback files │
                │                         └────────────┬──────────────┘
+               │        browser ──uploads direct──────┘
                ▼                                      ▼
         ┌────────────────────────────────────────────────────┐
         │   Postgres  (system of record, via Drizzle)         │
-        │   users · coaches · submissions                     │
+        │   users · coaches · submissions ·                   │
+        │   submission_files · settings                       │
         └───────────────────────────┬────────────────────────┘
                                      │
-                                     ▼
-                             ┌──────────────┐
-                             │   Resend     │  customer emails:
-                             │  (email)     │  paid · received · ready
-                             └──────────────┘
+                    ┌────────────────┴────────────────┐
+                    ▼                                 ▼
+            ┌──────────────┐                 ┌──────────────────┐
+            │   Resend     │ customer mail:  │ Vercel Cron      │
+            │  (email)     │ code · receipt  │ nightly retention│
+            │              │ · feedback ready│ sweep            │
+            └──────────────┘                 └──────────────────┘
 ```
 
 ### Key architectural principles
@@ -271,7 +280,8 @@ The 30-second version:
 ```
 src/
 ├── app/        Next.js routes + API handlers — thin
-├── domains/    submission · payment · upload · feedback · account · coach · landing
+├── domains/    submission · checkout · verification · payment · upload ·
+│               feedback · account · coach · settings · landing
 └── shared/     the domain-less floor
 ```
 
@@ -315,7 +325,10 @@ STRIPE_PRICE_ID="price_..."                          # optional — else priced 
 STORAGE_DIR="./.storage"                             # dev only — local-disk root
 BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."           # prod only
 
-RESEND_API_KEY="re_..."                              # optional — unset = emails skipped, logged
+CRON_SECRET="..."                                    # guards /api/cron/sweep; unset = the sweep REFUSES to run
+
+RESEND_API_KEY="re_..."                              # unset = emails skipped, logged — but the
+                                                     # flow can't complete without the code email
 EMAIL_FROM="Baseball Sensei <hello@yourdomain.com>"
 ```
 
@@ -325,8 +338,13 @@ Two files, split by **audience** so a client component never imports a module
 full of secrets (see [structure.md §5](docs/design/structure.md)):
 
 - `shared/config/env.ts` — server-only secrets (`DATABASE_URL`, `AUTH_SECRET`,
-  Stripe secret, Blob token, Resend key). Validated with Zod; required values
-  throw at point of use with a message naming the variable.
+  Stripe secret, Blob token, Resend key, `CRON_SECRET`). Required values throw at
+  point of use with a message naming the variable.
+
+**Operator-tunable limits are not env vars.** Upload size, file count, and the two
+retention windows live in the `settings` table and are edited at
+`/admin/settings` — env is the developer's configuration, those are Yuta's
+([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 - `shared/config/publicEnv.ts` — the handful of `NEXT_PUBLIC_*` values the
   browser needs.
 
@@ -359,23 +377,36 @@ seams (Postgres, storage). Follow the SDK docs for exact API calls.
 - Client: `@stripe/react-stripe-js` + `@stripe/stripe-js` for the embedded
   `<PaymentElement>` — payment stays on our domain, our branding ([ADR 005](docs/decisions/005-stripe-elements-over-checkout.md)).
 
-Flow: `/start` posts to `POST /api/payment/intent`, which creates a PaymentIntent
-carrying the customer/player details in metadata and returns its `clientSecret`.
-`<PaymentElement>` collects the card; on success the browser lands on
-`/upload?payment_intent=…`. Stripe fires `payment_intent.succeeded` to
-`POST /api/webhooks/stripe`, which **creates the submission row in Postgres**
-(status `Awaiting Upload`). Idempotent on the payment-intent id.
+**Payment is the last of four steps** ([ADR 009](docs/decisions/009-upload-before-payment.md)),
+so by the time it runs the submission exists, the email is verified, and the files
+are in.
 
-### Object storage — video + feedback files
+Flow: `/start` step 4 calls the `createIntentAction` Server Action, which creates
+a PaymentIntent carrying **only `metadata.submissionId`** and returns its
+`clientSecret`. `<PaymentElement>` collects the card. On success the browser
+confirms inline; a method needing a redirect (3-D Secure, wallets) comes back
+through `GET /api/payment/return`, which confirms server-side. Either way Stripe
+also fires `payment_intent.succeeded` to `POST /api/webhooks/stripe`. All paths
+converge on `markSubmissionPaid()`, which is idempotent — whichever arrives first
+flips the status to `new` and sends the receipt; the rest no-op.
+
+### Object storage — uploads + feedback files
 
 One `shared/storage` seam, two drivers behind a single interface: **local disk**
 in dev (files under `STORAGE_DIR`), **Vercel Blob** in prod ([ADR 006](docs/decisions/006-object-storage-over-mux.md)).
-Both the customer's video and the coach's feedback file go through it.
+The customer's uploads and the coach's feedback file both go through it, into a
+folder per submission.
 
-- Upload: the browser sends the file to an app route that streams it to the
-  active driver and records the resulting URL/key on the submission.
-- Download: the coach's link resolves through `/api/video/[id]`, which checks the
-  row and serves (or redirects to) the file — links stay stable and private
+The seam also answers **`supportsDirectUpload`**, which is how the flow knows
+whether the browser can upload straight to storage or must go through us
+([ADR 011](docs/decisions/011-client-direct-uploads.md)).
+
+- Upload: in production the browser uploads **straight to Blob** with a scoped,
+  short-lived token from `/api/upload/blob`, then calls `/api/upload/complete` to
+  record it; in dev the bytes go through `/api/upload` onto local disk. Each file
+  gets a row in `submission_files`.
+- Download: the coach's link resolves through `/api/files/[id]`, which checks the
+  session and serves (or redirects to) the file — links stay stable and private
   across a driver swap.
 
 No transcoding, no streaming — the coach downloads and scrubs locally.
@@ -407,9 +438,12 @@ First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose
 - **Best-effort by design:** a send failure logs and never breaks a webhook or a
   portal action ([ADR 004](docs/decisions/004-best-effort-email.md)). If
   `RESEND_API_KEY` is unset, sends are skipped and logged — honest degradation.
-- Three messages: **payment received** (Stripe webhook), **video received** (on
-  upload complete), **feedback ready** (when a coach marks a submission complete
-  in the portal — no external automation).
+- **The agreed set is six messages; three are built.** The full matrix, the gaps,
+  and the workflow change two of them require are pinned in
+  [docs/design/emails.md](docs/design/emails.md).
+- Built today: **verification code** (step 2), **receipt** (Stripe webhook or the
+  browser confirming, listing every uploaded file), **feedback ready** (when a
+  coach marks a submission complete — no external automation).
 
 ### Vercel
 
@@ -428,18 +462,20 @@ First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose
 
 ## 8. Data Model (Postgres)
 
-The system of record is one Postgres database, three tables, accessed through
+The system of record is one Postgres database, **five tables**, accessed through
 Drizzle. **Column names live in exactly one place** — the Drizzle schema in
 `shared/db` (surfaced to the domain via `domains/submission/api/`) — and a
 migration is the only way they change. One home per fact.
 
 ### `submissions`
 
-The spine. One row per paid request; every other domain orbits it.
+The spine. One row per request; every other domain orbits it. Created at **step 1
+of the flow**, before verification, files, or payment — see
+[ADR 009](docs/decisions/009-upload-before-payment.md).
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | uuid, primary key | our own id — the linkage key everywhere (retires the Mux `passthrough` trick) |
+| `id` | uuid, primary key | our own id — the linkage key everywhere |
 | `customerEmail` | text | always lowercased on write and lookup |
 | `playerName` | text | |
 | `playerAge` | integer | |
@@ -447,29 +483,71 @@ The spine. One row per paid request; every other domain orbits it.
 | `customerNotes` | text | the customer's words, never overwritten |
 | `internalNotes` | text | system messages + operator notes |
 | `status` | enum | see lifecycle below |
+| `emailVerifiedAt` | timestamptz, null | set when the 6-digit code is accepted; **the upload gate** |
+| `verificationCodeHash` | text, null | bcrypt hash — the code itself is never stored |
+| `verificationExpiresAt` | timestamptz, null | 10 minutes from issue |
+| `verificationAttempts` | integer, default 0 | 5 before the code must be reissued |
 | `stripePaymentId` | text, unique | PaymentIntent id — the webhook's idempotency key |
 | `stripeAmount` | integer (cents) | |
-| `videoUrl` | text, null | storage key/URL for the customer's video |
+| `paidAt` | timestamptz, null | |
 | `assignedCoachId` | uuid, FK → `coaches.id`, null | set by the admin on assignment |
-| `feedbackUrl` | text, null | storage key/URL for the coach's response |
+| `feedbackUrl` | text, null | storage key/URL for the coach's response. **Never swept** |
 | `feedbackEmailedAt` | timestamptz, null | idempotency guard on the feedback email |
+| `filesPurgedAt` | timestamptz, null | when the retention sweep removed the uploads |
 | `submittedAt` | timestamptz, default `now()` | |
+| `completedAt` | timestamptz, null | starts the retention clock |
 | `updatedAt` | timestamptz | |
 
 `customerNotes` and `internalNotes` stay separate so an operator can forward a
 customer's words to a coach without hand-cleaning `[system]` lines out of them.
 
+### `submission_files`
+
+One row per file the customer uploaded. Replaced the single `videoUrl` column
+when the flow moved to multi-file uploads.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid, primary key | the id in `/api/files/[id]` |
+| `submissionId` | uuid, FK → `submissions.id`, cascade | indexed |
+| `filename` | text | the customer's own name for it — display only, never a path |
+| `contentType` | text | |
+| `sizeBytes` | integer | |
+| `fileUrl` | text, **null** | storage locator. **Goes null when swept — the row survives** |
+| `uploadedAt` | timestamptz, default `now()` | |
+
+The record outliving the bytes is deliberate: the portal and the receipt can
+still say what was sent. `/api/files/[id]` answers **410 Gone**, not 404.
+
+### `settings`
+
+One row, always (`id` is fixed). The operator's knobs, edited at
+`/admin/settings` — **not env vars**, because they belong to Yuta rather than to
+a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
+
+| Column | Type | Default |
+| --- | --- | --- |
+| `maxFileSizeMb` | integer | 50 |
+| `maxFilesPerSubmission` | integer | 5 |
+| `retainResolvedHours` | integer | 24 |
+| `retainUnpaidHours` | integer | 24 |
+| `updatedAt` | timestamptz | |
+
 ### `status` lifecycle (enum, in order)
 
-`awaiting_upload → new → assigned → in_review → complete`
+`draft → awaiting_payment → new → assigned → in_review → complete`
 
-The app writes the first two — `awaiting_upload` on payment, `new` on upload
-complete. The admin drives `assigned` and `in_review` from the portal as he works
-the queue; a coach marking their work done sets `complete`, **which fires the
-feedback email.** The status lookup collapses the middle three into calm
-customer-facing language — a parent doesn't need to know their video is
-"unassigned." The transition rules live in `domains/submission`, not scattered
-across the UI.
+The customer flow writes the first three — `draft` at step 1, `awaiting_payment`
+once the email is verified, `new` when the payment clears. The admin drives
+`assigned` and `in_review` from the portal as he works the queue; a coach marking
+their work done sets `complete`, **which fires the feedback email** and starts
+the retention clock.
+
+There is no "paid but no file yet" state any more: files arrive before payment,
+so `awaiting_upload` was retired with the flow that needed it. The status lookup
+collapses the middle states into calm customer-facing language — a parent doesn't
+need to know their video is "unassigned." The transition rules live in
+`domains/submission`, not scattered across the UI.
 
 ### `coaches`
 
@@ -484,7 +562,7 @@ across the UI.
 
 ### `users`
 
-Operator identity for Auth.js — **operators only, never customers.**
+Operator identity — **operators only, never customers.**
 
 | Column | Type | Notes |
 | --- | --- | --- |
@@ -511,16 +589,20 @@ coach action in the portal, not a webhook.
 
 **Events:**
 
-- `payment_intent.succeeded` → create the submission row in Postgres
-  (`awaiting_upload`) + send the payment-received email
-- `payment_intent.payment_failed` → log for admin visibility; no row created
+- `payment_intent.succeeded` → mark the submission paid (`new`) + send the
+  receipt, which lists every uploaded file
+- `payment_intent.payment_failed` → log for admin visibility; the submission
+  stays in `awaiting_payment` with its files intact, so the customer can retry
 
 **Signature verification:** `stripe.webhooks.constructEventAsync()` over the raw
 body with `STRIPE_WEBHOOK_SECRET`. Verify before doing anything.
 
-**Idempotency:** `stripePaymentId` is unique and `ensureSubmission()` is
-idempotent on it, so a Stripe retry finds the existing row instead of duplicating.
-The email is gated on first-creation.
+**Idempotency:** `markSubmissionPaid()` is idempotent — a submission already in a
+paid status is returned untouched — so a Stripe retry, or the browser confirming
+first, is a no-op. The receipt is gated on `justPaid`.
+
+The intent names its submission in `metadata.submissionId`, written when the
+intent was created. The id is looked up, never trusted to describe anything.
 
 **Response:** return `200` quickly; a handler error returns `500` so Stripe
 retries — safe, because the work is idempotent.
@@ -546,42 +628,67 @@ export async function POST(req: Request) {
 
 ### The file uploads (not webhooks)
 
-`POST /api/upload` (customer video) and `POST /api/feedback/upload` (coach
-feedback) take the file as the request body — gated on a Stripe-verified payment
-and on operator ownership respectively. Downloads are `GET /api/video/[id]`
-(operator-only) and `GET /api/feedback/[id]` (public, once complete). See the
-endpoint table in [OPERATIONS.md](OPERATIONS.md).
+Uploads no longer gate on payment — payment comes after them
+([ADR 009](docs/decisions/009-upload-before-payment.md)). They gate on the flow
+cookie plus a verified email ([ADR 010](docs/decisions/010-verification-gates-upload.md)).
+
+**In production the browser uploads straight to Vercel Blob**, because a
+serverless request body is capped near 4.5 MB and a phone video is not
+([ADR 011](docs/decisions/011-client-direct-uploads.md)):
+
+| Route | Job |
+| --- | --- |
+| `POST /api/upload/blob` | issue a scoped, short-lived Blob client token (prod) |
+| `POST /api/upload/complete` | record a file the browser uploaded directly (prod) |
+| `POST /api/upload` | take the bytes through us onto local disk (**dev only**) |
+| `POST /api/feedback/upload` | the coach's response — operator-gated |
+| `GET /api/files/[id]` | download one uploaded file — operator-only; **410** once swept |
+| `GET /api/feedback/[id]` | the coach's response — public once complete |
+| `GET /api/payment/return` | where Stripe sends a 3-D Secure customer back |
+| `GET /api/cron/sweep` | the nightly retention sweep — `CRON_SECRET` required |
+
+See the endpoint table in [OPERATIONS.md](OPERATIONS.md).
 
 ---
 
 ## 10. Build Status
 
 The original 8-sprint plan is retired — the platform pivot reshaped it, and git
-holds the history. Here's where the build actually stands, on branch
-`build/operator-portal`.
+holds the history. Here's where the build actually stands.
 
 **Built and verified locally:**
 
-- ✅ **Customer funnel** — landing, `/start` (info + Stripe Elements), `/upload`
-  (video → storage), confirmation, `/status`, feedback download.
-- ✅ **Foundation** — dockerized Postgres, Drizzle schema + migration, seed.
-- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`.
-- ✅ **Persistence + storage** — submissions on Postgres, files on the storage
-  seam (local disk / Blob); Airtable + Mux retired.
-- ✅ **Admin portal** — submissions queue, coach management, coach assignment.
-- ✅ **Coach portal** — assigned reviews, video download, feedback delivery →
+- ✅ **Customer flow, four steps on `/start`** — player details → email
+  verification (6-digit code) → multi-file upload → payment → confirmation.
+  Walked end to end in a real browser 2026-07-30.
+- ✅ **Landing page** rebuilt to Audrey's approved wireframe.
+- ✅ **Foundation** — dockerized Postgres, Drizzle schema + migrations, seed.
+- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`,
+  plus a separate short-lived customer *flow* cookie (not an account).
+- ✅ **Persistence + storage** — submissions and per-file rows on Postgres, files
+  on the storage seam. Direct-to-Blob in prod, proxied to disk in dev.
+- ✅ **Admin portal** — submissions queue with per-file downloads, coach
+  management, assignment, and **settings** (upload limits + retention).
+- ✅ **Coach portal** — assigned reviews, per-file download, feedback delivery →
   complete → customer email.
-- ✅ **Transactional email** — payment received, video received, feedback ready.
+- ✅ **Transactional email** — verification code, receipt with the file list,
+  feedback ready.
+- ✅ **Retention sweep** — nightly Vercel Cron, resolved and abandoned rules,
+  customer uploads only.
 
 **Remaining:**
 
 - The **Vercel production deploy** (Supabase schema migrated + admin seeded) —
-  runbook in [OPERATIONS.md](OPERATIONS.md).
-- A **verified Resend domain** + a **live-mode Stripe webhook** before real customers.
-- **Reformat to Audrey's approved design** when it lands.
+  runbook in [OPERATIONS.md](OPERATIONS.md). **The new migrations must be applied.**
+- A **verified Resend domain** — the flow now *cannot be completed* without email,
+  because the verification code travels through it.
+- `CRON_SECRET` set in Vercel, or the retention sweep refuses to run.
+- A **live-mode Stripe webhook** before real customers.
+- **Real coach content and photography** for the landing page.
+- A **human test of the card field and 3-D Secure** — everything around it is
+  proven, but a real card needs a real person.
 - Deferred: an in-app `/feedback/[id]` viewer, coach edit/deactivate, resumable
-  large-file uploads, React Email, shadcn/ui, and upload-before-payment
-  ([ADR 009](docs/decisions/009-upload-before-payment.md)).
+  uploads across a reload, React Email, shadcn/ui.
 
 > **Handoff runbook:** the step-by-step go-live — accounts, env vars, migrations,
 > the Stripe webhook, DNS, and the end-to-end test — is in [OPERATIONS.md](OPERATIONS.md).
@@ -647,8 +754,8 @@ Read this section before coding. These have bitten *this* project.
 
 ### Webhooks
 
-- **Stripe retries failed webhooks.** Idempotency is critical — `ensureSubmission`
-  is idempotent on the payment id; keep it so. A handler error returns 500 (safe).
+- **Stripe retries failed webhooks.** Idempotency is critical — `markSubmissionPaid`
+  no-ops on an already-paid submission; keep it so. A handler error returns 500 (safe).
 - **Verify signatures over the raw body.** `await req.text()`, then verify. Never
   `req.json()` first.
 
@@ -675,8 +782,13 @@ Read this section before coding. These have bitten *this* project.
 ### Storage + auth
 
 - **Files go through the `shared/storage` seam**, never a driver directly. The
-  locator is stored on the submission; downloads resolve via `/api/video/[id]`
+  locator is stored on the file row; downloads resolve via `/api/files/[id]`
   (operator) and `/api/feedback/[id]` (public, complete-only).
+- **In production the browser uploads straight to Blob.** Do not route a customer
+  file through a Next.js route handler on Vercel — the request body is capped near
+  4.5 MB ([ADR 011](docs/decisions/011-client-direct-uploads.md)).
+- **Operator limits are in the database, not env.** File size, file count, and the
+  two retention windows are edited at `/admin/settings`.
 - **Auth checks live close to the data** — `requireSession` / `requireRole` in the
   page or route, not only in `proxy.ts` (which is optimistic). Re-check role *and*
   ownership in any route that mutates.

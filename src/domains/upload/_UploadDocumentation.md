@@ -1,93 +1,126 @@
 # upload — `src/domains/upload/`
 
-The **upload domain slice** — getting the video to us. All **verb**: the browser sends the
-file to our upload route, which streams it to storage and moves the submission forward.
+The **upload domain slice** — getting the customer's files to us. All **verb**: it owns what
+may be sent, who may send it, and the two ways bytes travel.
 
 ---
 
 ## 1 · The northstar
 
-The customer's file comes browser → our route → the `shared/storage` seam (local disk in
-dev, Vercel Blob in prod). We save it, record the locator on the submission, and flip the
-status to `new`. No transcoding, no streaming — the coach downloads and scrubs locally
+A submission carries **several files** — a clip, a still or two, maybe an old report. Each
+one lands in storage under the submission's own folder and gets a row in `submissionFiles`.
+No transcoding, no streaming — the coach downloads and scrubs locally
 ([ADR 006](../../../docs/decisions/006-object-storage-over-mux.md)).
 
 ```mermaid
 flowchart LR
-    PANEL["ui/UploadPanel"] -->|"POST /api/upload (the file)"| API["/api/upload"]
-    API -->|"verify paid"| PAY["payment domain"]
-    API -->|"storeVideo"| APIU["api/uploadApi"]
-    APIU -->|"save"| STORE["shared/storage"]
-    APIU -->|"videoUrl + status → new"| SUB["Submission row"]
-    API --> MAIL["api/uploadEmail"]
+    PANEL["ui/UploadPanel"] --> T["ui/uploadTransport"]
+    T -->|"prod: token"| BLOBR["/api/upload/blob"]
+    T -->|"prod: bytes"| BLOB[("Vercel Blob")]
+    T -->|"prod: register"| DONE["/api/upload/complete"]
+    T -->|"dev: bytes"| PROXY["/api/upload"]
+    BLOBR --> GATE["api/uploadPolicy"]
+    DONE --> GATE
+    PROXY --> GATE
+    DONE --> APIU["api/uploadApi"]
+    PROXY --> APIU
+    APIU --> STORE["shared/storage"]
+    APIU --> ROW["submissionFiles row"]
+    CRON["/api/cron/sweep"] --> SWEEP["api/retentionSweep"]
 ```
 
 ### The invariants
 
-- **The file is only stored against a Stripe-verified paid PaymentIntent.** The gate lives in
-  the `/api/upload` route, using the payment domain — an unpaid or forged reference stores
-  nothing.
-- **The storage locator is the submission's `videoUrl`** — a local key in dev, a Blob URL in
-  prod. Nothing outside `shared/storage` knows which.
-- **The received email fires only on the first upload** (the transition out of
-  `awaiting_upload`), so a re-upload can't send it twice.
-- **The coach downloads via `/api/video/[id]`, operator-only.** The customer never gets their
-  own raw video back; the coach's response comes via `/api/feedback/[id]`.
+- **The gate is `authorizeUpload()`, and every route calls it.** A flow cookie naming a
+  submission, a verified email, not already paid, and room under the file limit. Written
+  once because three routes need the same answer, and a check in three copies is a check
+  that will differ in three ways.
+- **Nothing the browser says is trusted.** Type, size, and count are re-checked server-side
+  on every single upload, and a locator reported back by the browser must resolve inside
+  *this* submission's folder or it's refused.
+- **The allowlist lives once**, in `model/fileTypes.ts` — the picker's `accept`, the
+  client's pre-check, and the server's validation all read it. That module has no server
+  imports so a `"use client"` component can import it directly.
+- **The coach downloads via `/api/files/[id]`, operator-only.** The customer never gets their
+  own raw files back; the coach's response comes via `/api/feedback/[id]`.
+- **This slice sends no email.** With payment last, the one customer confirmation is the
+  receipt, and that belongs to `payment`.
 
 ### The pieces
 
-- **the VERB** — `api/uploadApi.ts` (`storeVideo`: save to storage, move the status) ·
-  `ui/UploadPanel.tsx` (the browser file uploader) · `api/uploadEmail.ts` ("your video is
-  in"). The HTTP surface is `app/api/upload/route.ts`.
-- No `model/`: **there is no Upload record.** The upload's facts live on the submission
-  (`videoUrl`, `status`).
+- **the GATE** — `api/uploadPolicy.ts` (`authorizeUpload`, `checkFile`).
+- **the VERB** — `api/uploadApi.ts` (`storeUploadedFile` for the proxied path,
+  `registerUpload` for the direct one) · `api/retentionSweep.ts`.
+- **the WIRE** — `ui/uploadTransport.ts` (two paths, one call) · `ui/UploadPanel.tsx` (the
+  cards).
+- No `model/` record: **there is no Upload entity.** A finished upload is a
+  `SubmissionFile`, which belongs to the submission slice.
 
 ---
 
-## 2 · Where we are now — 2026-07-29
+## 2 · Where we are now — 2026-07-30
 
-- ✅ **Upload → storage**, gated on a verified payment. The file streams to the
-  `shared/storage` driver (local disk in dev), the submission gets its `videoUrl` and moves
-  to `new`, and the "video received" email fires on the first upload.
-- ✅ **Download** — `/api/video/[id]` (operator-only, 401 without a session) streams the file
-  back. Verified end to end against the seeded data: a session gets `200 video/mp4`, no
-  session gets `401`.
-- 🔶 **Mobile upload untested on real devices** — still the highest-risk part of the flow.
-- 🔶 **No upload progress bar** — the plain uploader shows "Uploading…", not a percentage —
-  and **no client-side size/duration guidance** beyond the FAQ.
-- 🔶 **Large files hit the platform body limit on Vercel.** Fine locally; the prod path may
-  need a direct-to-Blob client upload or chunking. Flagged for the port.
+- ✅ **Multi-file, one card at a time.** A card starts empty, becomes a live upload with a
+  real percentage the moment a file is chosen, and only then does "Upload another file"
+  appear. Verified in a browser: two files up, `.exe` refused with the right sentence, the
+  Continue button counting correctly.
+- ✅ **The Vercel body-limit bug is fixed** ([ADR 011](../../../docs/decisions/011-client-direct-uploads.md)).
+  This slice's previous doc flagged it as "may need a direct-to-Blob client upload" — it was
+  not a *may*: at ~4.5 MB per serverless request body, video upload could never have worked
+  in production. The browser now uploads straight to Blob.
+- ✅ **Real progress**, which the cards need. `fetch` still can't report upload progress, so
+  the dev path uses `XMLHttpRequest` and the Blob path uses the SDK's `onUploadProgress`.
+- ✅ **Multipart over 8 MB**, so a phone changing towers retries a part instead of the file.
+- ✅ **Retention sweep** — resolved and abandoned rules, customer files only, records kept
+  ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)).
+- 🔶 **Dev and prod take different paths.** Unavoidable — there's no Blob store on a laptop —
+  and mitigated by one `uploadFile()` call and one shared gate. It still means the production
+  path is not exercised by local testing.
+- 🔶 **Mobile upload untested on real devices** — still the highest-risk part of the flow, and
+  now the one most changed.
+- 🔶 **No resume across a page reload mid-upload.** A dropped upload restarts; multipart
+  retries parts, but a closed tab loses the file.
+- 🔶 **A cancelled upload can orphan a Blob object.** If the browser dies between the bytes
+  landing and `/api/upload/complete`, the object exists with no row. It isn't billed for
+  long — nothing references it and the store is small — but nothing cleans it up either,
+  because the sweep works from rows.
 
 ---
 
 ## 3 · Where we came from
 
+**2026-07-30 · Payment moved last, and one video became many**
+([ADR 009](../../../docs/decisions/009-upload-before-payment.md),
+[010](../../../docs/decisions/010-verification-gates-upload.md),
+[011](../../../docs/decisions/011-client-direct-uploads.md)).
+
+- **The gate changed from "paid" to "verified".** The route used to verify a succeeded
+  PaymentIntent against Stripe. Payment now happens *after* this step, so that gate no longer
+  exists; a signed flow cookie plus `emailVerifiedAt` replaced it.
+- **`videoUrl` became the `submissionFiles` table.** One column can hold one locator; the
+  brief asked for videos, images, and documents together.
+- **`storeVideo` became `storeUploadedFile` + `registerUpload`** — one verb per path in.
+- **`sendVideoReceived` was deleted, not moved.** It fired on the transition out of
+  `awaiting_upload`, a status that no longer exists, and its job — "we have your stuff" — is
+  now the receipt's, which also lists what arrived.
+- **`/api/video/[id]` became `/api/files/[id]`.** The id in the path is the file's now,
+  because a submission no longer has exactly one.
+
 **2026-07-29 · Storage cutover** ([ADR 006](../../../docs/decisions/006-object-storage-over-mux.md)).
 Mux is gone. The direct-upload + `<MuxUploader>` + `video.asset.ready` webhook were replaced
 by a plain uploader that POSTs the file to `/api/upload`, which streams it to the
-`shared/storage` seam and moves the status. `passthrough` (ADR 002) is retired — the
-submission's own uuid is the link. Everything below is the Mux era, kept as the trail.
+`shared/storage` seam. `passthrough` (ADR 002) is retired — the submission's own uuid is the
+link.
 
 **Before 2026-07-28**, this slice was `lib/mux.ts`, the upload-URL logic inline in
 `app/api/mux/upload/route.ts`, and `app/upload/upload-client.tsx`. Step 2 collected them and
 lifted the Mux call out of the route handler.
 
-Decisions taken, with their reasoning:
+Decisions from the Mux era worth keeping as trail:
 
-- **`passthrough` = Airtable record ID, not the payment intent ID** (original build,
-  superseding CLAUDE.md §7). The spec's version would have required a `filterByFormula`
-  search built from external input on every webhook — a table scan plus an escaping surface,
-  where a keyed read was available for free. The spec was amended, not the code.
-- **Fallback lookup on `Mux Upload ID`** if `passthrough` is ever absent. Belt and braces;
-  not observed to trigger.
-- **Errored assets return to `Awaiting Upload` rather than a dedicated error status.** The
-  customer's next action is identical to someone who never uploaded — try again — so a new
-  status would have added a queue state with no distinct handling. The `[system]` note
-  carries the detail instead.
-- **The whole webhook handler moved out of the route (Step 2b).** This was the fattest route
-  in the codebase — 111 lines holding the asset-ready status transition, the errored-asset
-  note append, and the passthrough lookup. All of that is what an upload *means*, not HTTP.
-  The route is 26 lines now.
-- **`UploadClient` renamed `UploadPanel` (Step 2).** "Client" collided with the other
-  meaning of the word all over this codebase — Stripe client, Airtable client, the customer.
-  One stem per concept.
+- **Errored assets returned to `Awaiting Upload` rather than a dedicated error status.** The
+  customer's next action was identical to someone who never uploaded — try again. The
+  per-card error state in `UploadPanel` is the same idea, closer to the customer.
+- **`UploadClient` renamed `UploadPanel` (Step 2).** "Client" collided with the other meaning
+  of the word all over this codebase — Stripe client, Airtable client, the customer. One stem
+  per concept.

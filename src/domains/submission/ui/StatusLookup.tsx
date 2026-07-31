@@ -137,8 +137,15 @@ const STATUS_META: Record<
   PublicSubmission["status"],
   { label: string; className: string }
 > = {
-  awaiting_upload: {
-    label: "Awaiting your video",
+  // A draft never reaches the lookup — `findByCustomerEmail` filters it out —
+  // but the map is exhaustive so a new status can't be added without deciding
+  // what a customer should be told about it.
+  draft: {
+    label: "Not finished",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  awaiting_payment: {
+    label: "Awaiting payment",
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
   new: {

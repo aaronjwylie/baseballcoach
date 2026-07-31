@@ -69,6 +69,17 @@ export const env = {
     return optional("STRIPE_PRICE_ID");
   },
 
+  /**
+   * Shared secret Vercel Cron presents when invoking the retention sweep.
+   *
+   * Optional to *read*, but the sweep route refuses to run without it rather
+   * than degrading — an unguarded endpoint that deletes customer files is worse
+   * than a sweep that never runs.
+   */
+  get cronSecret() {
+    return optional("CRON_SECRET");
+  },
+
   // Email (Resend). Optional — email failures should never break the flow.
   get resendApiKey() {
     return optional("RESEND_API_KEY");

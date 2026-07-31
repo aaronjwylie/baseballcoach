@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { Container, Button } from "@/shared/ui";
 import { requireRole, logout } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
-import { findByCoach, type Submission } from "@/domains/submission";
+import {
+  findByCoach,
+  listFilesForSubmissions,
+  SubmissionFileList,
+  type Submission,
+  type SubmissionFile,
+} from "@/domains/submission";
 import { UploadFeedback } from "@/domains/feedback";
 
 export const metadata: Metadata = {
@@ -14,6 +20,10 @@ export default async function CoachHomePage() {
   const session = await requireRole("coach");
   const coach = await getCoachByUserId(session.userId);
   const submissions = coach ? await findByCoach(coach.id) : [];
+  // One query for the page rather than one per card.
+  const filesBySubmission = await listFilesForSubmissions(
+    submissions.map((s) => s.id),
+  );
 
   const open = submissions.filter((s) => s.status !== "complete");
   const done = submissions.filter((s) => s.status === "complete");
@@ -51,7 +61,11 @@ export default async function CoachHomePage() {
             </li>
           )}
           {open.map((s) => (
-            <ReviewCard key={s.id} submission={s} />
+            <ReviewCard
+              key={s.id}
+              submission={s}
+              files={filesBySubmission.get(s.id) ?? []}
+            />
           ))}
         </ul>
 
@@ -81,10 +95,22 @@ export default async function CoachHomePage() {
   );
 }
 
-function ReviewCard({ submission }: { submission: Submission }) {
+/**
+ * A submission always arrives with its files already attached — they are
+ * uploaded before payment now, and an unpaid submission never reaches a coach.
+ * So there is no "awaiting upload" state to render here any more; an empty list
+ * means the retention sweep has been through.
+ */
+function ReviewCard({
+  submission,
+  files,
+}: {
+  submission: Submission;
+  files: SubmissionFile[];
+}) {
   return (
     <li className="rounded-2xl border border-line bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="font-semibold text-ink">
             {submission.playerName}
@@ -97,23 +123,17 @@ function ReviewCard({ submission }: { submission: Submission }) {
             {submission.customerNotes ? submission.customerNotes : "No notes"}
           </div>
         </div>
-        {submission.videoUrl ? (
-          <a
-            href={`/api/video/${submission.id}`}
-            className="text-sm font-semibold text-accent hover:underline"
-          >
-            Download video
-          </a>
-        ) : (
-          <span className="text-sm text-ink-muted">Awaiting upload</span>
-        )}
+        <div className="text-right">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            {files.length} file{files.length === 1 ? "" : "s"}
+          </div>
+          <SubmissionFileList files={files} emptyLabel="Files deleted" />
+        </div>
       </div>
 
-      {submission.videoUrl && (
-        <div className="mt-4 border-t border-line pt-4">
-          <UploadFeedback submissionId={submission.id} />
-        </div>
-      )}
+      <div className="mt-4 border-t border-line pt-4">
+        <UploadFeedback submissionId={submission.id} />
+      </div>
     </li>
   );
 }

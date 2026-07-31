@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
-import { listSubmissions, type Submission, type SubmissionStatus } from "@/domains/submission";
+import {
+  listFilesForSubmissions,
+  listSubmissions,
+  SubmissionFileList,
+  type Submission,
+  type SubmissionFile,
+  type SubmissionStatus,
+} from "@/domains/submission";
 import { listCoaches, assignCoachAction, type Coach } from "@/domains/coach";
 import { requireRole } from "@/domains/account";
 import { AdminNav } from "./AdminNav";
@@ -10,8 +17,14 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+/**
+ * The queue only ever holds paid submissions (`listSubmissions` filters the
+ * pre-payment states out), but the map is exhaustive so a new status can't be
+ * added without deciding how the portal shows it.
+ */
 const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }> = {
-  awaiting_upload: { text: "Awaiting upload", className: "bg-amber-50 text-amber-700 border-amber-200" },
+  draft: { text: "Draft", className: "bg-stone-50 text-stone-600 border-stone-200" },
+  awaiting_payment: { text: "Awaiting payment", className: "bg-amber-50 text-amber-700 border-amber-200" },
   new: { text: "New — needs a coach", className: "bg-blue-50 text-blue-700 border-blue-200" },
   assigned: { text: "Assigned", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   in_review: { text: "In review", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
@@ -21,6 +34,8 @@ const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }
 export default async function AdminHomePage() {
   await requireRole("admin");
   const [submissions, coaches] = await Promise.all([listSubmissions(), listCoaches()]);
+  // One query for the whole page rather than one per row.
+  const filesBySubmission = await listFilesForSubmissions(submissions.map((s) => s.id));
 
   return (
     <section className="py-10">
@@ -34,23 +49,28 @@ export default async function AdminHomePage() {
         <div className="mt-6 overflow-x-auto rounded-2xl border border-line bg-white">
           {submissions.length === 0 ? (
             <p className="p-8 text-center text-sm text-ink-muted">
-              No submissions yet. They&apos;ll appear here as customers pay and upload.
+              No submissions yet. They&apos;ll appear here once a customer uploads and pays.
             </p>
           ) : (
-            <table className="w-full min-w-[820px] text-left text-sm">
+            <table className="w-full min-w-[880px] text-left text-sm">
               <thead className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-4 py-3 font-medium">Player</th>
                   <th className="px-4 py-3 font-medium">Customer</th>
                   <th className="px-4 py-3 font-medium">Focus</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Video</th>
+                  <th className="px-4 py-3 font-medium">Files</th>
                   <th className="px-4 py-3 font-medium">Coach</th>
                 </tr>
               </thead>
               <tbody>
                 {submissions.map((s) => (
-                  <SubmissionRow key={s.id} submission={s} coaches={coaches} />
+                  <SubmissionRow
+                    key={s.id}
+                    submission={s}
+                    files={filesBySubmission.get(s.id) ?? []}
+                    coaches={coaches}
+                  />
                 ))}
               </tbody>
             </table>
@@ -61,9 +81,16 @@ export default async function AdminHomePage() {
   );
 }
 
-function SubmissionRow({ submission, coaches }: { submission: Submission; coaches: Coach[] }) {
+function SubmissionRow({
+  submission,
+  files,
+  coaches,
+}: {
+  submission: Submission;
+  files: SubmissionFile[];
+  coaches: Coach[];
+}) {
   const status = STATUS_LABEL[submission.status];
-  const assignable = submission.status !== "awaiting_upload";
 
   return (
     <tr className="border-b border-line last:border-0 align-top">
@@ -80,39 +107,29 @@ function SubmissionRow({ submission, coaches }: { submission: Submission; coache
         </span>
       </td>
       <td className="px-4 py-3">
-        {submission.videoUrl ? (
-          <a href={`/api/video/${submission.id}`} className="font-medium text-accent hover:underline">
-            Download
-          </a>
-        ) : (
-          <span className="text-ink-muted">—</span>
-        )}
+        <SubmissionFileList files={files} emptyLabel="—" />
       </td>
       <td className="px-4 py-3">
-        {assignable ? (
-          <form action={assignCoachAction} className="flex items-center gap-2">
-            <input type="hidden" name="submissionId" value={submission.id} />
-            <select
-              name="coachId"
-              defaultValue={submission.assignedCoachId ?? ""}
-              className="rounded-md border border-line bg-white px-2 py-1 text-sm"
-            >
-              <option value="" disabled>
-                Assign…
+        <form action={assignCoachAction} className="flex items-center gap-2">
+          <input type="hidden" name="submissionId" value={submission.id} />
+          <select
+            name="coachId"
+            defaultValue={submission.assignedCoachId ?? ""}
+            className="rounded-md border border-line bg-white px-2 py-1 text-sm"
+          >
+            <option value="" disabled>
+              Assign…
+            </option>
+            {coaches.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
-              {coaches.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className="text-xs font-semibold text-accent hover:underline">
-              Save
-            </button>
-          </form>
-        ) : (
-          <span className="text-ink-muted">—</span>
-        )}
+            ))}
+          </select>
+          <button type="submit" className="text-xs font-semibold text-accent hover:underline">
+            Save
+          </button>
+        </form>
       </td>
     </tr>
   );

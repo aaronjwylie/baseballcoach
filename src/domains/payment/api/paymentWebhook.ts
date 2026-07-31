@@ -7,8 +7,8 @@
 import type Stripe from "stripe";
 import { stripe } from "@/shared/stripe/client";
 import { env } from "@/shared/config/env";
-import { ensureSubmission } from "../model/fulfillment";
-import { sendPaymentConfirmation } from "./paymentEmail";
+import { markSubmissionPaid } from "../model/fulfillment";
+import { completePayment } from "./paymentCompletion";
 
 /**
  * The Stripe events this handler acts on — the single home for that fact.
@@ -16,7 +16,7 @@ import { sendPaymentConfirmation } from "./paymentEmail";
  * `scripts/stripe-webhook.ts` configures the dashboard endpoint from this list,
  * so what Stripe is told to send and what we actually handle cannot drift. That
  * drift is a silent failure: an endpoint subscribed to the wrong event means
- * payments succeed and no submission row is ever created.
+ * payments succeed and no submission is ever marked paid.
  */
 export const HANDLED_STRIPE_EVENTS = [
   "payment_intent.succeeded",
@@ -55,19 +55,23 @@ export async function verifyStripeWebhook(
  */
 export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
-    case "payment_intent.succeeded":
-      await handlePaymentSucceeded(event.data.object as Stripe.PaymentIntent);
+    case "payment_intent.succeeded": {
+      const result = await markSubmissionPaid(
+        event.data.object as Stripe.PaymentIntent,
+      );
+      if (result) await completePayment(result);
       break;
+    }
 
     case "payment_intent.payment_failed": {
-      // No row is created for a failed payment — there's nothing to fulfil.
-      // Logged for admin visibility per CLAUDE.md §9.
+      // The submission stays in `awaiting_payment` — the customer's files are
+      // still there and they can try again. Logged for admin visibility.
       const intent = event.data.object as Stripe.PaymentIntent;
       console.log(
         JSON.stringify({
           event: "payment_failed",
           paymentIntentId: intent.id,
-          email: intent.receipt_email,
+          submissionId: intent.metadata?.submissionId ?? null,
           reason: intent.last_payment_error?.message ?? "unknown",
         }),
       );
@@ -76,19 +80,5 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
 
     default:
       break;
-  }
-}
-
-async function handlePaymentSucceeded(intent: Stripe.PaymentIntent) {
-  const { submission, created } = await ensureSubmission(intent);
-  if (!created) {
-    console.log(`[stripe webhook] row already exists for ${intent.id}`);
-    return;
-  }
-
-  // Gated on `created` so a redelivered webhook can't send a second email.
-  if (submission.customerEmail) {
-    const uploadUrl = `${env.siteUrl}/upload?payment_intent=${encodeURIComponent(intent.id)}`;
-    await sendPaymentConfirmation(submission.customerEmail, uploadUrl);
   }
 }

@@ -12,7 +12,7 @@ import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
 import { db, users, coaches, submissions } from "@/shared/db";
 import { createSubmission } from "@/domains/submission";
-import { storeVideo } from "@/domains/upload";
+import { storeUploadedFile } from "@/domains/upload";
 
 async function ensureUser(
   email: string,
@@ -64,33 +64,39 @@ async function main() {
 
   const [{ n }] = await db.select({ n: count() }).from(submissions);
   if (n === 0) {
+    // Mid-flow: verified and uploaded, but not paid. Shows what the retention
+    // sweep's "abandoned" rule is there to clean up.
     await createSubmission({
       customerEmail: "parent1@example.com",
       playerName: "Alex Tanaka",
       playerAge: 14,
       focus: "Hitting",
       customerNotes: "Trying to fix an early bat drop on inside pitches.",
-      status: "awaiting_upload",
-      stripePaymentId: "pi_seed_1",
-      stripeAmount: 14900,
+      status: "awaiting_payment",
     });
 
-    // A "new" submission with a real placeholder file so the admin Download
-    // link actually works end to end.
-    const withVideo = await createSubmission({
+    // Paid, with two real placeholder files so the portal's Download links
+    // work end to end.
+    const paid = await createSubmission({
       customerEmail: "parent2@example.com",
       playerName: "Sam Rivera",
       playerAge: 12,
       focus: "Pitching",
-      status: "awaiting_upload",
+      status: "new",
       stripePaymentId: "pi_seed_2",
-      stripeAmount: 14900,
+      stripeAmount: 8000,
     });
-    await storeVideo(
-      withVideo.id,
-      "video.mp4",
+    await storeUploadedFile(
+      paid.id,
+      "bullpen-side.mp4",
       new TextEncoder().encode("seed placeholder video"),
       "video/mp4",
+    );
+    await storeUploadedFile(
+      paid.id,
+      "release-point.png",
+      new TextEncoder().encode("seed placeholder image"),
+      "image/png",
     );
 
     await createSubmission({
@@ -100,7 +106,7 @@ async function main() {
       focus: "Fielding",
       status: "complete",
       stripePaymentId: "pi_seed_3",
-      stripeAmount: 14900,
+      stripeAmount: 8000,
     });
 
     console.log("[seed] created 3 sample submissions");

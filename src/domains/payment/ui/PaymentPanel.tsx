@@ -14,7 +14,7 @@ import { stripePublishableKey } from "@/shared/config/publicEnv";
 import type { CreatedIntent } from "../api/paymentApi";
 
 /**
- * Step two — paying, on our own page.
+ * Step four — paying, on our own page, once everything else is done.
  *
  * `loadStripe` is called once at module scope, not per render: it injects a
  * script tag, and re-invoking it per mount would add another.
@@ -26,10 +26,14 @@ const stripePromise = stripePublishableKey
 export function PaymentPanel({
   intent,
   playerName,
+  fileCount,
+  onPaid,
   onBack,
 }: {
   intent: CreatedIntent;
   playerName: string;
+  fileCount: number;
+  onPaid: (paymentIntentId: string) => Promise<void>;
   onBack: () => void;
 }) {
   // A missing publishable key is a deployment mistake, not a customer error.
@@ -52,14 +56,16 @@ export function PaymentPanel({
       options={{
         clientSecret: intent.clientSecret,
         // Match the site rather than accepting Stripe's defaults — the whole
-        // reason for Elements over hosted Checkout (ADR 005).
+        // reason for Elements over hosted Checkout (ADR 005). The values track
+        // the tokens in `app/globals.css`; Stripe can't read CSS variables, so
+        // this is the one other place the palette is written down.
         appearance: {
           theme: "stripe",
           variables: {
-            colorPrimary: "#2c2c2a",
-            colorText: "#2c2c2a",
+            colorPrimary: "#161616",
+            colorText: "#161616",
             colorDanger: "#b4232c",
-            borderRadius: "8px",
+            borderRadius: "12px",
             fontFamily: "inherit",
           },
         },
@@ -68,22 +74,26 @@ export function PaymentPanel({
       <PaymentFields
         intent={intent}
         playerName={playerName}
+        fileCount={fileCount}
+        onPaid={onPaid}
         onBack={onBack}
       />
     </Elements>
   );
 }
 
-/**
- * Inside the Elements provider, so the Stripe hooks are available.
- */
+/** Inside the Elements provider, so the Stripe hooks are available. */
 function PaymentFields({
   intent,
   playerName,
+  fileCount,
+  onPaid,
   onBack,
 }: {
   intent: CreatedIntent;
   playerName: string;
+  fileCount: number;
+  onPaid: (paymentIntentId: string) => Promise<void>;
   onBack: () => void;
 }) {
   const stripe = useStripe();
@@ -102,8 +112,10 @@ function PaymentFields({
       elements,
       confirmParams: {
         // Only used when the method needs a redirect (3-D Secure, wallets).
-        // Stripe appends payment_intent to it on the way back.
-        return_url: `${window.location.origin}/upload`,
+        // Stripe appends payment_intent to it; that route confirms server-side
+        // and forwards to /start, so the customer comes back to a finished
+        // page rather than one that has to catch up in an effect.
+        return_url: `${window.location.origin}/api/payment/return`,
       },
       // Stay on the page for plain cards; redirect only when the method demands
       // it. Without this, every payment would bounce through a return trip.
@@ -119,11 +131,7 @@ function PaymentFields({
     }
 
     if (paymentIntent?.status === "succeeded") {
-      // Hand off to the upload step. The webhook is creating the row in
-      // parallel; whichever arrives first wins (ADR 003), so no waiting.
-      window.location.assign(
-        `/upload?payment_intent=${encodeURIComponent(paymentIntent.id)}`,
-      );
+      await onPaid(paymentIntent.id);
       return;
     }
 
@@ -143,7 +151,7 @@ function PaymentFields({
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {/* The order summary a hosted checkout page wouldn't let us write. */}
-      <div className="rounded-lg border border-line bg-paper-alt p-4">
+      <div className="rounded-2xl bg-paper-alt p-5">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-ink-soft">
             Video review — {playerName}
@@ -151,7 +159,8 @@ function PaymentFields({
           <span className="font-semibold text-ink">{amount}</span>
         </div>
         <p className="mt-1 text-xs text-ink-muted">
-          One-time payment · feedback in {site.turnaround}
+          {fileCount} file{fileCount === 1 ? "" : "s"} attached · one-time
+          payment · feedback in {site.turnaround}
         </p>
       </div>
 
@@ -181,7 +190,7 @@ function PaymentFields({
         disabled={busy}
         className="w-full text-center text-sm text-ink-muted underline hover:text-ink disabled:opacity-50"
       >
-        Back to player details
+        Back to your files
       </button>
 
       <p className="text-center text-xs text-ink-muted">

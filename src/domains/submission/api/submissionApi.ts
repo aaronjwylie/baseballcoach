@@ -2,9 +2,10 @@
  * Submission queries — everything the app does to the `submissions` table.
  *
  * Callers get a domain `Submission`; nobody outside this file (and its row
- * mapper) sees a Drizzle row or a column name.
+ * mapper) sees a Drizzle row or a column name. The customer's uploaded files
+ * are a separate table with its own module, `submissionFileApi.ts`.
  */
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
 import type {
   NewSubmission,
@@ -37,9 +38,12 @@ function toUpdateValues(
   if (patch.status !== undefined) v.status = patch.status;
   if (patch.stripePaymentId !== undefined) v.stripePaymentId = patch.stripePaymentId;
   if (patch.stripeAmount !== undefined) v.stripeAmount = patch.stripeAmount;
-  if (patch.videoUrl !== undefined) v.videoUrl = patch.videoUrl;
   if (patch.feedbackUrl !== undefined) v.feedbackUrl = patch.feedbackUrl;
   if (patch.assignedCoachId !== undefined) v.assignedCoachId = patch.assignedCoachId;
+  if (patch.emailVerifiedAt !== undefined) v.emailVerifiedAt = new Date(patch.emailVerifiedAt);
+  if (patch.paidAt !== undefined) v.paidAt = new Date(patch.paidAt);
+  if (patch.completedAt !== undefined) v.completedAt = new Date(patch.completedAt);
+  if (patch.filesPurgedAt !== undefined) v.filesPurgedAt = new Date(patch.filesPurgedAt);
   if (patch.feedbackEmailedAt !== undefined) {
     v.feedbackEmailedAt = new Date(patch.feedbackEmailedAt);
   }
@@ -57,7 +61,7 @@ export async function createSubmission(
       playerAge: input.playerAge,
       focus: input.focus,
       customerNotes: input.customerNotes,
-      status: input.status ?? "awaiting_upload",
+      status: input.status ?? "draft",
       stripePaymentId: input.stripePaymentId,
       stripeAmount: input.stripeAmount,
     })
@@ -72,6 +76,37 @@ export async function updateSubmission(
   const [row] = await db
     .update(submissions)
     .set({ ...toUpdateValues(patch), updatedAt: new Date() })
+    .where(eq(submissions.id, id))
+    .returning();
+  return fromRow(row);
+}
+
+/**
+ * Re-open a draft with edited details.
+ *
+ * A customer who goes back from the verification step to fix a typo in their
+ * email must land on an *unverified* submission — otherwise changing the address
+ * after verifying would leave a row verified against an email nobody proved.
+ */
+export async function updateDraftDetails(
+  id: string,
+  input: NewSubmission,
+): Promise<Submission> {
+  const [row] = await db
+    .update(submissions)
+    .set({
+      customerEmail: input.customerEmail.trim().toLowerCase(),
+      playerName: input.playerName,
+      playerAge: input.playerAge ?? null,
+      focus: input.focus ?? null,
+      customerNotes: input.customerNotes ?? null,
+      status: "draft",
+      emailVerifiedAt: null,
+      verificationCodeHash: null,
+      verificationExpiresAt: null,
+      verificationAttempts: 0,
+      updatedAt: new Date(),
+    })
     .where(eq(submissions.id, id))
     .returning();
   return fromRow(row);
@@ -108,7 +143,12 @@ export async function findByStripePaymentId(
   return row ? fromRow(row) : null;
 }
 
-/** All submissions for a customer's email (they're stored lowercased). */
+/**
+ * A customer's submissions (their email is stored lowercased).
+ *
+ * `draft` rows are excluded: an abandoned first step is not something a customer
+ * should see listed as a submission, and it carries no useful status.
+ */
 export async function findByCustomerEmail(
   email: string,
 ): Promise<Submission[]> {
@@ -117,14 +157,20 @@ export async function findByCustomerEmail(
     .from(submissions)
     .where(eq(submissions.customerEmail, email.trim().toLowerCase()))
     .orderBy(desc(submissions.submittedAt));
-  return rows.map(fromRow);
+  return rows.filter((row) => row.status !== "draft").map(fromRow);
 }
 
-/** The whole queue, newest first — the admin portal's read. */
+/**
+ * The queue, newest first — the admin portal's read.
+ *
+ * Drafts are left out. A row that never got past step 1 is noise in a work
+ * queue, and the retention sweep will clear it.
+ */
 export async function listSubmissions(): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissions)
+    .where(inArray(submissions.status, ["new", "assigned", "in_review", "complete"]))
     .orderBy(desc(submissions.submittedAt));
   return rows.map(fromRow);
 }
@@ -145,4 +191,41 @@ export async function lookupPublicSubmissions(
 ): Promise<PublicSubmission[]> {
   const submissionsForEmail = await findByCustomerEmail(email);
   return submissionsForEmail.map(toPublicSubmission);
+}
+
+/**
+ * Submissions whose uploaded files are due for deletion — the retention sweep's
+ * read. Two rules, both operator-tunable, evaluated against cutoffs the caller
+ * computes from the current settings:
+ *
+ * - **resolved**: completed longer ago than `resolvedBefore`;
+ * - **abandoned**: never paid for, opened longer ago than `unpaidBefore`.
+ *
+ * Rows already swept (`filesPurgedAt` set) are excluded, so the sweep is
+ * idempotent and a second run in the same window is a no-op.
+ */
+export async function findSweepable(
+  resolvedBefore: Date,
+  unpaidBefore: Date,
+): Promise<Submission[]> {
+  const rows = await db
+    .select()
+    .from(submissions)
+    .where(
+      and(
+        isNull(submissions.filesPurgedAt),
+        or(
+          and(
+            eq(submissions.status, "complete"),
+            isNotNull(submissions.completedAt),
+            lt(submissions.completedAt, resolvedBefore),
+          ),
+          and(
+            inArray(submissions.status, ["draft", "awaiting_payment"]),
+            lt(submissions.submittedAt, unpaidBefore),
+          ),
+        ),
+      ),
+    );
+  return rows.map(fromRow);
 }

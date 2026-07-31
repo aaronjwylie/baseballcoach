@@ -8,6 +8,20 @@
       "when": 1785381127686,
       "tag": "0000_powerful_mauler",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785452446385,
+      "tag": "0001_acoustic_roulette",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785452541463,
+      "tag": "0002_swift_tarot",
+      "breakpoints": true
     }
   ]
 }

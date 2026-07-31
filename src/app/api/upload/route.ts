@@ -1,50 +1,58 @@
 import { NextResponse } from "next/server";
-import { ensureSubmission, getSucceededPaymentIntent } from "@/domains/payment";
-import { storeVideo, sendVideoReceived } from "@/domains/upload";
+import { authorizeUpload, checkFile, storeUploadedFile } from "@/domains/upload";
 
 /**
- * Receive a customer's video and attach it to their paid submission.
+ * The **development** upload path: bytes through us, onto local disk.
  *
- * Gated on a Stripe-verified succeeded PaymentIntent, so an unpaid or forged
- * reference can never store a file. The file is the raw request body; the
- * payment id and filename ride on the query string.
+ * Production does not use this. Vercel caps a serverless request body at about
+ * 4.5 MB, so a real video cannot arrive this way — there, the browser uploads
+ * straight to Blob (`/api/upload/blob` + `/api/upload/complete`). Which path the
+ * browser takes is decided by `storage.supportsDirectUpload`, not by guessing.
+ *
+ * The gate is `authorizeUpload`: a flow cookie naming a submission, a verified
+ * email, and room under the file limit. Same gate as the direct path.
  */
 export async function POST(request: Request) {
+  const decision = await authorizeUpload();
+  if (!decision.ok) {
+    return NextResponse.json(
+      { error: decision.refusal.error },
+      { status: decision.refusal.status },
+    );
+  }
+  const { permit } = decision;
+
   const url = new URL(request.url);
-  const paymentIntentId = url.searchParams.get("payment_intent")?.trim();
-  const filename = url.searchParams.get("filename")?.trim() || "video";
-
-  if (!paymentIntentId) {
-    return NextResponse.json({ error: "Missing payment reference." }, { status: 400 });
-  }
-
-  const intent = await getSucceededPaymentIntent(paymentIntentId);
-  if (intent === null) {
-    return NextResponse.json({ error: "We couldn't find that payment." }, { status: 404 });
-  }
-  if (intent === "unpaid") {
-    return NextResponse.json({ error: "This payment hasn't completed." }, { status: 402 });
+  const filename = url.searchParams.get("filename")?.trim();
+  if (!filename) {
+    return NextResponse.json({ error: "Missing filename." }, { status: 400 });
   }
 
   try {
-    const { submission } = await ensureSubmission(intent);
-    const firstUpload = submission.status === "awaiting_upload";
-
     const bytes = new Uint8Array(await request.arrayBuffer());
-    if (bytes.byteLength === 0) {
-      return NextResponse.json({ error: "The file was empty." }, { status: 400 });
-    }
-    const contentType =
-      request.headers.get("content-type") || "application/octet-stream";
 
-    const updated = await storeVideo(submission.id, filename, bytes, contentType);
-
-    // Only on the first upload, so a re-upload doesn't re-send the email.
-    if (firstUpload && updated.customerEmail) {
-      await sendVideoReceived(updated.customerEmail, updated.playerName);
+    const refusal = checkFile(permit, filename, bytes.byteLength);
+    if (refusal) {
+      return NextResponse.json(
+        { error: refusal.error },
+        { status: refusal.status },
+      );
     }
 
-    return NextResponse.json({ ok: true });
+    const file = await storeUploadedFile(
+      permit.submission.id,
+      filename,
+      bytes,
+      request.headers.get("content-type") ?? undefined,
+    );
+
+    return NextResponse.json({
+      file: {
+        id: file.id,
+        filename: file.filename,
+        sizeBytes: file.sizeBytes,
+      },
+    });
   } catch (err) {
     console.error("[upload] failed:", err);
     return NextResponse.json(

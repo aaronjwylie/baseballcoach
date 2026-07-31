@@ -4,6 +4,7 @@
  * Blob when a token is configured (prod), local disk otherwise (dev). Callers
  * import `storage` and never touch a driver directly.
  */
+import { randomUUID } from "node:crypto";
 import { env } from "@/shared/config/env";
 import type { StorageDriver } from "./types";
 import { localDriver } from "./localDriver";
@@ -11,14 +12,49 @@ import { blobDriver } from "./blobDriver";
 
 export const storage: StorageDriver = env.blobToken ? blobDriver : localDriver;
 
-/** Build the storage key for a submission's customer video. */
-export function videoKey(submissionId: string, filename: string): string {
-  return `submissions/${submissionId}/video${extname(filename)}`;
+/**
+ * The folder every file for one submission lives under.
+ *
+ * Exported because the upload routes verify that a locator handed back by the
+ * browser actually sits inside the submission it claims to belong to — without
+ * that check, a caller could register someone else's object against their own
+ * submission.
+ */
+export function submissionFolder(submissionId: string): string {
+  return `submissions/${submissionId}`;
+}
+
+/**
+ * Build the storage key for one of a submission's uploaded files.
+ *
+ * The random prefix keeps two files of the same name from colliding — a
+ * customer sending `IMG_0001.mov` twice is ordinary, not an error. The original
+ * name is preserved on the row for display; what lands in storage is sanitized,
+ * because this string becomes a path.
+ */
+export function submissionFileKey(
+  submissionId: string,
+  filename: string,
+): string {
+  return `${submissionFolder(submissionId)}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
 }
 
 /** Build the storage key for a coach's feedback file. */
 export function feedbackKey(submissionId: string, filename: string): string {
-  return `submissions/${submissionId}/feedback${extname(filename)}`;
+  return `${submissionFolder(submissionId)}/feedback${extname(filename)}`;
+}
+
+/**
+ * A filename safe to use as a path segment: no separators, no traversal, no
+ * control characters, and bounded in length.
+ */
+function safeName(filename: string): string {
+  const base = filename.split(/[/\\]/).pop() ?? "file";
+  const cleaned = base
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .replace(/^\.+/, "")
+    .slice(0, 80);
+  return cleaned || "file";
 }
 
 function extname(filename: string): string {

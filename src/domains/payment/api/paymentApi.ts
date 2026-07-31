@@ -11,7 +11,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/shared/stripe/client";
 import { env } from "@/shared/config/env";
 import { site } from "@/shared/config/site";
-import type { SubmissionInput } from "@/domains/submission";
+import type { Submission } from "@/domains/submission";
 
 export interface CreatedIntent {
   clientSecret: string;
@@ -46,31 +46,28 @@ async function resolveAmount(): Promise<{ amount: number; currency: string }> {
 /**
  * Create a PaymentIntent for one review.
  *
- * Player info rides on `metadata` under domain property names, so fulfillment
- * reads it straight across with no translation. `receipt_email` is set so Stripe
- * can issue its own receipt and so the address survives on the intent itself.
+ * **Metadata carries only the submission id now.** It used to carry the whole
+ * player record, because the row didn't exist yet and fulfillment had to rebuild
+ * it from what Stripe echoed back. With the row created at step 1 that's no
+ * longer true, and one id is both smaller and safer — Stripe never holds the
+ * customer's notes, and there is nothing to re-validate on the way back.
+ *
+ * `receipt_email` is still set so Stripe can issue its own card receipt.
  */
 export async function createPaymentIntent(
-  input: SubmissionInput,
+  submission: Submission,
 ): Promise<CreatedIntent> {
-  const { customerEmail, playerName, playerAge, focus, customerNotes } = input;
   const { amount, currency } = await resolveAmount();
 
   const intent = await stripe().paymentIntents.create({
     amount,
     currency,
-    receipt_email: customerEmail,
-    description: `${site.name} — video review for ${playerName}`,
+    receipt_email: submission.customerEmail,
+    description: `${site.name} — video review for ${submission.playerName}`,
     // Let the Stripe dashboard decide which methods are offered, so enabling
     // Apple/Google Pay later is a dashboard toggle rather than a deploy.
     automatic_payment_methods: { enabled: true },
-    metadata: {
-      customerEmail,
-      playerName,
-      playerAge: playerAge?.toString() ?? "",
-      focus: focus ?? "",
-      customerNotes: customerNotes ?? "",
-    },
+    metadata: { submissionId: submission.id },
   });
 
   if (!intent.client_secret) {
@@ -88,9 +85,9 @@ export async function createPaymentIntent(
 /**
  * Retrieve an intent and confirm it actually succeeded.
  *
- * Verified against Stripe rather than our own Airtable row: the row could be
- * stale, and the id arrives from the browser. `null` means no such intent (404
- * territory); `"unpaid"` means it exists but hasn't succeeded (402).
+ * Verified against Stripe rather than our own row: the row could be stale, and
+ * the id arrives from the browser. `null` means no such intent (404 territory);
+ * `"unpaid"` means it exists but hasn't succeeded (402).
  */
 export async function getSucceededPaymentIntent(
   paymentIntentId: string,

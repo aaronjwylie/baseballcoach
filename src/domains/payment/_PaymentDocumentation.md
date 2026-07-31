@@ -8,65 +8,78 @@ a submission carrying the payment's id.
 
 ## 1 · The northstar
 
-Money clearing is what brings a submission into existence. This slice owns that moment and
+Money clearing is the **last** step of the flow, not the first. By the time this slice runs,
+the submission exists, the email is verified, and the files are in. It owns that moment and
 nothing after it.
 
 ```mermaid
 flowchart LR
-    INFO["ui/PlayerInfoForm"] -->|"POST /api/payment/intent"| API["api/paymentApi"]
+    CO["checkout: createIntentAction"] --> API["api/paymentApi<br/>metadata: submissionId"]
     API -->|"clientSecret"| PAY["ui/PaymentPanel<br/>(PaymentElement, our page)"]
     PAY -->|"confirmPayment"| STRIPE["Stripe"]
-    STRIPE -->|"payment_intent.succeeded"| FUL["model/fulfillment<br/>ensureSubmission"]
-    PAY -->|"navigate"| UPL["/upload?payment_intent="]
-    UPL --> FUL
-    FUL --> SUB["Submission row"]
-    FUL -->|"first time only"| MAIL["api/paymentEmail"]
+    STRIPE -->|"payment_intent.succeeded"| FUL["model/fulfillment<br/>markSubmissionPaid"]
+    PAY -->|"inline"| CONF["checkout: confirmPaymentForFlow"]
+    STRIPE -->|"redirect"| RET["/api/payment/return"]
+    RET --> CONF
+    CONF --> FUL
+    FUL --> SUB["Submission → new"]
+    FUL -->|"first time only"| MAIL["api/paymentEmail<br/>receipt + file list"]
 ```
 
 ### The invariants
 
-- **Both steps live on ONE route.** A deliberate departure from CLAUDE.md §5's separate
-  `/submit` and `/submit/payment` pages: it keeps the client secret in memory instead of a
-  URL, and a full page navigation between "your details" and "pay" would reintroduce exactly
-  the seam ADR 005 paid to remove.
-- **`ensureSubmission()` is idempotent on the Stripe payment id, and has two callers** — the
-  webhook and the upload endpoint. Whichever arrives first creates the row; the other finds
-  it. This is what makes the race between "customer redirected back" and "webhook delivered"
-  a non-event rather than a bug. *(See [ADR 003](../../../docs/decisions/003-shared-idempotent-fulfillment.md).)*
-- **Any future path that creates a submission must go through it.** A second creation site
-  reintroduces the race and the double-email.
-- **The confirmation email is gated on `created === true`**, so Stripe retrying a webhook
-  can't send a second one.
+- **All four steps live on ONE route**, now owned by the `checkout` slice. Same reasoning as
+  when there were two: it keeps the client secret in memory instead of a URL, and a full page
+  navigation between steps would reintroduce exactly the seam ADR 005 paid to remove.
+- **`markSubmissionPaid()` is idempotent, and has two callers** — the webhook and the
+  browser's own confirmation. Whichever arrives first flips the status; the other finds it
+  done. This is what makes the race between "customer came back" and "webhook delivered" a
+  non-event rather than a bug. *(See [ADR 003](../../../docs/decisions/003-shared-idempotent-fulfillment.md);
+  it inverted with the flow but the contract is unchanged.)*
+- **Any future path that marks a payment must go through it.** A second site reintroduces the
+  race and the double-receipt.
+- **The receipt is gated on `justPaid === true`**, so Stripe retrying a webhook can't send a
+  second one.
 - **Payment is verified against Stripe, never against our own row.** The row could be stale,
   and the session id arrives from the browser.
-- **`receipt_email` is the authoritative address.** We set it when creating the intent, and
-  it's what Stripe mails its own receipt to, so fulfillment prefers it over metadata.
+- **`receipt_email` is set** so Stripe issues its own card receipt; ours is the one that
+  lists the files.
 - **`redirect: "if_required"`.** Plain cards confirm without leaving the page; only methods
   that demand a redirect (3-D Secure, wallets) take the return trip. Without this every
   payment would bounce out and back.
 - **A `processing` intent is neither claimed as success nor as failure.** The customer is
   told it's still clearing and that we'll email — because that's what's true.
-- **Metadata keys are domain property names**, so fulfillment reads them straight across
-  with no translation layer. Stripe caps each value at 500 characters — notes are the only
-  field that could approach it, and they're truncated at validation.
+- **Metadata carries only `submissionId`.** It used to carry the whole player record,
+  because the row didn't exist yet and fulfillment had to rebuild it from what Stripe echoed
+  back. With the row created at step 1 that's no longer true, and one id is both smaller and
+  safer — Stripe never holds the customer's notes, and there is nothing to re-validate on the
+  way back.
 
 ### The pieces
 
 - **the VERB** — `api/paymentApi.ts` (create a PaymentIntent, verify a succeeded one) ·
   `api/paymentWebhook.ts` (verify Stripe's events, act on them) ·
-  `model/fulfillment.ts` (intent → submission, idempotently) ·
-  `ui/SubmitFlow.tsx` (the two-step orchestrator) · `ui/PlayerInfoForm.tsx` (step one) ·
-  `ui/PaymentPanel.tsx` (step two — Elements on our own page) ·
-  `api/paymentEmail.ts` ("we took your money, here's what's next").
+  `model/fulfillment.ts` (intent → paid submission, idempotently) ·
+  `api/paymentCompletion.ts` (what happens once it clears — written once for both callers) ·
+  `ui/PaymentPanel.tsx` (step four — Elements on our own page) ·
+  `api/paymentEmail.ts` (the receipt, with the file list).
+- The flow's orchestration and step one moved out: `ui/SubmitFlow.tsx` became
+  `domains/checkout/ui/CheckoutFlow.tsx`, and `ui/PlayerInfoForm.tsx` moved to
+  `domains/submission/ui/`, which is what it collects.
 - No `model/` type: **the noun lives in Stripe.** A slice that's all verb is legitimate
   (PRINCIPLES #4).
 
 ---
 
-## 2 · Where we are now — 2026-07-28
+## 2 · Where we are now — 2026-07-30
 
-- ✅ **Stripe Elements on our own page** (Step 5, 2026-07-29) — player details, then payment
-  in place, then `/upload`. Our layout, our order summary, our domain.
+- ✅ **Stripe Elements on our own page**, now as step 4 of 4 — details, verification, files,
+  then payment in place. Our layout, our order summary (which names the file count), our
+  domain.
+- ✅ **Rendered and confirmed in a browser 2026-07-30**: reaching step 4 loads the
+  `<PaymentElement>` iframe and the button reads `Pay CA$80.00`. That closes part of the gap
+  flagged below — the card *field* renders. Actually entering a card and clearing 3-D Secure
+  still needs a human.
 - ✅ **Verified against real Stripe 2026-07-29** (test mode, via `npm run payment`):
   `createPaymentIntent` → confirmed with `pm_card_visa` → `succeeded` →
   `getSucceededPaymentIntent` ✓ (and `null` for a bogus id) → signed webhook 200 → the
@@ -75,25 +88,44 @@ flowchart LR
   A declined card (`pm_card_chargeDeclined`) created **no row**, which is the important
   negative: a failed payment must never look like a submission. A 3-D Secure card returned
   `requires_action`, correctly.
-- 🔶 **The `<PaymentElement>` UI is still unverified.** Everything server-side is proven, but
-  that the card field renders, that the appearance variables took, and that the 3-D Secure
-  modal behaves all need a human in a browser. **That's the remaining gap in this slice.**
+- 🔶 **A real card and the 3-D Secure modal are still unverified.** The field renders; that a
+  human can type into it and clear an authentication challenge needs a human. **That's the
+  remaining gap in this slice.**
+- 🔶 **The redirect return path is untested end to end.** `/api/payment/return` is wired and
+  type-checked, but only a 3-D Secure card in a browser exercises it.
 - 🔴 **`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` must be set in Vercel** or the deployed payment
   step renders a "payments aren't configured" notice instead of a card field.
 - 🔴 **The live-mode webhook endpoint doesn't exist yet.** A test endpoint was created
   (`we_1TyhuB…`, correct events); live mode is a separate object with a different secret and
   needs the live key.
-- ✅ **Idempotent fulfillment**, shared by both entry paths.
-- ✅ **Payment confirmation email.**
+- ✅ **Idempotent fulfillment**, shared by both entry paths (webhook, browser).
+- ✅ **The receipt email** — amount, total, and every file by name and size, with the
+  customer's own filenames HTML-escaped on the way in.
 - ✅ **Inline pricing from `shared/config/site.ts`** when `STRIPE_PRICE_ID` is unset, so the
   client needn't create a Stripe Product to launch.
 
-- ✅ **`StartForm` on React Hook Form + the shared Zod schema**, with per-field errors on
-  blur and a redirect guard so the button can't be double-pressed during handoff to Stripe.
+- ⚠️ **`npm run payment` now creates a submission first.** Payment is last, so there has to
+  be something to pay for; the probe stands in for the three steps a real customer walks.
 
 ---
 
 ## 3 · Where we came from
+
+**2026-07-30 · Payment moved last** ([ADR 009](../../../docs/decisions/009-upload-before-payment.md)).
+The slice's whole premise inverted.
+
+- **`ensureSubmission` became `markSubmissionPaid`.** It used to *create* the row from
+  metadata, because payment was the first thing that happened. The row now already exists —
+  the customer filled it in at step 1 and attached files at step 3 — so this marks it paid.
+  ADR 003's contract survives untouched; only the direction changed.
+- **Metadata shrank to one id**, and with it the whole `submissionFromPaymentIntent`
+  re-validation dance: there is nothing to rebuild any more.
+- **The email changed job.** "We took your money, now go upload" was an instruction because
+  payment came first. Now it's a confirmation: a receipt listing what we already have.
+- **`paymentCompletion.ts` appeared** so the webhook and the browser share one definition of
+  "what happens after it clears", rather than each remembering to send the receipt.
+- **The orchestration left.** A flow spanning four domains inside `payment/` would have made
+  this slice the de-facto owner of the customer journey; it moved to `checkout`.
 
 **2026-07-29 · Postgres cutover.** Unchanged in shape: `ensureSubmission` and the webhook
 kept their signatures, so this slice barely moved. What changed underneath is that

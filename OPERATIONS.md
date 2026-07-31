@@ -65,10 +65,21 @@ npm run db:seed                    # first admin (+ samples, since SEED_SAMPLES=
 npm run dev                        # http://localhost:3000
 ```
 
+Two probes exercise the server side without a browser:
+
+```bash
+npm run flow                       # the 4-step customer flow + the retention sweep
+npm run payment                    # a real Stripe test-mode payment, end to end
+```
+
 Sign in at `/login` as **`yuta@example.com` / `changeme123`** → `/admin`.
 
 - `DATABASE_URL` in `.env.example` already points at the docker db.
-- `STORAGE_DIR` defaults to `./.storage` (gitignored).
+- `STORAGE_DIR` defaults to `./.storage` (gitignored). In dev, uploads are proxied
+  through `/api/upload`; **production uses a different path** (direct to Blob), so
+  that one cannot be exercised locally.
+- **Without `RESEND_API_KEY` you cannot get past step 2 in a browser** — the code
+  is emailed. `npm run flow` covers that path without email.
 - Forward Stripe webhooks locally with
   `stripe listen --forward-to localhost:3000/api/webhooks/stripe`.
 
@@ -131,11 +142,19 @@ Preview with test-mode keys if you want branch previews).
 | `POSTGRES_URL` | Supabase pooled URL (set by the integration) | Yes* |
 | `DATABASE_URL` | Only if not using the Supabase integration | Yes* |
 | `BLOB_READ_WRITE_TOKEN` | Set by the Blob store | Yes |
-| `RESEND_API_KEY` | Resend key. **Unset = emails skipped, logged** | No |
+| `CRON_SECRET` | Retention-sweep guard — `openssl rand -hex 32`. **Unset = the sweep refuses to run** | Yes |
+| `RESEND_API_KEY` | Resend key. **Unset = emails skipped — and the customer flow then cannot be completed, because the verification code travels by email** | **Yes** |
 | `EMAIL_FROM` | Verified sender, e.g. `Baseball Sensei <hello@theirdomain.com>` | No |
 
 \* Provide one of `POSTGRES_URL` / `DATABASE_URL`. **Do not** set
 `SEED_SAMPLES` in production.
+
+**`RESEND_API_KEY` moved from optional to required** when email verification became
+step 2 of the flow. Everywhere else a missing key degrades honestly (sends are
+skipped and logged); here it is a hard stop — nobody can get past step 2.
+
+**Upload limits and retention windows are NOT env vars.** They live in the
+database and Yuta edits them at `/admin/settings`.
 
 Env vars are read in exactly one place — `src/shared/config/env.ts` (server) and
 `publicEnv.ts` (browser). Required values throw at point of use naming the
@@ -184,18 +203,31 @@ quietly.**
 
 Run the whole thing on **Stripe test keys** before going live.
 
-- [ ] From `/start`, fill in the details, pay with test card `4242 4242 4242 4242`
-- [ ] The card field is **on our page** (no redirect); land on
-      `/upload?payment_intent=…`
-- [ ] Upload a short video → confirmation; a submission appears in `/admin`
-- [ ] "Payment received" + "video received" emails arrive
+- [ ] From `/start`, fill in the details → **"Continue to email verification"**
+- [ ] The 6-digit code arrives by email; enter it → step 3
+- [ ] Attach a file; the card shows a **progress bar**, then a tick. Press
+      **"Upload another file"** and attach a second
+- [ ] Try a disallowed type (e.g. `.zip`) → refused with a clear message
+- [ ] Try a file over the size limit → refused naming the limit
+- [ ] **Reload the page mid-flow** → it resumes on the right step with the files
+      still listed
+- [ ] Continue to payment; pay with test card `4242 4242 4242 4242`
+- [ ] The card field is **on our page** (no redirect); the confirmation appears
+- [ ] The **receipt email** arrives listing every file by name and size
+- [ ] A submission appears in `/admin` with all its files listed
 - [ ] In `/admin`, assign a coach → the row moves to **Assigned**
-- [ ] Sign in as that coach at `/login` → `/coach` → download the video → upload
-      a feedback file → the row goes **Complete**
+- [ ] Sign in as that coach at `/login` → `/coach` → **download each file** →
+      upload a feedback file → the row goes **Complete**
 - [ ] "Feedback ready" email arrives; its link downloads the feedback file
 - [ ] On `/status`, the customer's email shows the submission and a working
       **Watch feedback** button
-- [ ] Repeat the upload **on a real phone** — mobile upload is the highest-risk part
+- [ ] Repeat the upload **on a real phone** — mobile upload is the highest-risk
+      part, and the production upload path (direct to Blob) is the one piece that
+      cannot be exercised locally
+- [ ] Test a **3-D Secure** card (`4000 0027 6000 3184`) — it redirects out and
+      back through `/api/payment/return`
+- [ ] `curl -H "Authorization: Bearer $CRON_SECRET" https://<site>/api/cron/sweep`
+      returns a JSON report; without the header it returns 401
 
 ---
 
@@ -225,24 +257,34 @@ Run the whole thing on **Stripe test keys** before going live.
 Everything runs from the **portal** — no spreadsheet. Operators sign in at
 `/login`.
 
-**Statuses:** `awaiting_upload → new → assigned → in_review → complete`. The app
-sets the first two; the portal drives the rest.
+**Statuses:** `draft → awaiting_payment → new → assigned → in_review → complete`.
+The customer flow sets the first three; the portal drives the rest. Only paid
+submissions (`new` and later) appear in the queue — a `draft` or an abandoned
+`awaiting_payment` is someone who didn't finish, and the nightly sweep clears it.
 
 ### Admin (Yuta) — `/admin`
 
 1. The **Submissions** queue lists every submission, newest first. A `new` row
    means a video is in and needs a coach.
-2. **Download** the customer's video from the queue if you want to look first.
+2. **Download** any of the customer's files from the queue if you want to look
+   first. A file struck through has been deleted by the retention sweep.
 3. **Assign a coach** from the row's Coach dropdown → the row becomes `assigned`.
 4. **Coaches** (`/admin/coaches`) — add a coach (name, email, temporary password,
    specialties, languages). That creates their login and profile.
+5. **Settings** (`/admin/settings`) — the largest file, how many files per
+   submission, and how long uploads are kept after a review completes or after an
+   unpaid submission is abandoned. Changes take effect immediately; retention
+   changes apply at the next nightly sweep.
 
 ### Coach — `/coach`
 
-1. **To review** lists the submissions assigned to that coach.
-2. **Download video** to review it locally.
+1. **To review** lists the submissions assigned to that coach, each with every
+   file the customer sent.
+2. **Download** each file to review locally.
 3. **Send feedback** — upload the feedback file. That marks the submission
-   `complete` and **emails the customer** their download link automatically.
+   `complete` and **emails the customer** their download link automatically. It
+   also starts the retention clock on the customer's uploads — the feedback file
+   itself is never deleted.
 
 ### Customer (no login)
 
@@ -254,15 +296,26 @@ sets the first two; the portal drives the rest.
 
 | Route | Trigger | What it does |
 | --- | --- | --- |
-| `POST /api/payment/intent` | `/start` | Creates a PaymentIntent, returns its client secret |
-| `POST /api/webhooks/stripe` | Stripe, on `payment_intent.succeeded` | Creates the submission row (`awaiting_upload`) + payment email |
-| `POST /api/upload` | `/upload` | Verifies payment, streams the video to storage, → `new`, video-received email |
-| `GET /api/video/[id]` | operator | Streams the customer's video (operator-only, 401 otherwise) |
+| `POST /api/upload/blob` | `/start` step 3, **prod** | Issues a scoped, short-lived Blob token so the browser can upload direct |
+| `POST /api/upload/complete` | `/start` step 3, **prod** | Records a file the browser uploaded direct; re-checks it belongs to this submission |
+| `POST /api/upload` | `/start` step 3, **dev only** | Takes the bytes through us onto local disk |
+| `POST /api/webhooks/stripe` | Stripe, on `payment_intent.succeeded` | Marks the submission paid (`new`) + sends the receipt |
+| `GET /api/payment/return` | Stripe, after 3-D Secure | Confirms server-side, forwards to `/start` |
+| `GET /api/files/[id]` | operator | Streams one uploaded file (401 without a session; **410** once swept) |
 | `POST /api/feedback/upload` | coach | Stores feedback, → `complete`, feedback-ready email (owner-only) |
 | `GET /api/feedback/[id]` | customer | Streams the feedback file once `complete` |
 | `POST /api/status` | `/status` | Email-keyed lookup of the customer's submissions |
+| `GET /api/cron/sweep` | Vercel Cron, nightly 04:00 UTC | Deletes uploads past their retention window. **`CRON_SECRET` required** |
 
-The Stripe webhook verifies its signature and is idempotent on the payment id.
+Steps 1, 2 and 4 of the customer flow use **Server Actions**, not routes — only
+the things that genuinely need HTTP stayed as endpoints.
+
+The Stripe webhook verifies its signature and is idempotent: a submission already
+in a paid status is left untouched, so a retry sends no second receipt.
+
+**Why uploads bypass our own server in production:** a Vercel serverless request
+body is capped near 4.5 MB, and a phone video is far larger. The browser uploads
+straight to Blob and only tells us where it landed.
 
 ---
 
@@ -291,10 +344,15 @@ The Stripe webhook URL. See the warning at the top.
 
 | Change | Status |
 | --- | --- |
-| **Upload before payment** ([ADR 009](docs/decisions/009-upload-before-payment.md)) | Proposed — needs abuse guards + a new status |
-| **Verify the Resend domain + set `EMAIL_FROM`** | Blocks launch — mail otherwise silent |
-| **Large-file uploads** — direct-to-Blob client upload or chunking for the prod body limit | Fine locally; revisit for prod |
+| ~~Upload before payment~~ ([ADR 009](docs/decisions/009-upload-before-payment.md)) | **Built** 2026-07-30 — with email verification, multi-file upload, and a retention sweep |
+| ~~Large-file uploads~~ | **Built** — the browser uploads direct to Blob ([ADR 011](docs/decisions/011-client-direct-uploads.md)). It was not a "revisit for prod": at ~4.5 MB per request body, video upload could never have worked in production |
+| **Apply the new migrations** (`0001`, `0002`) to Supabase | Blocks launch — the flow needs the new tables and statuses |
+| **Verify the Resend domain + set `EMAIL_FROM`** | Blocks launch — and now blocks the *flow*, since the verification code is emailed |
+| **Set `CRON_SECRET` in Vercel** | Blocks the retention sweep, which refuses to run without it |
+| **Test a real card + 3-D Secure in a browser** | Everything around it is proven; a card needs a human |
+| **Real coach content + photography** for the landing page | Blocks launch — the current copy is wireframe placeholder |
 | **Coach edit / deactivate** — `isActive` exists, no UI yet | Deferred |
+| **The remaining 3 emails + Yuta's approval step** ([docs/design/emails.md](docs/design/emails.md)) | Agreed, not built — needs a new status and an admin approve action |
 
 ---
 

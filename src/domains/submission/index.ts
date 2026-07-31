@@ -1,12 +1,18 @@
 /**
- * The submission domain — a paid request for video feedback.
+ * The submission domain — one customer's request for video feedback.
  *
- * The noun every other domain orbits: payment creates one, upload attaches a
- * video to one, feedback completes one. This slice imports none of them.
+ * The noun every other domain orbits: the flow opens one, verification unlocks
+ * it, upload attaches files to it, payment pays for it, feedback completes it.
+ * This slice imports none of them.
+ *
+ * Server-only: the barrel re-exports database code, so a client component
+ * imports `model/…` directly rather than from here (structure.md §3b).
  */
 export {
   FOCUS_OPTIONS,
+  PAID_STATUSES,
   SUBMISSION_STATUSES,
+  isPaid,
   type AppWrittenStatus,
   type Focus,
   type NewSubmission,
@@ -14,6 +20,13 @@ export {
   type SubmissionPatch,
   type SubmissionStatus,
 } from "./model/submission";
+
+export {
+  formatFileSize,
+  isAvailable,
+  type NewSubmissionFile,
+  type SubmissionFile,
+} from "./model/submissionFile";
 
 export {
   toPublicSubmission,
@@ -38,10 +51,29 @@ export {
   findByCoach,
   findByCustomerEmail,
   findByStripePaymentId,
+  findSweepable,
   getSubmission,
   listSubmissions,
   lookupPublicSubmissions,
+  updateDraftDetails,
   updateSubmission,
 } from "./api/submissionApi";
 
+export {
+  addSubmissionFile,
+  clearFileLocators,
+  countSubmissionFiles,
+  deleteSubmissionFile,
+  getSubmissionFile,
+  listFilesForSubmissions,
+  listSubmissionFiles,
+} from "./api/submissionFileApi";
+
+export {
+  clearFlowSession,
+  readFlowSession,
+  setFlowSession,
+} from "./api/flowSession";
+
 export { StatusLookup } from "./ui/StatusLookup";
+export { SubmissionFileList } from "./ui/SubmissionFileList";

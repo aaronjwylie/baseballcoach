@@ -1,12 +1,19 @@
 /**
- * Session token crypto — sign and verify the stateless session JWT.
+ * Session token crypto — sign and verify a stateless signed cookie.
  *
  * Deliberately free of `next/headers` so this module is safe to import from
  * `proxy.ts` (which reads the cookie off the request directly). The cookie
  * store lives in `cookie.ts`, which does depend on `next/headers`.
  *
- * The payload is intentionally tiny (userId + role, see the account domain) —
- * no PII, no secrets. HS256 signed with AUTH_SECRET.
+ * Payload-agnostic on purpose. Two different sessions ride on this crypto and
+ * neither shape is known here:
+ *
+ * - the **operator** session (`bs_session`, 7 days) — userId + role, owned by
+ *   the account domain;
+ * - the **customer flow** session (`bs_flow`, hours) — a submission id, owned by
+ *   the submission domain, proving this browser started that submission.
+ *
+ * Both are tiny: no PII, no secrets. HS256 signed with AUTH_SECRET.
  */
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { env } from "@/shared/config/env";
@@ -18,11 +25,19 @@ function key(): Uint8Array {
   return new TextEncoder().encode(env.authSecret);
 }
 
-export async function signSession(payload: JWTPayload): Promise<string> {
+/**
+ * Sign a payload. `maxAgeSeconds` sets the JWT's own expiry, which is the one
+ * that matters — a cookie `maxAge` is a hint the browser may ignore, but an
+ * expired token fails verification server-side.
+ */
+export async function signSession(
+  payload: JWTPayload,
+  maxAgeSeconds: number = SESSION_MAX_AGE_S,
+): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime(`${maxAgeSeconds}s`)
     .sign(key());
 }
 
