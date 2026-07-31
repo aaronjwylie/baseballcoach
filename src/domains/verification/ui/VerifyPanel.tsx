@@ -1,0 +1,152 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Button, inputClass } from "@/shared/ui";
+// The model, not the barrel: the barrel reaches the database.
+import { CODE_LENGTH, CODE_TTL_MINUTES } from "../model/verification";
+
+/**
+ * Step two — the customer proves they can read the address they typed.
+ *
+ * The flow pauses here by design. Everything after this point costs us
+ * something: storage for their files, and then a charge. Verification is the
+ * cheapest possible check that the address is real, and it's also the address
+ * the feedback has to arrive at, so getting it wrong is the one mistake a
+ * customer can't fix on their own afterwards.
+ *
+ * The parent owns the verbs; this owns the input.
+ */
+export function VerifyPanel({
+  email,
+  onVerify,
+  onResend,
+  onBack,
+}: {
+  email: string;
+  onVerify: (code: string) => Promise<string | null>;
+  onResend: () => Promise<string | null>;
+  onBack: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const ready = code.length === CODE_LENGTH;
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!ready || busy) return;
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    // A failed verify returns the sentence to show; success returns null and the
+    // parent has already moved us on.
+    const message = await onVerify(code);
+    if (message) {
+      setError(message);
+      setCode("");
+      inputRef.current?.focus();
+    }
+    setBusy(false);
+  }
+
+  async function resend() {
+    setResending(true);
+    setError(null);
+    setNotice(null);
+
+    const message = await onResend();
+    if (message) setError(message);
+    else setNotice("We've sent a new code.");
+
+    setResending(false);
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-6">
+      <div>
+        <p className="text-ink-soft">
+          We sent a {CODE_LENGTH}-digit code to{" "}
+          <strong className="text-ink">{email}</strong>. Enter it below to carry
+          on.
+        </p>
+        <p className="mt-2 text-sm text-ink-muted">
+          It expires in {CODE_TTL_MINUTES} minutes. Check your spam folder if it
+          hasn&rsquo;t arrived.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="verification-code" className="sr-only">
+          Verification code
+        </label>
+        <input
+          id="verification-code"
+          ref={inputRef}
+          value={code}
+          // Strip non-digits as they type: pasting from a mail client routinely
+          // brings a trailing space or a stray character with it.
+          onChange={(e) =>
+            setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
+          }
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder="123456"
+          aria-invalid={!!error}
+          className={`${inputClass} text-center text-2xl font-semibold tracking-[0.4em]`}
+        />
+      </div>
+
+      {error && (
+        <p
+          role="alert"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+        >
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {notice}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        size="lg"
+        disabled={!ready || busy}
+        className="w-full"
+      >
+        {busy ? "Checking…" : "Verify and continue"}
+      </Button>
+
+      <div className="flex items-center justify-between text-sm">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={busy}
+          className="text-ink-muted underline hover:text-ink disabled:opacity-50"
+        >
+          Wrong email? Go back
+        </button>
+        <button
+          type="button"
+          onClick={resend}
+          disabled={resending || busy}
+          className="text-ink-muted underline hover:text-ink disabled:opacity-50"
+        >
+          {resending ? "Sending…" : "Send a new code"}
+        </button>
+      </div>
+    </form>
+  );
+}

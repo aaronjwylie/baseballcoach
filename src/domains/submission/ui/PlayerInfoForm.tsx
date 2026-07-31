@@ -3,44 +3,46 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSearchParams } from "next/navigation";
 import { Button, Field, inputClass } from "@/shared/ui";
-// Client-safe imports from the submission slice's model, not its barrel — the
-// barrel pulls in Postgres-backed queries that can't ship to the browser.
-import { FOCUS_OPTIONS } from "@/domains/submission/model/submission";
+// Client-safe imports from the slice's model, not its barrel — the barrel pulls
+// in Postgres-backed queries that can't ship to the browser.
+import { FOCUS_OPTIONS } from "../model/submission";
 import {
   submissionInputSchema,
   type SubmissionInput,
   type SubmissionInputDraft,
-} from "@/domains/submission/model/submissionInput";
-import type { CreatedIntent } from "../api/paymentApi";
+} from "../model/submissionInput";
 
 /**
- * Step one — everything we collect before taking money.
+ * Step one — everything we collect before anything else happens.
  *
- * Validates with the **same schema the API re-validates with**, so the two can't
- * drift into disagreeing about what's acceptable. The server still re-checks:
- * this is a courtesy to honest users, not a security boundary.
+ * Validates with the **same schema the server re-validates with**, so the two
+ * can't drift into disagreeing about what's acceptable. The server still
+ * re-checks: this is a courtesy to honest users, not a security boundary.
  *
- * On success it hands a PaymentIntent up to the parent rather than navigating.
- * Keeping both steps on one route is what makes payment feel like part of the
- * product instead of an errand (ADR 005) — and it keeps the client secret in
- * memory rather than in a URL.
+ * It doesn't submit anything itself. The parent owns what "continue" means,
+ * which is what lets one form serve both the first visit and the customer
+ * coming back from step 2 to fix a typo in their email.
  */
 export function PlayerInfoForm({
-  onIntentCreated,
+  defaultValues,
+  submitLabel,
+  pendingLabel,
+  error,
+  onSubmit,
 }: {
-  onIntentCreated: (intent: CreatedIntent, playerName: string) => void;
+  defaultValues?: Partial<SubmissionInputDraft>;
+  submitLabel: string;
+  pendingLabel: string;
+  error?: string | null;
+  onSubmit: (values: SubmissionInput) => Promise<void>;
 }) {
-  const searchParams = useSearchParams();
-  const wasCanceled = searchParams.get("canceled") === "1";
-
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
     // Three generics because the schema transforms: the form holds raw strings
     // (the Draft), while handleSubmit receives the parsed output.
   } = useForm<SubmissionInputDraft, unknown, SubmissionInput>({
@@ -48,55 +50,23 @@ export function PlayerInfoForm({
     // Validate on blur rather than on every keystroke — flagging an email as
     // invalid while it's still being typed is hostile.
     mode: "onBlur",
+    defaultValues,
   });
 
-  const onSubmit = handleSubmit(async (values) => {
-    setSubmitError(null);
-
+  const submit = handleSubmit(async (values) => {
+    setBusy(true);
     try {
-      const res = await fetch("/api/payment/intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      const json = (await res.json().catch(() => ({}))) as Partial<CreatedIntent> & {
-        error?: string;
-      };
-
-      if (!res.ok || !json.clientSecret || !json.paymentIntentId) {
-        setSubmitError(json.error ?? "Something went wrong. Please try again.");
-        return;
-      }
-
-      onIntentCreated(
-        {
-          clientSecret: json.clientSecret,
-          paymentIntentId: json.paymentIntentId,
-          amountCents: json.amountCents ?? 0,
-          currency: json.currency ?? "cad",
-        },
-        values.playerName,
-      );
-    } catch {
-      setSubmitError(
-        "Network error. Please check your connection and try again.",
-      );
+      await onSubmit(values);
+    } finally {
+      setBusy(false);
     }
   });
 
-  const busy = isSubmitting;
-
   return (
-    <form onSubmit={onSubmit} className="space-y-5" noValidate>
-      {wasCanceled && (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Checkout was canceled — no charge was made. You can try again below.
-        </p>
-      )}
-
+    <form onSubmit={submit} className="space-y-5" noValidate>
       <Field
         label="Your email"
-        hint="We'll send confirmations and feedback here."
+        hint="We'll send your verification code, receipt, and feedback here."
         error={errors.customerEmail?.message}
       >
         <input
@@ -159,17 +129,17 @@ export function PlayerInfoForm({
         />
       </Field>
 
-      {submitError && (
+      {error && (
         <p
           role="alert"
           className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
         >
-          {submitError}
+          {error}
         </p>
       )}
 
       <Button type="submit" size="lg" disabled={busy} className="w-full">
-        {busy ? "Preparing checkout…" : "Continue to payment"}
+        {busy ? pendingLabel : submitLabel}
       </Button>
     </form>
   );

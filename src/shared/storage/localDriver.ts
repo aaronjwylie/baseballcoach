@@ -26,6 +26,9 @@ function resolveWithinRoot(key: string): string {
 }
 
 export const localDriver: StorageDriver = {
+  // No public endpoint to upload to — dev sends bytes through our own route.
+  supportsDirectUpload: false,
+
   async save(key, bytes) {
     const full = resolveWithinRoot(key);
     await fs.mkdir(path.dirname(full), { recursive: true });
@@ -52,6 +55,13 @@ export const localDriver: StorageDriver = {
   },
 };
 
+/**
+ * Best-effort content type from the extension.
+ *
+ * Only needed by the local driver: Blob stores the type it was given. The list
+ * tracks the upload allowlist in `domains/upload/model/fileTypes.ts` — a type
+ * the customer may send should come back out labelled correctly.
+ */
 function contentTypeFor(key: string): string {
   switch (path.extname(key).toLowerCase()) {
     case ".mp4":
@@ -60,8 +70,21 @@ function contentTypeFor(key: string): string {
       return "video/quicktime";
     case ".webm":
       return "video/webm";
+    case ".mp3":
+      return "audio/mpeg";
     case ".pdf":
       return "application/pdf";
+    case ".doc":
+      return "application/msword";
+    case ".docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".gif":
+      return "image/gif";
     default:
       return "application/octet-stream";
   }

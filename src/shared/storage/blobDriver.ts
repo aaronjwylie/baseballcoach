@@ -11,6 +11,10 @@ import { env } from "@/shared/config/env";
 import type { OpenResult, StorageDriver } from "./types";
 
 export const blobDriver: StorageDriver = {
+  // Blob issues short-lived client tokens, so the browser uploads straight to
+  // it — the only path past Vercel's ~4.5 MB serverless request body limit.
+  supportsDirectUpload: true,
+
   async save(key, bytes, contentType) {
     const { url } = await put(key, Buffer.from(bytes), {
       access: "public",

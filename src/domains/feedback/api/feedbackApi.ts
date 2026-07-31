@@ -19,10 +19,16 @@ export async function storeFeedbackAndComplete(
   const key = feedbackKey(submissionId, filename);
   const feedbackUrl = await storage.save(key, bytes, contentType);
 
+  const now = new Date().toISOString();
+
   const updated = await updateSubmission(submissionId, {
     feedbackUrl,
     status: "complete",
-    feedbackEmailedAt: new Date().toISOString(),
+    feedbackEmailedAt: now,
+    // `completedAt` is what the retention sweep counts from. Setting the status
+    // without it would leave the submission complete but immortal — its uploads
+    // never due, because the clock never started.
+    completedAt: now,
   });
 
   if (updated.customerEmail) {

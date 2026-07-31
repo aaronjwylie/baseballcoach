@@ -14,8 +14,8 @@ export const metadata: Metadata = {
  * a route, validation, spam handling, and somewhere for the message to land,
  * and none of that is worth building before anyone has written in.
  *
- * TODO(2026-07-30, Ben): `site.email` is still hello@example.com — this page is
- * a dead end until Yuta's real address and a verified Resend domain are set.
+ * TODO(2026-07-30, Ben): confirm `contact@baseball-sensei.com` is a real,
+ * monitored mailbox — this page is a dead end otherwise.
  */
 export default function ContactPage() {
   return (

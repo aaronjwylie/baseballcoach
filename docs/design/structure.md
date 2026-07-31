@@ -32,21 +32,33 @@ the Pages Router, and nothing here is a cross-domain widget.
 
 ```
 domains/
-  submission/   the paid request for feedback — the spine noun, plus looking yours up
-  payment/      paying for one (Stripe)
-  upload/       getting the video to us (storage)
+  submission/   the request for feedback — the spine noun, plus looking yours up
+  checkout/     the four-step customer flow — sequence only; composes the panels below
+  verification/ proving the customer can read the email they typed
+  upload/       getting their files to us (storage)
+  payment/      paying for one (Stripe) — the LAST step
   feedback/     the coach's response coming back
   account/      operator identity — who logs into the portal
   coach/        the reviewers, and assigning work to them
+  settings/     the limits Yuta tunes without a deploy
   landing/      the sales pitch
 ```
 
-Read top to bottom, that's the business: *someone pays, uploads a video, a coach responds.*
+Read top to bottom, that's the business: *someone tells us about a player, proves their
+email, uploads their clips, pays, and a coach responds.*
 That's rule #3 working — the tree names the domain, not the tech.
 
-**`submission` is the noun every other domain orbits.** `payment` creates one, `upload`
-attaches video to one, `feedback` completes one. They import its barrel; it imports none of
+**`submission` is the noun every other domain orbits.** `checkout` opens one, `verification`
+unlocks it, `upload` attaches files to one, `payment` marks it paid, `feedback` completes
+one. They import its barrel; it imports none of
 them. The graph stays acyclic and the arrows all point at the record.
+
+**`checkout` is the one slice shaped differently, on purpose.** It depends on four domains
+and nothing depends on it, because its whole job is *ordering* them — it is the composition
+root for the customer flow, the way a page is for `app/`. Each step's panel still lives with
+the domain that owns its subject; `checkout` only decides what comes next. If a second slice
+ever starts looking like this, that's a smell worth investigating rather than a pattern
+worth copying.
 
 ---
 
@@ -57,10 +69,14 @@ Worked example — `domains/submission/`:
 ```
 submission/
   model/submission.ts          the type family + statuses     ┐ the NOUN — shape + logic
-  model/submissionInput.ts     pre-payment input + validation ┘
+  model/submissionFile.ts      one uploaded file               │
+  model/submissionInput.ts     what a customer types + rules   ┘
   api/submissionRow.ts         the row↔domain mapper            I/O — the storage seam
   api/submissionApi.ts         the queries
-  ui/StatusLookup.tsx          "show me my submissions"         pixels — the verb
+  api/submissionFileApi.ts     the file queries
+  api/flowSession.ts           which submission this browser owns
+  ui/PlayerInfoForm.tsx        step 1 of the flow               pixels — the verb
+  ui/StatusLookup.tsx          "show me my submissions"
   index.ts                     the barrel (public surface)
   _SubmissionDocumentation.md
 ```
@@ -166,11 +182,11 @@ Adopted from `wrld-sandbox/Nomenclature.md` so the two codebases read alike.
 | Kind | Convention | Example |
 |---|---|---|
 | Type / interface | `PascalCase`, singular | `Submission` · `SubmissionPatch` |
-| Union member (a domain value) | string literal matching the DB enum | `'awaiting_upload'` (status) · `'Hitting'` (focus) |
+| Union member (a domain value) | string literal matching the DB enum | `'awaiting_payment'` (status) · `'Hitting'` (focus) |
 | Component (file **and** export) | `PascalCase` | `StartForm.tsx` → `StartForm` |
 | Module file | `camelCase` | `submissionApi.ts` · `env.ts` |
 | API client (file **and** export) | `camelCase` `xApi` | `submissionApi.ts` → `submissionApi` |
-| Domain slice folder | `camelCase` | `submission` · `payment` |
+| Domain slice folder | `camelCase` | `submission` · `payment` · `verification` |
 | Segment folder | fixed lowercase set | `model` · `api` · `ui` · `lib` · `config` |
 | Barrel | `index.ts` | |
 | Slice doc | `_<Slice>Documentation.md` | `_SubmissionDocumentation.md` |

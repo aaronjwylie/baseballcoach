@@ -1,80 +1,71 @@
 /**
- * Turns a succeeded PaymentIntent into a submission row.
+ * Turns a succeeded PaymentIntent into a paid submission.
  *
- * Called by both the Stripe webhook (the normal path) and the upload endpoint
- * (when the customer beats the webhook back to our site). `ensureSubmission` is
- * idempotent on the Stripe payment id, so whichever arrives first creates the
- * row and the other finds it. See ADR 003.
+ * **This inverted with the flow.** It used to *create* the row from metadata,
+ * because payment was the first thing that happened; now the row already exists
+ * — the customer filled it in at step 1 and attached files at step 3 — and this
+ * marks it paid.
+ *
+ * ADR 003 still holds, retargeted: two callers race to do this, the Stripe
+ * webhook and the browser coming back from a successful confirmation. Whichever
+ * arrives first does the work and the other finds it done, so `justPaid` is what
+ * gates the receipt email and nothing sends twice.
  */
 import type Stripe from "stripe";
 import {
-  createSubmission,
-  findByStripePaymentId,
+  getSubmission,
+  isPaid,
+  updateSubmission,
+  type Submission,
 } from "@/domains/submission";
-import { FOCUS_OPTIONS, type Focus, type Submission } from "@/domains/submission";
 
 /**
- * Read the player info back off the PaymentIntent.
+ * The submission this payment is for.
  *
- * Metadata keys are written by `createPaymentIntent` using domain property
- * names, so they line up one-to-one with the fields below. Everything is
- * re-validated rather than trusted: metadata is echoed back from an external
- * system, and a missing key would otherwise write an empty string into Yuta's
- * base.
+ * The id travels on `metadata.submissionId`, written when the intent was
+ * created. Metadata is echoed back from an external system, so the value is
+ * looked up rather than trusted to describe anything — a bad id simply finds
+ * nothing.
  */
-export function submissionFromPaymentIntent(
+export function submissionIdFromIntent(
   intent: Stripe.PaymentIntent,
-): Parameters<typeof createSubmission>[0] {
-  const meta = intent.metadata ?? {};
+): string | null {
+  const id = intent.metadata?.submissionId?.trim();
+  return id ? id : null;
+}
 
-  // `receipt_email` is what we set at creation and what Stripe will mail a
-  // receipt to, so it's the more authoritative of the two.
-  const customerEmail = (
-    intent.receipt_email ||
-    meta.customerEmail ||
-    ""
-  ).toLowerCase();
+export interface PaidResult {
+  submission: Submission;
+  /** True only for the caller that actually flipped it — gates the receipt. */
+  justPaid: boolean;
+}
 
-  return {
-    customerEmail,
-    playerName: meta.playerName || "Unknown",
-    playerAge: parsePositiveInt(meta.playerAge),
-    focus: parseFocus(meta.focus),
-    customerNotes: meta.customerNotes || undefined,
-    status: "awaiting_upload",
+export async function markSubmissionPaid(
+  intent: Stripe.PaymentIntent,
+): Promise<PaidResult | null> {
+  const submissionId = submissionIdFromIntent(intent);
+  if (!submissionId) {
+    console.error(`[payment] intent ${intent.id} carries no submissionId`);
+    return null;
+  }
+
+  const existing = await getSubmission(submissionId);
+  if (!existing) {
+    console.error(`[payment] intent ${intent.id} names unknown submission ${submissionId}`);
+    return null;
+  }
+
+  // Already through — a redelivered webhook, or the browser beating it back.
+  if (isPaid(existing)) return { submission: existing, justPaid: false };
+
+  const submission = await updateSubmission(submissionId, {
+    status: "new",
     stripePaymentId: intent.id,
-    // Stored in cents. `amount_received` is what actually cleared; `amount` is
-    // what was asked for. They differ on a partial capture — we want the truth.
+    // `amount_received` is what actually cleared; `amount` is what was asked
+    // for. They differ on a partial capture — we want the truth.
     stripeAmount: intent.amount_received ?? intent.amount,
-  };
-}
+    paidAt: new Date().toISOString(),
+  });
 
-/**
- * Return the existing submission for this payment, or create it.
- *
- * `created` tells the caller whether this delivery was the first — the
- * payment-confirmation email is gated on it, so a Stripe retry can't send a
- * second one.
- */
-export async function ensureSubmission(
-  intent: Stripe.PaymentIntent,
-): Promise<{ submission: Submission; created: boolean }> {
-  const existing = await findByStripePaymentId(intent.id);
-  if (existing) return { submission: existing, created: false };
-
-  const submission = await createSubmission(submissionFromPaymentIntent(intent));
-  return { submission, created: true };
-}
-
-function parsePositiveInt(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : undefined;
-}
-
-function parseFocus(value: string | undefined): Focus | undefined {
-  if (!value) return undefined;
-  return (FOCUS_OPTIONS as readonly string[]).includes(value)
-    ? (value as Focus)
-    : undefined;
+  return { submission, justPaid: true };
 }

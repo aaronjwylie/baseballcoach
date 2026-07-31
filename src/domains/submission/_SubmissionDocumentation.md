@@ -8,20 +8,25 @@ the record every other domain orbits.
 
 ## 1 · The northstar
 
-A submission is **one paid request for one video review**. It is created the moment money
-clears, and it accumulates: first the payment, then the video, then the coach's response.
-Its `Status` is the whole workflow in one field.
+A submission is **one request for one video review**. It is created at the *first* step of
+the flow — before verification, before files, before money — and it accumulates: the proof
+of email, then the files, then the payment, then the coach's response. Its `status` is the
+whole workflow in one field.
 
 ```mermaid
 flowchart LR
-    PAY["payment domain<br/>creates one"] --> SUB["Submission<br/>(Postgres row)"]
-    UP["upload domain<br/>attaches video"] --> SUB
+    CO["checkout domain<br/>opens one"] --> SUB["Submission<br/>(Postgres row)"]
+    VER["verification domain<br/>proves the email"] --> SUB
+    UP["upload domain<br/>attaches files"] --> SUB
+    PAY["payment domain<br/>marks it paid"] --> SUB
     FB["feedback domain<br/>completes it"] --> SUB
+    SUB --> FILES["submissionFiles<br/>(one row per file)"]
     SUB --> LOOK["ui/StatusLookup<br/>customer reads theirs"]
 ```
 
-**This slice imports no other domain.** Payment, upload, and feedback all import *it*. That
-asymmetry is the architecture: arrows point at the record, and the graph can't cycle.
+**This slice imports no other domain.** Verification, upload, payment, feedback and checkout
+all import *it*. That asymmetry is the architecture: arrows point at the record, and the
+graph can't cycle.
 
 ### The invariants
 
@@ -42,16 +47,25 @@ asymmetry is the architecture: arrows point at the record, and the graph can't c
   here rather than in the route that serializes it.
 - **`status` and `focus` are Postgres enums**, so the DB itself rejects a bad value — no
   runtime guard needed the way the Airtable single-selects required one.
-- **The customer-facing flow writes only `awaiting_upload` and `new`.** The other three
-  statuses are driven from the operator portal, expressed as `AppWrittenStatus`.
+- **The customer-facing flow writes only `draft`, `awaiting_payment` and `new`.** The other
+  three are driven from the operator portal, expressed as `AppWrittenStatus`.
+- **The flow cookie carries a submission id and nothing else.** Whether the email is verified
+  lives on the row, so a stale cookie can't claim a verification that never happened
+  ([ADR 010](../../../docs/decisions/010-verification-gates-upload.md)).
+- **A file record outlives its bytes.** The retention sweep clears `fileUrl` and leaves the
+  row, so the portal and the receipt can still say what was sent. `isAvailable()` is the
+  honest way to ask.
 
 ### The pieces
 
 - **the NOUN** — `model/submission.ts` (the type family, `SUBMISSION_STATUSES`,
-  `FOCUS_OPTIONS`) · `api/submissionRow.ts` (the row↔domain mapper — the storage seam) ·
-  `api/submissionApi.ts` (the Drizzle queries).
-- **the VERB** — `ui/StatusLookup.tsx` (email in, your submissions out) ·
-  `model/submissionInput.ts` (validating what a customer types before they pay) ·
+  `FOCUS_OPTIONS`) · `model/submissionFile.ts` (one uploaded file) ·
+  `api/submissionRow.ts` (the row↔domain mapper — the storage seam) ·
+  `api/submissionApi.ts` and `api/submissionFileApi.ts` (the Drizzle queries).
+- **the VERB** — `ui/PlayerInfoForm.tsx` (step 1 of the flow) · `ui/StatusLookup.tsx` (email
+  in, your submissions out) · `ui/SubmissionFileList.tsx` (the operator's view of what
+  arrived) · `api/flowSession.ts` (which submission this browser owns) ·
+  `model/submissionInput.ts` (validating what a customer types) ·
   `model/publicSubmission.ts` (the trim-to-safe projection).
 - `index.ts` — the barrel. Consumers import `@/domains/submission`.
 
@@ -61,7 +75,7 @@ its job.
 
 ---
 
-## 2 · Where we are now — 2026-07-29
+## 2 · Where we are now — 2026-07-30
 
 - ✅ **On Postgres via Drizzle.** `Submission`, `NewSubmission`, `SubmissionPatch`, the
   `submission_status`/`focus` enums, and the `api/submissionRow.ts` mapper.
@@ -77,10 +91,39 @@ its job.
   stop a distributed one. Shared state (Upstash Redis) is the honest fix and is a scope
   decision for Ben, since it's a new third-party service. See `shared/lib/rateLimit.ts`.
 - ✅ **`assignedCoachId` is a real FK** to `coaches` — set from the admin portal.
+- ✅ **`submissionFiles`** — one row per uploaded file, replacing the single `videoUrl`.
+  `listFilesForSubmissions` fetches a whole portal page in one query rather than one per row.
+- ✅ **The flow cookie** (`api/flowSession.ts`) — a signed, httpOnly, 6-hour capability
+  naming the one submission a browser started. It is what the upload gate checks now that
+  payment no longer comes first.
+- ✅ **Drafts are hidden from both readers.** `listSubmissions` (the admin queue) and
+  `findByCustomerEmail` (the status lookup) both exclude `draft`: an abandoned first step is
+  noise in a work queue and alarming in a customer's list.
+- 🔶 **`findSweepable` is the one query written for a job rather than a screen.** It encodes
+  the two retention rules, which means the rules are expressed in SQL here and in prose in
+  [ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md). Keep them in
+  step.
 
 ---
 
 ## 3 · Where we came from
+
+**2026-07-30 · The flow inverted** ([ADR 009](../../../docs/decisions/009-upload-before-payment.md)).
+The submission is no longer born paid, which changed what this slice means.
+
+- **Created at step 1, not at payment.** `createSubmission` defaults to `draft`; the row
+  exists before we know whether the email is real or the money will arrive.
+- **`awaiting_upload` retired.** Files arrive before payment, so "paid, awaiting a file"
+  cannot occur. `draft` → `awaiting_payment` → `new` replaced it, and the migration maps the
+  old value onto `draft`.
+- **`videoUrl` became a table.** A submission carries several files now; the column could
+  hold one locator.
+- **New timestamps** — `emailVerifiedAt`, `paidAt`, `completedAt`, `filesPurgedAt`. Each
+  exists because something now asks "when did that happen", and inferring it from `status`
+  plus `updatedAt` would have been a guess.
+- **`updateDraftDetails` is separate from `updateSubmission`** because editing the details
+  must *clear* the verification. A customer who changes their email after verifying has not
+  proven the new one, and a generic patch would have left the old flag standing.
 
 **2026-07-29 · Postgres + storage cutover** ([ADR 007](../../../docs/decisions/007-portal-and-postgres-retire-airtable.md)).
 The domain moved off Airtable onto Postgres/Drizzle. The Airtable codec
