@@ -5,7 +5,7 @@
  * mapper) sees a Drizzle row or a column name. The customer's uploaded files
  * are a separate table with its own module, `submissionFileApi.ts`.
  */
-import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
 import type {
   NewSubmission,
@@ -211,38 +211,54 @@ export async function lookupPublicSubmissions(
 }
 
 /**
- * Submissions whose uploaded files are due for deletion — the retention sweep's
- * read. Two rules, both operator-tunable, evaluated against cutoffs the caller
- * computes from the current settings:
+ * Completed submissions whose uploads are due for deletion.
  *
- * - **resolved**: completed longer ago than `resolvedBefore`;
- * - **abandoned**: never paid for, opened longer ago than `unpaidBefore`.
- *
- * Rows already swept (`filesPurgedAt` set) are excluded, so the sweep is
+ * The customer has their feedback and the coach is done, so the *files* go while
+ * the *record* stays — the receipt and the portal still need to say what was
+ * sent. `filesPurgedAt` excludes rows already handled, so the sweep is
  * idempotent and a second run in the same window is a no-op.
  */
-export async function findSweepable(
-  resolvedBefore: Date,
-  unpaidBefore: Date,
-): Promise<Submission[]> {
+export async function findResolvedDue(before: Date): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissions)
     .where(
       and(
         isNull(submissions.filesPurgedAt),
-        or(
-          and(
-            eq(submissions.status, "complete"),
-            isNotNull(submissions.completedAt),
-            lt(submissions.completedAt, resolvedBefore),
-          ),
-          and(
-            inArray(submissions.status, ["draft", "awaiting_payment"]),
-            lt(submissions.submittedAt, unpaidBefore),
-          ),
-        ),
+        eq(submissions.status, "complete"),
+        isNotNull(submissions.completedAt),
+        lt(submissions.completedAt, before),
       ),
     );
+  return rows.map(fromRow);
+}
+
+/**
+ * Submissions that were never paid for and have gone quiet.
+ *
+ * **These are deleted outright, not purged** — nothing was ever bought, so there
+ * is no history worth keeping and a kept row is just noise in the queue. That's
+ * the difference from `findResolvedDue`, and it's why they're separate reads
+ * rather than one query with a flag.
+ *
+ * `limit` exists because the caller may be a customer request rather than a cron
+ * job: cleaning up is worth a few milliseconds of someone's page load, but not
+ * an unbounded one.
+ */
+export async function findAbandonedDue(
+  before: Date,
+  limit = 25,
+): Promise<Submission[]> {
+  const rows = await db
+    .select()
+    .from(submissions)
+    .where(
+      and(
+        inArray(submissions.status, ["draft", "awaiting_payment"]),
+        lt(submissions.submittedAt, before),
+      ),
+    )
+    .orderBy(submissions.submittedAt)
+    .limit(limit);
   return rows.map(fromRow);
 }

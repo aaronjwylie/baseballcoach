@@ -26,7 +26,8 @@ import {
   type SubmissionFile,
 } from "@/domains/submission";
 import { submissionFolder } from "@/shared/storage";
-import { discardUnpaidSubmission } from "@/domains/upload";
+import { discardUnpaidSubmission, sweepAbandoned } from "@/domains/upload";
+import { getSettings } from "@/domains/settings";
 import {
   VERIFICATION_MESSAGES,
   codeSchema,
@@ -85,6 +86,24 @@ export async function startSubmissionAction(
 
   const previousId = await readFlowSession();
   if (previousId) await discardUnpaidSubmission(previousId);
+
+  /*
+    Tidy up after everyone else while we're here.
+
+    Nothing unpaid should linger, and the cron can only notice an elapsed window
+    when it runs — daily, on the current plan. Doing it here means the flow
+    cleans up after itself under any real traffic, so "no retention of something
+    that was never paid for" holds without depending on a schedule.
+
+    Bounded and best-effort: this is a customer waiting on a page, not a batch
+    job. A failure here must not stop them starting a submission.
+  */
+  try {
+    const settings = await getSettings();
+    await sweepAbandoned(settings.retainUnpaidHours, 10);
+  } catch (err) {
+    console.error("[checkout] opportunistic sweep failed:", err);
+  }
 
   const submission = await createSubmission(parsed.value);
   await setFlowSession(submission.id);

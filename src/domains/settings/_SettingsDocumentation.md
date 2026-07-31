@@ -23,13 +23,23 @@ Worth knowing before anyone asks for "a timer in admin":
 | Clock | Value | How it's enforced |
 | --- | --- | --- |
 | **Session expiry** — abandon an unfinished attempt | 10 min, sliding | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
-| **Deferred cleanup** — delete uploads after a review completes | `retainResolvedHours` | the hourly sweep, comparing against that submission's own `completedAt` |
-| **Deferred cleanup** — delete an abandoned submission's uploads | `retainUnpaidHours` | same sweep, against its own `submittedAt` |
+| **Deferred cleanup** — a completed review's uploads | `retainResolvedHours` | the nightly sweep, against that submission's own `completedAt`. Files go, **record stays** |
+| **Deferred cleanup** — an abandoned submission | `retainUnpaidHours` | the sweep *and* every new submission. **Deleted outright** — files and record |
 
-Both cleanup clocks are **relative to the submission**, never to a wall-clock
-schedule — "24 hours after *it* completed", not "at 4am". The cron cadence is a
-separate question: the job can only notice an elapsed window when it runs, so a
-daily job silently turned 24 hours into 24–48. It runs hourly for that reason.
+Both clocks are **relative to the submission**, never to a wall-clock schedule —
+"24 hours after *it* completed", not "at 4am".
+
+The two are not symmetrical, and shouldn't be. A paid submission's history
+matters, so its record survives its files. Nothing was ever bought in the
+abandoned case, so **nothing is retained** — a kept row would just be noise in
+the queue.
+
+**Only the resolved clock depends on the cron.** Vercel's Hobby plan permits one
+cron run a day, so "24 hours after completion" is 24–48 in practice; hourly needs
+Pro. The abandoned clock sidesteps that entirely — `startSubmissionAction` sweeps
+unpaid submissions as well, so the flow cleans up after itself whenever anyone
+starts one. With no traffic nothing is running anyway, and with traffic the cron
+is only a backstop.
 
 **A fourth kind doesn't exist yet and isn't cheap.** "Email the coach if a
 submission sits untouched for 48h" is not another row here — nothing on the

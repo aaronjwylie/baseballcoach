@@ -29,6 +29,8 @@ import { issueCode, verifyCode } from "@/domains/verification";
 import { getSettings } from "@/domains/settings";
 import { runRetentionSweep, storeUploadedFile } from "@/domains/upload";
 import { storeFeedback, approveAndComplete } from "@/domains/feedback";
+import { db, submissions as submissionsTable } from "@/shared/db";
+import { eq as eqFn } from "drizzle-orm";
 
 const pass = (msg: string) => console.log(`   ✓ ${msg}`);
 const fail = (msg: string) => {
@@ -125,8 +127,8 @@ async function main() {
   console.log(`\n5 · retention sweep`);
   const beforeSweep = await runRetentionSweep();
   check(
-    beforeSweep.submissionsSwept === 0,
-    `a fresh paid submission is not swept (${beforeSweep.submissionsSwept} swept)`,
+    beforeSweep.resolvedPurged === 0,
+    `a fresh paid submission is not swept (${beforeSweep.resolvedPurged} purged)`,
   );
 
   // Deliver the way the portal does: the coach uploads (→ awaiting_approval),
@@ -154,8 +156,8 @@ async function main() {
 
   const afterSweep = await runRetentionSweep();
   check(
-    afterSweep.submissionsSwept >= 1,
-    `a long-completed submission is swept (${afterSweep.submissionsSwept} swept, ${afterSweep.filesDeleted} files)`,
+    afterSweep.resolvedPurged >= 1,
+    `a long-completed submission is swept (${afterSweep.resolvedPurged} purged, ${afterSweep.filesDeleted} files)`,
   );
 
   const swept = await listSubmissionFiles(submission.id);
@@ -171,9 +173,46 @@ async function main() {
     "the coach's feedback file survives the sweep",
   );
 
+  // ── 6 · abandoned: nothing unpaid is retained ──────────────────────────
+  console.log(`\n6 · abandoned submissions leave nothing behind`);
+  const orphan = await createSubmission({
+    customerEmail: `flow-orphan-${Date.now()}@seed.test`,
+    playerName: "Orphan Probe",
+    status: "awaiting_payment",
+  });
+  await storeUploadedFile(
+    orphan.id,
+    "orphan.mp4",
+    new TextEncoder().encode("orphan bytes"),
+    "video/mp4",
+  );
+  // Backdate it past the unpaid window.
+  await updateSubmission(orphan.id, {
+    status: "awaiting_payment",
+    completedAt: undefined,
+  });
+  await db
+    .update(submissionsTable)
+    .set({
+      submittedAt: new Date(
+        Date.now() - (settings.retainUnpaidHours + 1) * 3600_000,
+      ),
+    })
+    .where(eqFn(submissionsTable.id, orphan.id));
+
+  const abandoned = await runRetentionSweep();
+  check(
+    abandoned.abandonedDiscarded >= 1,
+    `an abandoned submission is discarded (${abandoned.abandonedDiscarded})`,
+  );
+  check(
+    (await getSubmission(orphan.id)) === null,
+    "and its record is GONE, not merely purged",
+  );
+
   const idempotent = await runRetentionSweep();
   check(
-    idempotent.submissionsSwept === 0,
+    idempotent.resolvedPurged === 0,
     "a second sweep is a no-op",
   );
 

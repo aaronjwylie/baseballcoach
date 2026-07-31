@@ -2,9 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "//": "Hourly, not daily. The retention rule is already relative to each submission's own completedAt/submittedAt — but a job that runs once a day can only notice that a 24h window elapsed up to 24h late, so 'delete 24h after completion' silently meant 24-48h. Hourly narrows that to 24-25h. The sweep is idempotent and skips already-purged rows, so running it more often costs a query and nothing else.",
+      "//": "Daily, because Vercel's Hobby plan only permits once-a-day crons — an hourly schedule fails the deployment outright. That costs precision on the RESOLVED rule only: 'delete uploads 24h after completion' becomes 24-48h in practice, since the job can only notice an elapsed window when it runs. The ABANDONED rule does not depend on this schedule at all — startSubmissionAction sweeps unpaid submissions too, so the flow cleans up after itself under any real traffic. Move to '0 * * * *' on Pro.",
       "path": "/api/cron/sweep",
-      "schedule": "0 * * * *"
+      "schedule": "0 4 * * *"
     }
   ]
 }
