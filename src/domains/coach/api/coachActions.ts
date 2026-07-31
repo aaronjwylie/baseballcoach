@@ -8,9 +8,13 @@ import { requireRole } from "@/domains/account";
 import {
   FOCUS_OPTIONS,
   assignSubmissionCoach,
+  getSubmission,
+  listSubmissionFiles,
+  markSubmissionInReview,
   type Focus,
 } from "@/domains/submission";
-import { createCoach, updateCoach } from "./coachApi";
+import { createCoach, updateCoach, getCoach } from "./coachApi";
+import { sendAssignmentEmail } from "./coachEmail";
 
 export type CoachFormState = { error: string } | { ok: true } | undefined;
 
@@ -85,5 +89,37 @@ export async function assignCoachAction(formData: FormData): Promise<void> {
   const coachId = String(formData.get("coachId") ?? "");
   if (!submissionId || !coachId) return;
   await assignSubmissionCoach(submissionId, coachId);
+  revalidatePath("/admin");
+}
+
+/**
+ * Hand a submission to its assigned coach: email them the customer's details and
+ * a download link per file, then move `assigned` → `in_review`. Only acts on an
+ * `assigned` row, so a double-click can't re-notify or skip a step.
+ */
+export async function notifyCoachAction(formData: FormData): Promise<void> {
+  await requireRole("admin");
+  const submissionId = String(formData.get("submissionId") ?? "");
+  if (!submissionId) return;
+
+  const submission = await getSubmission(submissionId);
+  if (!submission || submission.status !== "assigned" || !submission.assignedCoachId) {
+    return;
+  }
+
+  const coach = await getCoach(submission.assignedCoachId);
+  if (!coach) return;
+
+  const files = await listSubmissionFiles(submissionId);
+
+  // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails.
+  await sendAssignmentEmail({
+    to: coach.email,
+    coachName: coach.name,
+    submission,
+    files,
+  });
+
+  await markSubmissionInReview(submissionId);
   revalidatePath("/admin");
 }

@@ -123,6 +123,11 @@ export async function assignSubmissionCoach(
   });
 }
 
+/** Hand the work to the coach: move `assigned` → `in_review`. Admin action. */
+export async function markSubmissionInReview(id: string): Promise<Submission> {
+  return updateSubmission(id, { status: "in_review" });
+}
+
 export async function getSubmission(id: string): Promise<Submission | null> {
   const [row] = await db
     .select()

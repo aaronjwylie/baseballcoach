@@ -55,6 +55,7 @@ export {
   getSubmission,
   listSubmissions,
   lookupPublicSubmissions,
+  markSubmissionInReview,
   updateDraftDetails,
   updateSubmission,
 } from "./api/submissionApi";

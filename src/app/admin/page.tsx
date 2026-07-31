@@ -9,7 +9,12 @@ import {
   type SubmissionFile,
   type SubmissionStatus,
 } from "@/domains/submission";
-import { listCoaches, assignCoachAction, type Coach } from "@/domains/coach";
+import {
+  listCoaches,
+  notifyCoachAction,
+  AssignCoachSelect,
+  type Coach,
+} from "@/domains/coach";
 import { requireRole } from "@/domains/account";
 
 export const metadata: Metadata = {
@@ -156,26 +161,25 @@ function SubmissionRow({
         <SubmissionFileList files={files} emptyLabel="—" />
       </td>
       <td className="px-4 py-3">
-        <form action={assignCoachAction} className="flex items-center gap-2">
-          <input type="hidden" name="submissionId" value={submission.id} />
-          <select
-            name="coachId"
-            defaultValue={submission.assignedCoachId ?? ""}
-            className="rounded-md border border-line bg-white px-2 py-1 text-sm"
-          >
-            <option value="" disabled>
-              Assign…
-            </option>
-            {coaches.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="text-xs font-semibold text-accent hover:underline">
-            Save
-          </button>
-        </form>
+        <div className="flex flex-col items-start gap-2">
+          <AssignCoachSelect
+            submissionId={submission.id}
+            assignedCoachId={submission.assignedCoachId}
+            coaches={coaches}
+          />
+
+          {submission.status === "assigned" && submission.assignedCoachId && (
+            <form action={notifyCoachAction}>
+              <input type="hidden" name="submissionId" value={submission.id} />
+              <button
+                type="submit"
+                className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
+              >
+                Send email → In review
+              </button>
+            </form>
+          )}
+        </div>
       </td>
     </tr>
   );
