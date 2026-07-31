@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Container, Button } from "@/shared/ui";
-import { requireRole, logout } from "@/domains/account";
+import { Container } from "@/shared/ui";
+import { requireRole } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
 import {
   findByCoach,
@@ -30,28 +29,12 @@ export default async function CoachHomePage() {
   const done = submissions.filter((s) => s.status === "complete");
 
   return (
-    <section className="py-10">
-      <Container className="max-w-3xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="font-bold text-ink">Baseball Sensei</span>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-ink">
-              {coach ? `${coach.name}'s reviews` : "Your reviews"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link href="/account" className="text-sm text-ink-muted hover:text-ink">
-              Account
-            </Link>
-            <form action={logout}>
-              <Button type="submit" variant="outline">
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
+    <Container className="max-w-3xl">
+      <h1 className="text-2xl font-bold tracking-tight text-ink">
+        {coach ? `${coach.name}'s reviews` : "Your reviews"}
+      </h1>
 
-        {!coach && (
+      {!coach && (
           <p className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
             Your login isn&apos;t linked to a coach profile yet. Ask the admin to set it up.
           </p>
@@ -96,8 +79,7 @@ export default async function CoachHomePage() {
             </ul>
           </>
         )}
-      </Container>
-    </section>
+    </Container>
   );
 }
 

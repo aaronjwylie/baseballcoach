@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Container } from "@/shared/ui";
 import { requireRole } from "@/domains/account";
 import { listCoaches, AddCoachForm } from "@/domains/coach";
-import { AdminNav } from "../AdminNav";
 
 export const metadata: Metadata = {
   title: "Admin — Coaches",
@@ -15,10 +14,8 @@ export default async function AdminCoachesPage() {
   const coaches = await listCoaches();
 
   return (
-    <section className="py-10">
-      <Container>
-        <AdminNav active="coaches" />
-        <h1 className="mt-6 text-2xl font-bold tracking-tight text-ink">Coaches</h1>
+    <Container>
+      <h1 className="text-2xl font-bold tracking-tight text-ink">Coaches</h1>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           <div>
@@ -67,7 +64,6 @@ export default async function AdminCoachesPage() {
             </div>
           </div>
         </div>
-      </Container>
-    </section>
+    </Container>
   );
 }

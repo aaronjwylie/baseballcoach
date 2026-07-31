@@ -5,6 +5,7 @@ import { env } from "@/shared/config/env";
 import { site } from "@/shared/config/site";
 import { SiteHeader } from "@/shared/layout/SiteHeader";
 import { SiteFooter } from "@/shared/layout/SiteFooter";
+import { SiteChrome } from "@/shared/layout/SiteChrome";
 
 /**
  * The wireframe sets its type in a geometric sans — single-storey `a`, tall
@@ -47,9 +48,9 @@ export default function RootLayout({
       className={`${jost.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <SiteChrome header={<SiteHeader />} footer={<SiteFooter />}>
+          <main className="flex-1">{children}</main>
+        </SiteChrome>
       </body>
     </html>
   );

@@ -11,7 +11,6 @@ import {
 } from "@/domains/submission";
 import { listCoaches, assignCoachAction, type Coach } from "@/domains/coach";
 import { requireRole } from "@/domains/account";
-import { AdminNav } from "./AdminNav";
 
 export const metadata: Metadata = {
   title: "Admin — Submissions",
@@ -64,14 +63,11 @@ export default async function AdminHomePage({
   const filesBySubmission = await listFilesForSubmissions(rows.map((s) => s.id));
 
   return (
-    <section className="py-10">
-      <Container>
-        <AdminNav active="submissions" />
-
-        <div className="mt-6">
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Submissions</h1>
-          <p className="mt-1 text-sm text-ink-muted">{all.length} total · the coaching queue</p>
-        </div>
+    <Container>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Submissions</h1>
+        <p className="mt-1 text-sm text-ink-muted">{all.length} total · the coaching queue</p>
+      </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
           {TABS.map((t) => {
@@ -127,8 +123,7 @@ export default async function AdminHomePage({
             </table>
           )}
         </div>
-      </Container>
-    </section>
+    </Container>
   );
 }
 
