@@ -21,6 +21,7 @@ export function fromRow(row: SubmissionRow): Submission {
     status: row.status,
     submittedAt: row.submittedAt?.toISOString(),
     completedAt: row.completedAt?.toISOString(),
+    archivedAt: row.archivedAt?.toISOString(),
     emailVerifiedAt: row.emailVerifiedAt?.toISOString(),
     stripePaymentId: row.stripePaymentId ?? undefined,
     stripeAmount: row.stripeAmount ?? undefined,

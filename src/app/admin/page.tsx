@@ -16,6 +16,11 @@ import {
   type Coach,
 } from "@/domains/coach";
 import { requireRole } from "@/domains/account";
+import { RowActionForm } from "./RowActionForm";
+import {
+  archiveSubmissionAction,
+  unarchiveSubmissionAction,
+} from "./adminActions";
 
 export const metadata: Metadata = {
   title: "Admin — Submissions",
@@ -38,18 +43,20 @@ const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }
 
 /**
  * The filter tabs above the table — "all" plus one per status the queue can
- * actually contain.
+ * actually contain, then "Archived".
  *
- * There is no "awaiting upload" tab any more: files arrive before payment, so
- * that state no longer exists, and an unpaid submission never reaches this
- * queue at all.
+ * Archiving is a separate dimension from status: an archived submission is still
+ * `complete`, so every non-archived tab (including "All") excludes it, and only
+ * "Archived" shows it. There is no "awaiting upload" tab — files arrive before
+ * payment, so that state no longer exists and never reaches this queue.
  */
 const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] = [
-  { key: "all", label: "All", match: () => true },
-  { key: "new", label: "New", match: (s) => s.status === "new" },
-  { key: "assigned", label: "Assigned", match: (s) => s.status === "assigned" },
-  { key: "in_review", label: "In review", match: (s) => s.status === "in_review" },
-  { key: "complete", label: "Complete", match: (s) => s.status === "complete" },
+  { key: "all", label: "All", match: (s) => !s.archivedAt },
+  { key: "new", label: "New", match: (s) => s.status === "new" && !s.archivedAt },
+  { key: "assigned", label: "Assigned", match: (s) => s.status === "assigned" && !s.archivedAt },
+  { key: "in_review", label: "In review", match: (s) => s.status === "in_review" && !s.archivedAt },
+  { key: "complete", label: "Complete", match: (s) => s.status === "complete" && !s.archivedAt },
+  { key: "archived", label: "Archived", match: (s) => !!s.archivedAt },
 ];
 
 export default async function AdminHomePage({
@@ -161,26 +168,41 @@ function SubmissionRow({
         <SubmissionFileList files={files} emptyLabel="—" />
       </td>
       <td className="px-4 py-3">
-        <div className="flex flex-col items-start gap-2">
-          <AssignCoachSelect
-            key={submission.assignedCoachId ?? "unassigned"}
+        {submission.archivedAt ? (
+          <RowActionForm
+            action={unarchiveSubmissionAction}
             submissionId={submission.id}
-            assignedCoachId={submission.assignedCoachId}
-            coaches={coaches}
+            label="Unarchive"
+            className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
           />
+        ) : (
+          <div className="flex flex-col items-start gap-2">
+            <AssignCoachSelect
+              key={submission.assignedCoachId ?? "unassigned"}
+              submissionId={submission.id}
+              assignedCoachId={submission.assignedCoachId}
+              coaches={coaches}
+            />
 
-          {submission.status === "assigned" && submission.assignedCoachId && (
-            <form action={notifyCoachAction}>
-              <input type="hidden" name="submissionId" value={submission.id} />
-              <button
-                type="submit"
+            {submission.status === "assigned" && submission.assignedCoachId && (
+              <RowActionForm
+                action={notifyCoachAction}
+                submissionId={submission.id}
+                label="Send email → In review"
                 className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
-              >
-                Send email → In review
-              </button>
-            </form>
-          )}
-        </div>
+              />
+            )}
+
+            {submission.status === "complete" && (
+              <RowActionForm
+                action={archiveSubmissionAction}
+                submissionId={submission.id}
+                label="Archive"
+                className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+              />
+            )}
+          </div>
+        )}
       </td>
     </tr>
   );

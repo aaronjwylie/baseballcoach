@@ -46,6 +46,7 @@ export {
 } from "./model/submissionInput";
 
 export {
+  archiveSubmission,
   assignSubmissionCoach,
   createSubmission,
   findByCoach,
@@ -56,6 +57,7 @@ export {
   listSubmissions,
   lookupPublicSubmissions,
   markSubmissionInReview,
+  unarchiveSubmission,
   updateDraftDetails,
   updateSubmission,
 } from "./api/submissionApi";

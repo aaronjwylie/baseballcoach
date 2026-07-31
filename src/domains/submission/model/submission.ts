@@ -88,6 +88,9 @@ export interface Submission {
   status: SubmissionStatus;
   submittedAt?: string;
   completedAt?: string;
+  // Set when an operator archives a completed submission — hides it from the
+  // active queue ("All") and files it under the Archived view.
+  archivedAt?: string;
 
   // Email verification — the gate on uploading, since payment comes later
   emailVerifiedAt?: string;

@@ -111,6 +111,9 @@ export const submissions = pgTable(
 
     submittedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp({ withTimezone: true }),
+    // When Yuta archived a completed submission out of the active queue. Null
+    // means live; a timestamp moves it to the Archived view and out of "All".
+    archivedAt: timestamp({ withTimezone: true }),
     updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

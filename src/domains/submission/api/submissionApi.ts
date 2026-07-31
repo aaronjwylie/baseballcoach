@@ -128,6 +128,31 @@ export async function markSubmissionInReview(id: string): Promise<Submission> {
   return updateSubmission(id, { status: "in_review" });
 }
 
+/**
+ * File a completed submission out of the active queue, or bring it back.
+ *
+ * `archivedAt` is its own dimension, not a status — the submission stays
+ * `complete`; the timestamp just moves it to the Archived view. Direct writes
+ * because a patch can't express "set back to null" (unarchive).
+ */
+export async function archiveSubmission(id: string): Promise<Submission> {
+  const [row] = await db
+    .update(submissions)
+    .set({ archivedAt: new Date(), updatedAt: new Date() })
+    .where(eq(submissions.id, id))
+    .returning();
+  return fromRow(row);
+}
+
+export async function unarchiveSubmission(id: string): Promise<Submission> {
+  const [row] = await db
+    .update(submissions)
+    .set({ archivedAt: null, updatedAt: new Date() })
+    .where(eq(submissions.id, id))
+    .returning();
+  return fromRow(row);
+}
+
 export async function getSubmission(id: string): Promise<Submission | null> {
   const [row] = await db
     .select()
