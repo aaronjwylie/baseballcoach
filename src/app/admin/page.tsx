@@ -178,19 +178,40 @@ function SubmissionRow({
             label="Unarchive"
             className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
           />
-        ) : submission.status === "complete" ? (
-          // Completed — the coach is locked in. Show the name, not a reassign
-          // dropdown; from here Yuta can archive it.
+        ) : submission.status === "complete" ||
+          submission.status === "awaiting_approval" ? (
+          // The coach is locked in once they've submitted — show the name, not a
+          // reassign dropdown. The per-status action lives underneath it.
           <div className="flex flex-col items-start gap-2">
             <span className="font-medium text-ink">
               {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
             </span>
-            <RowActionForm
-              action={archiveSubmissionAction}
-              submissionId={submission.id}
-              label="Archive"
-              className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-            />
+
+            {submission.status === "awaiting_approval" && (
+              <>
+                <a
+                  href={`/api/feedback/${submission.id}`}
+                  className="text-xs font-semibold text-accent hover:underline"
+                >
+                  Review feedback ↓
+                </a>
+                <RowActionForm
+                  action={completeSubmissionAction}
+                  submissionId={submission.id}
+                  label="Approve & send →"
+                  className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                />
+              </>
+            )}
+
+            {submission.status === "complete" && (
+              <RowActionForm
+                action={archiveSubmissionAction}
+                submissionId={submission.id}
+                label="Archive"
+                className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+              />
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-start gap-2">
@@ -208,23 +229,6 @@ function SubmissionRow({
                 label="Send email → In review"
                 className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
               />
-            )}
-
-            {submission.status === "awaiting_approval" && (
-              <>
-                <a
-                  href={`/api/feedback/${submission.id}`}
-                  className="text-xs font-semibold text-accent hover:underline"
-                >
-                  Review feedback ↓
-                </a>
-                <RowActionForm
-                  action={completeSubmissionAction}
-                  submissionId={submission.id}
-                  label="Approve & send →"
-                  className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                />
-              </>
             )}
           </div>
         )}
