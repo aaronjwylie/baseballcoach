@@ -46,6 +46,16 @@ export const env = {
     return required("AUTH_SECRET");
   },
 
+  // Optional site-wide HTTP Basic Auth — hides the whole site behind a browser
+  // username/password prompt while it's being built. Active only when BOTH are
+  // set; clear them (and redeploy) to lift the gate.
+  get basicAuthUser() {
+    return optional("BASIC_AUTH_USER");
+  },
+  get basicAuthPassword() {
+    return optional("BASIC_AUTH_PASSWORD");
+  },
+
   // Object storage. In dev, files live on local disk under this dir; in prod
   // the Blob driver uses BLOB_READ_WRITE_TOKEN instead.
   get storageDir() {
