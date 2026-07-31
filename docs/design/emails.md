@@ -79,8 +79,9 @@ it's resolving a submission whose files have been deleted.
 
 **"Yuta" resolves to the `admin` user's own email**, read from the `users` row —
 one home for the fact, and it survives a change of operator with no redeploy.
-`site.email` (still `hello@example.com`) stays the *public* contact address; the
-two are different things and shouldn't be collapsed.
+`site.email` (`contact@baseball-sensei.com`) stays the *public* contact address,
+and `EMAIL_FROM` is who mail is sent *as*. Three jobs, three homes; collapsing
+them would mean a change of operator silently changing the public address.
 
 If notifications should ever go to a shared inbox instead of a person, that's the
 moment to revisit — not before.

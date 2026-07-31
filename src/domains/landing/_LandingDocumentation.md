@@ -110,8 +110,8 @@ Two smaller flags in the same category:
 - **"players like Ichiro Suzuki and Shohei Ohtani"** (use-case section) names real public
   figures. It reads as a claim about Japanese baseball methodology rather than an
   endorsement, which is defensible — but it's worth a deliberate look before launch.
-- **`site.email` is still `hello@example.com`**, so `/contact` is a dead end until Yuta's
-  address and a verified Resend domain are set.
+- **`site.email` is `contact@baseball-sensei.com`** (set 2026-07-30). `/contact` still
+  depends on that mailbox existing and on the Resend domain verifying.
 
 ---
 

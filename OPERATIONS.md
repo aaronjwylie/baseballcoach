@@ -38,6 +38,19 @@ or payments succeed with no submission row appearing — a silent failure.
 The client owns **every** account. Payments and customer data go directly to
 them; we never hold either. Set accounts up in the client's name from the start.
 
+### Who does what (2026-07-30)
+
+| Area | Owner |
+| --- | --- |
+| Frontend implementation, and some admin/portal work | **Ben** |
+| Backend, and **access to every account below** | **Aaron** |
+| The accounts themselves, and the money | **Yuta** (the client) |
+
+The practical consequence: **anything in this runbook that needs a dashboard
+login or a production credential is Aaron's**, because he holds them. Ben can
+write the code and the migration, but cannot apply it. When a task is blocked on
+"who has the URL", the answer is Aaron.
+
 | Service | Purpose | Rough cost at MVP volume |
 | --- | --- | --- |
 | Vercel | Hosts the app | Free tier |
@@ -48,6 +61,39 @@ them; we never hold either. Set accounts up in the client's name from the start.
 | Domain registrar | The domain | ~$20/yr |
 
 Target is under ~$80 CAD/month all-in.
+
+### Backend handoff — needs Aaron's account access
+
+Everything below blocks production. None of it can be done from a repo checkout
+alone. Ordered so the slow ones start first.
+
+- [ ] **Verify `baseball-sensei.com` in Resend.** Domains → add it → put the
+      DKIM/SPF records at the registrar → wait for **Verified**. *DNS is slow —
+      do this first.* **This now blocks the product, not just the polish:** the
+      6-digit verification code travels by email, so until the domain verifies a
+      real customer cannot get past step 2 and cannot buy anything.
+- [ ] **Then** set `EMAIL_FROM=Baseball Sensei <contact@baseball-sensei.com>` in
+      Vercel and redeploy. **Not before** — Resend rejects sends from an
+      unverified domain, while leaving it unset falls back to a sender that does
+      deliver. Setting it early turns working email into silently rejected email.
+- [ ] **Apply migrations `0001` and `0002` to Supabase**, against the
+      **non-pooling** URL (migrations don't run through a transaction pooler):
+      ```bash
+      POSTGRES_URL_NON_POOLING="<supabase direct url>" npm run db:migrate
+      ```
+      Production is still on the old schema — no `submission_files`, no
+      `settings`, and a status enum with no `draft`. **The app will fail on its
+      first query until this runs.**
+- [ ] **Set `CRON_SECRET` in Vercel** (Settings → Environment Variables →
+      Production), value from `openssl rand -hex 32`, then redeploy. The name
+      must be exactly `CRON_SECRET` — Vercel then sends it automatically as
+      `Authorization: Bearer …` on cron invocations, which is what the sweep
+      route checks. Without it the sweep returns 503 and never runs.
+- [ ] **Confirm the Blob store exists** (`BLOB_READ_WRITE_TOKEN` set). Without a
+      token the app falls back to local disk, which on a serverless host means
+      uploads vanish between requests.
+- [ ] **Live-mode Stripe webhook** + live keys, when going live. Test and live
+      are separate endpoints with separate secrets.
 
 ---
 
@@ -189,13 +235,19 @@ Do this **after** the domain is final.
 
 ## 8. Verify the email domain
 
-- [ ] Resend → Domains → add the client's domain; add the DKIM/SPF records to DNS
-- [ ] Wait for **Verified**; set `EMAIL_FROM` to an address on that domain; redeploy
+- [ ] Resend → Domains → add **baseball-sensei.com**; add the DKIM/SPF records to DNS
+- [ ] Wait for **Verified**
+- [ ] Set `EMAIL_FROM` to `Baseball Sensei <contact@baseball-sensei.com>`; redeploy
 
-Until this is done, sends either fail or land in spam. If `RESEND_API_KEY` is
-unset the app logs a warning and carries on — the flow still works, the customer
-just never hears from us. **This is the most launch-blocking item that fails
-quietly.**
+**Do not set `EMAIL_FROM` before the domain verifies.** Resend rejects a send from
+an unverified domain, whereas leaving it unset falls back to Resend's onboarding
+sender, which does deliver — to the account owner's address only. Setting it early
+turns working test email into silently rejected email.
+
+Until this is done, an unverified account can only send to the Resend account
+owner. That is no longer a cosmetic problem: **the verification code travels by
+email, so a real customer cannot get past step 2 of the flow.** It has gone from
+"the customer never hears from us" to "the customer cannot buy anything".
 
 ---
 
@@ -346,9 +398,7 @@ The Stripe webhook URL. See the warning at the top.
 | --- | --- |
 | ~~Upload before payment~~ ([ADR 009](docs/decisions/009-upload-before-payment.md)) | **Built** 2026-07-30 — with email verification, multi-file upload, and a retention sweep |
 | ~~Large-file uploads~~ | **Built** — the browser uploads direct to Blob ([ADR 011](docs/decisions/011-client-direct-uploads.md)). It was not a "revisit for prod": at ~4.5 MB per request body, video upload could never have worked in production |
-| **Apply the new migrations** (`0001`, `0002`) to Supabase | Blocks launch — the flow needs the new tables and statuses |
-| **Verify the Resend domain + set `EMAIL_FROM`** | Blocks launch — and now blocks the *flow*, since the verification code is emailed |
-| **Set `CRON_SECRET` in Vercel** | Blocks the retention sweep, which refuses to run without it |
+| **The backend handoff checklist** (migrations, Resend domain, `EMAIL_FROM`, `CRON_SECRET`, Blob token) | Blocks launch — **Aaron**, see [§1](#1-ownership-model) |
 | **Test a real card + 3-D Secure in a browser** | Everything around it is proven; a card needs a human |
 | **Real coach content + photography** for the landing page | Blocks launch — the current copy is wireframe placeholder |
 | **Coach edit / deactivate** — `isActive` exists, no UI yet | Deferred |

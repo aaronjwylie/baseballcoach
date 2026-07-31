@@ -18,7 +18,15 @@ export const site = {
    */
   subhead:
     "Baseball Sensei provides pitching analysis and batting analysis by a professional baseball coach from Japan.",
-  email: "hello@example.com",
+  /**
+   * The public contact address — shown on /contact, /terms, and in the footer.
+   *
+   * Distinct from `EMAIL_FROM`, which is who transactional mail is *sent as*,
+   * and from the operator address notifications go *to* (read from the admin
+   * user's row — see docs/design/emails.md). Three different jobs; collapsing
+   * them would mean a change of operator silently changing the public address.
+   */
+  email: "contact@baseball-sensei.com",
   /**
    * `amountCents` is what Stripe actually charges — the landing page's price
    * and the PaymentIntent read the same field, so they cannot disagree.
