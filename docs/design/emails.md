@@ -1,8 +1,8 @@
 # Transactional email — who gets told what
 
 **Status: partly built.** This is the agreed target (Yuta, 2026-07-30), pinned
-here so the gaps are visible rather than remembered. Three of the six exist; two
-of the missing three need a workflow change, not just a template.
+here so the gaps are visible rather than remembered. **Four of the six exist**;
+two of the missing three need a workflow change, not just a template.
 
 Every send is **best-effort** — a failure logs and never throws into a webhook or
 a portal action ([ADR 004](../decisions/004-best-effort-email.md)). The one
@@ -17,7 +17,7 @@ usable product, because the customer is blocked on it.
 |---|---|---|---|
 | 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
 | 2 | Payment succeeded, submission accepted | customer **+ Yuta** | 🔶 **half** — the customer receipt is built; Yuta is not told |
-| 3 | Coach assigned to a submission | coach | ❌ **not built** — assignment currently sends nothing |
+| 3 | Coach assigned to a submission | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
 | 4 | Coach uploaded their response | Yuta **+ coach** | ❌ **not built** — and today this step emails the *customer* instead |
 | 5 | Yuta approved the response → released | customer | ❌ **not built** — **needs an approval gate that doesn't exist** |
 | 6 | Yuta marks the submission resolved | customer + coach | ❌ **not built** — trigger decided, see below |
@@ -50,7 +50,7 @@ That requires:
    starts the retention clock, and the files are still needed for review.
 3. **An admin approve action** — a button in `/admin` that sets `complete`,
    stamps `completedAt`, and sends message #5 to the customer.
-4. **Message #3 on assignment** — `assignCoachAction` gains a send.
+4. ~~**Message #3 on assignment**~~ — done; `assignCoachAction` sends it.
 
 Until (2) exists, `feedbackEmailedAt` and the customer email fire from the wrong
 place. Note the ordering trap: `completedAt` is what the retention sweep counts
