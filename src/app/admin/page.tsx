@@ -163,6 +163,7 @@ function SubmissionRow({
       <td className="px-4 py-3">
         <div className="flex flex-col items-start gap-2">
           <AssignCoachSelect
+            key={submission.assignedCoachId ?? "unassigned"}
             submissionId={submission.id}
             assignedCoachId={submission.assignedCoachId}
             coaches={coaches}
