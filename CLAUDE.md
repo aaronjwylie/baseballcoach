@@ -706,7 +706,8 @@ See the endpoint table in [OPERATIONS.md](OPERATIONS.md).
 ## 10. Build Status
 
 The original 8-sprint plan is retired — the platform pivot reshaped it, and git
-holds the history. The build is **live in production** at `baseball-sensei.vercel.app`.
+holds the history. The build is **live in production** at `www.baseball-sensei.com`,
+behind an HTTP Basic Auth gate while it's being finished.
 
 **Built, deployed, and verified:**
 
@@ -734,17 +735,24 @@ holds the history. The build is **live in production** at `baseball-sensei.verce
 
 **Remaining — the first two block the deployed app:**
 
-- 🔴 **Apply migrations `0001` and `0002` to Supabase.** Production is on the old
-  schema — no `submission_files`, no `settings`, no `draft` in the status enum —
-  so the deployed app fails on its first query until this runs. Needs the
-  **non-pooling** URL. *(Aaron — see [OPERATIONS.md §1](OPERATIONS.md).)*
-- 🔴 **Set `CRON_SECRET` in Vercel**, or the retention sweep returns 503 and
-  uploads accumulate forever.
+- ✅ ~~Migrations `0001` + `0002`~~ — **applied** (verified 2026-07-30: `/start`
+  renders, which needs the `settings` table, and step 1 submits, which needs
+  `draft` in the enum).
+- ✅ ~~`CRON_SECRET`~~ — **set and deployed** (`/api/cron/sweep` answers 401, not
+  503).
+- ⚠️ **Confirm `NEXT_PUBLIC_SITE_URL` is `https://www.baseball-sensei.com`** in
+  Vercel. It builds the links inside customer emails *and* the redirect target
+  for `/api/payment/return`. The flow cookie is host-only, so if this names the
+  apex while customers browse `www`, a 3-D Secure customer returns **after being
+  charged** to a host that doesn't send their cookie and sees "session expired".
+  It's a `NEXT_PUBLIC_*` var, so it's inlined at build time — changing it needs a
+  redeploy, not just a save.
 - **Stripe** — production keys + the `payment_intent.succeeded` webhook, so real
   payments mark submissions paid ([OPERATIONS.md](OPERATIONS.md) §5–§6). The last
   thing before the funnel can take money.
-- Point the site at `baseball-sensei.com` (it's on the `.vercel.app` URL today)
-  and update `NEXT_PUBLIC_SITE_URL`.
+- ⚠️ **The whole site is behind HTTP Basic Auth** (`BASIC_AUTH_USER` /
+  `BASIC_AUTH_PASSWORD`). Nothing is publicly reachable until those are cleared
+  and redeployed — worth remembering before anyone is invited to test.
 - **Real coach content and photography** for the landing page — the current copy
   is wireframe placeholder and cannot go live as written.
 - A **human test of the card field and 3-D Secure** — everything around it is

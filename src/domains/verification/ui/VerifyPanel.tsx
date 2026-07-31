@@ -79,9 +79,17 @@ export function VerifyPanel({
           <strong className="text-ink">{email}</strong>. Enter it below to carry
           on.
         </p>
+        {/*
+          The space before "minutes" is explicit. Written as plain JSX text it
+          gets swallowed: this text node contains an HTML entity, which sends it
+          down a whitespace-collapsing path in the compiler that strips the
+          leading space, and it shipped to production as "expires in 10minutes".
+          Sibling text nodes without an entity keep their space, which is what
+          made it easy to miss.
+        */}
         <p className="mt-2 text-sm text-ink-muted">
-          It expires in {CODE_TTL_MINUTES} minutes. Check your spam folder if it
-          hasn&rsquo;t arrived.
+          It expires in {CODE_TTL_MINUTES}{" "}
+          minutes. Check your spam folder if it hasn&rsquo;t arrived.
         </p>
       </div>
 

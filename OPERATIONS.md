@@ -80,25 +80,73 @@ write the code and the migration, but cannot apply it. When a task is blocked on
 
 Target is under ~$80 CAD/month all-in.
 
+### Running local dev against production
+
+Sometimes useful; **rarely the right default**. Local dev normally runs on
+dockerized Postgres and local disk, which is faster, free, and cannot damage
+anything. Reach for this only when you specifically need production data or the
+production upload path.
+
+**Requires a Vercel login.** Ben doesn't have one; Aaron does. Two ways round it:
+
+- **Aaron grants Ben project access** (Vercel → Project → Settings → Members).
+  One-time, and removes the round trip every time an env var changes. Preferred.
+- **Aaron pulls and sends the file** — `vercel env pull .env.production.local
+  --environment=production`, then shares it *securely* (a password manager, not
+  Slack or email). It contains live credentials.
+
+Then, locally:
+
+```bash
+npm i -g vercel            # or use npx
+vercel login && vercel link
+cp .env.local .env.local.backup                       # keep the working setup
+vercel env pull .env.local --environment=production   # NOTE: overwrites
+```
+
+`--environment=production` matters — the default pulls the *development*
+environment, which is usually empty and will leave you with a half-configured app
+that fails in confusing ways.
+
+**Read this before you do it:**
+
+| Risk | Why |
+| --- | --- |
+| 🔴 **The app will fail until the migrations are applied** | Production is on the old schema. This is not a connection problem; see the handoff above. |
+| 🔴 **Check `STRIPE_SECRET_KEY` starts with `sk_test_`** | If production has been switched to live keys, local testing charges real cards. |
+| **Every test run writes real rows** | The queue Yuta works from is the same database. Seed data and probes go into production. |
+| **`npm run flow` and `npm run db:seed` become destructive** | The flow probe creates and sweeps submissions; the seed inserts samples. **Do not run either** while pointed at production. |
+| **Uploads land in the production Blob store** | Under a folder keyed by a local submission id, so nothing collides — but the production sweep won't clean them up, because it works from production rows. They become orphans. |
+| **`AUTH_SECRET` is shared** | A session minted locally is valid in production, and vice versa. |
+
+To go back: `mv .env.local.backup .env.local`.
+
+**If all you need is the production upload path** — the one thing local testing
+genuinely cannot reach — set only `BLOB_READ_WRITE_TOKEN` in your existing
+`.env.local` and change nothing else. The storage seam switches to Blob,
+`supportsDirectUpload` becomes true, and the browser takes the real direct-upload
+route against your local database. None of the risks above apply.
+
 ### Backend handoff — needs Aaron's account access
 
 The app is **already deployed** at `baseball-sensei.vercel.app`, and Resend is
 already verified and sending. What remains needs a dashboard login or a
 production credential, so none of it can be done from a repo checkout alone.
 
-- [ ] 🔴 **Apply migrations `0001` and `0002` to Supabase**, against the
-      **non-pooling** URL (migrations don't run through a transaction pooler):
-      ```bash
-      POSTGRES_URL_NON_POOLING="<supabase direct url>" npm run db:migrate
-      ```
-      Production is still on the old schema — no `submission_files`, no
-      `settings`, and a status enum with no `draft`. **The deployed app fails on
-      its first query until this runs**, so it is the most urgent item here.
-- [ ] 🔴 **Set `CRON_SECRET` in Vercel** (Settings → Environment Variables →
-      Production), value from `openssl rand -hex 32`, then redeploy. The name
-      must be exactly `CRON_SECRET` — Vercel then sends it automatically as
-      `Authorization: Bearer …` on cron invocations, which is what the sweep
-      route checks. Without it the sweep returns 503 and uploads accumulate.
+- [x] ~~**Apply migrations `0001` and `0002` to Supabase**~~ — done 2026-07-30.
+      Verified from outside: `/start` renders (needs the `settings` table) and
+      step 1 submits (needs `draft` in the status enum).
+- [x] ~~**Set `CRON_SECRET` in Vercel**~~ — done. `/api/cron/sweep` answers 401
+      rather than 503, which is the tell that the value reached the running
+      deployment. It needed a redeploy, not just a save.
+- [ ] ⚠️ **Confirm `NEXT_PUBLIC_SITE_URL` = `https://www.baseball-sensei.com`.**
+      It builds the links inside customer emails and the redirect target for
+      `/api/payment/return`. **The flow cookie is host-only** (no `Domain`
+      attribute), so if this names the apex while customers browse `www`, a
+      3-D Secure customer comes back *after being charged* to a host that
+      doesn't send their cookie and sees "session expired". Check the apex
+      redirects to `www` too, so there's one canonical host. `NEXT_PUBLIC_*` is
+      inlined at build time — changing it needs a redeploy.
 - [ ] **Confirm `BLOB_READ_WRITE_TOKEN` is set.** Without it the app falls back
       to local disk, which on a serverless host means uploads vanish between
       requests. This matters more than it used to: the browser now uploads
@@ -194,7 +242,7 @@ Preview with test-mode keys if you want branch previews).
 
 | Variable | Value / source | Required |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Live URL, no trailing slash (e.g. `https://baseballsensei.com`) | Yes |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.baseball-sensei.com` — no trailing slash, and **must match the host customers browse** (see §1) | Yes |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe `pk_live_…` — browser-visible by design | Yes |
 | `STRIPE_SECRET_KEY` | Stripe live `sk_live_…` | Yes |
 | `STRIPE_WEBHOOK_SECRET` | From the Stripe webhook in step 6 (`whsec_…`) | Yes |
