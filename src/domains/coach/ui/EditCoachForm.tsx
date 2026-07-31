@@ -31,6 +31,16 @@ export function EditCoachForm({ coach }: { coach: Coach }) {
         <input name="name" defaultValue={coach.name} required className={inputClass} />
       </Field>
 
+      <Field label="Email" hint="Their login for the coach portal">
+        <input
+          type="email"
+          name="email"
+          defaultValue={coach.email}
+          required
+          className={inputClass}
+        />
+      </Field>
+
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-ink">Specialties</legend>
         <div className="flex flex-wrap gap-3">

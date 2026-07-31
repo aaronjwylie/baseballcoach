@@ -8,6 +8,8 @@ import type { Focus } from "@/domains/submission";
 export interface Coach {
   id: string;
   userId: string;
+  /** The coach's login, from the joined `users` row. */
+  email: string;
   name: string;
   specialties: Focus[];
   languages: string[];

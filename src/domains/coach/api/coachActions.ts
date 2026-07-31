@@ -55,6 +55,7 @@ export async function updateCoachAction(
 
   const id = String(formData.get("coachId") ?? "");
   const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const specialties = formData.getAll("specialties").map(String).filter(isFocus);
   const languages = String(formData.get("languages") ?? "")
     .split(",")
@@ -63,11 +64,14 @@ export async function updateCoachAction(
   const isActive = formData.get("isActive") === "on";
 
   if (!id || !name) return { error: "A name is required." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: "Enter a valid email address." };
+  }
 
   try {
-    await updateCoach(id, { name, specialties, languages, isActive });
+    await updateCoach(id, { name, email, specialties, languages, isActive });
   } catch {
-    return { error: "Could not update the coach." };
+    return { error: "Could not update the coach — is that email already in use?" };
   }
 
   revalidatePath("/admin/coaches");

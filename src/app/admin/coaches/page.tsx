@@ -31,7 +31,10 @@ export default async function AdminCoachesPage() {
               {coaches.map((c) => (
                 <li key={c.id} className="rounded-2xl border border-line bg-white p-5">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-ink">{c.name}</span>
+                    <div>
+                      <span className="font-semibold text-ink">{c.name}</span>
+                      <div className="text-sm text-ink-muted">{c.email}</div>
+                    </div>
                     <div className="flex items-center gap-3">
                       <span
                         className={`text-xs font-semibold ${c.isActive ? "text-emerald-600" : "text-ink-muted"}`}
