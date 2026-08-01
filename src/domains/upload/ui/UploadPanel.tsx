@@ -41,6 +41,21 @@ function emptyCard(): Card {
   return { key: `card-${cardSeq}`, state: { status: "empty" } };
 }
 
+/** A person-facing reason an upload didn't finish — including our own guards. */
+function describeUploadFailure(signal: AbortSignal, err: unknown): string {
+  // We aborted it ourselves (there's no user-facing cancel in this flow).
+  if (signal.aborted) {
+    const reason = signal.reason;
+    if (reason instanceof DOMException && reason.name === "TimeoutError") {
+      return "The upload stalled and didn't finish. Check your connection and try again.";
+    }
+    return "The upload kept restarting and couldn't complete — usually a setup issue on our side, not your file. Please try again shortly.";
+  }
+  return err instanceof Error
+    ? err.message
+    : "That upload didn't finish. Please try again.";
+}
+
 export function UploadPanel({
   mode,
   folder,
@@ -97,24 +112,52 @@ export function UploadPanel({
 
     patch(key, { status: "uploading", file, progress: 0 });
 
+    // Some failures make the transport re-send the whole file on every error —
+    // a misconfigured store is the one we hit — so the bar loops 0→99→0 forever
+    // and never throws. Give up on a full restart after real progress (a retry
+    // loop) or on a stall (no progress for a while), and report it rather than
+    // spin. There's no user-facing cancel in this flow, so any abort is ours.
+    const controller = new AbortController();
+    let lastProgress = 0;
+    let restarts = 0;
+    let stall: ReturnType<typeof setTimeout> | undefined;
+    const armStall = () => {
+      clearTimeout(stall);
+      stall = setTimeout(
+        () => controller.abort(new DOMException("stalled", "TimeoutError")),
+        45_000,
+      );
+    };
+    armStall();
+
     try {
       const uploaded = await uploadFile({
         mode,
         folder,
         file,
-        onProgress: (progress) =>
-          patch(key, { status: "uploading", file, progress }),
+        signal: controller.signal,
+        onProgress: (progress) => {
+          armStall();
+          const restarted = lastProgress >= 50 && progress <= 5;
+          lastProgress = progress;
+          // One restart can be a transient retry that then succeeds; a second
+          // is a loop that won't.
+          if (restarted && ++restarts >= 2) {
+            controller.abort(new DOMException("retry-loop", "AbortError"));
+            return;
+          }
+          patch(key, { status: "uploading", file, progress });
+        },
       });
       patch(key, { status: "done", uploaded });
     } catch (err) {
       patch(key, {
         status: "error",
         file,
-        message:
-          err instanceof Error
-            ? err.message
-            : "That upload didn't finish. Please try again.",
+        message: describeUploadFailure(controller.signal, err),
       });
+    } finally {
+      clearTimeout(stall);
     }
   }
 
