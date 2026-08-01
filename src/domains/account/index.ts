@@ -9,6 +9,8 @@
  */
 export { LoginForm } from "./ui/LoginForm";
 export { ChangePasswordForm } from "./ui/ChangePasswordForm";
+export { RequestResetForm } from "./ui/RequestResetForm";
+export { ResetPasswordForm } from "./ui/ResetPasswordForm";
 export { login, logout, changePasswordAction } from "./api/auth";
 export { getSession, requireSession, requireRole } from "./api/dal";
 export {

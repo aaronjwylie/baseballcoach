@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
  * put — moving them would collide with the flow work in progress. Stays
  * domain-less: it knows route prefixes, nothing about a Submission.
  */
-const PORTAL = /^\/(admin|coach|account|login)(\/|$)/;
+const PORTAL = /^\/(admin|coach|account|login|forgot-password|reset-password)(\/|$)/;
 
 export function SiteChrome({
   header,

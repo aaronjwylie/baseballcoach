@@ -1,30 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { LoginForm } from "@/domains/account";
+import { RequestResetForm } from "@/domains/account";
 
 export const metadata: Metadata = {
-  title: "Operator sign in",
+  title: "Reset your password",
   robots: { index: false },
 };
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   return (
     <section className="py-16 sm:py-24">
       <Container className="max-w-sm">
         <h1 className="text-2xl font-bold tracking-tight text-ink">
-          Operator sign in
+          Reset your password
         </h1>
         <p className="mt-2 text-sm text-ink-muted">
-          For coaches and staff. Customers don&apos;t need an account — check a
-          submission from the status page.
+          Enter your operator email and we&apos;ll send a link to set a new one.
         </p>
         <div className="mt-8 rounded-2xl border border-line bg-white p-6 sm:p-8">
-          <LoginForm />
+          <RequestResetForm />
         </div>
         <p className="mt-6 text-center text-sm text-ink-muted">
-          <Link href="/forgot-password" className="underline hover:text-ink">
-            Forgot your password?
+          <Link href="/login" className="underline hover:text-ink">
+            Back to sign in
           </Link>
         </p>
       </Container>
