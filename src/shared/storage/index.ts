@@ -45,6 +45,15 @@ export function feedbackKey(submissionId: string, filename: string): string {
 }
 
 /**
+ * Build the storage key for a coach's profile photo. The random prefix gives a
+ * replaced photo a fresh locator (no stale cache), and the old object is removed
+ * on replace.
+ */
+export function coachImageKey(coachId: string, filename: string): string {
+  return `coaches/${coachId}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
+}
+
+/**
  * A filename safe to use as a path segment: no separators, no traversal, no
  * control characters, and bounded in length.
  */

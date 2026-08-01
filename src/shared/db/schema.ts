@@ -72,6 +72,11 @@ export const coaches = pgTable("coaches", {
   specialties: focus().array().notNull().default([]),
   languages: text().array().notNull().default([]),
   isActive: boolean().notNull().default(true),
+  // Storage locator for the coach's photo, shown on the public site. Served via
+  // /api/coach-image/[id] since blobs are private. Null until one is uploaded.
+  imageUrl: text(),
+  // A short bio blurb for the public site.
+  bio: text(),
   createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 });
 

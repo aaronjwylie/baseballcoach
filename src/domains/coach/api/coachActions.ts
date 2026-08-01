@@ -13,8 +13,25 @@ import {
   markSubmissionInReview,
   type Focus,
 } from "@/domains/submission";
+import { storage, coachImageKey } from "@/shared/storage";
 import { createCoach, updateCoach, getCoach } from "./coachApi";
 import { sendAssignmentEmail } from "./coachEmail";
+
+/** Save an uploaded coach photo, returning its locator — or null if none was
+ *  chosen. The image field is optional on both forms. */
+async function saveCoachImage(
+  coachId: string,
+  formData: FormData,
+): Promise<string | null> {
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return null;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return storage.save(
+    coachImageKey(coachId, file.name),
+    bytes,
+    file.type || "application/octet-stream",
+  );
+}
 
 export type CoachFormState = { error: string } | { ok: true } | undefined;
 
@@ -36,15 +53,27 @@ export async function createCoachAction(
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+  const bio = String(formData.get("bio") ?? "").trim();
 
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
     return { error: "Enter a name, a valid email, and a password of at least 8 characters." };
   }
 
+  let coachId: string;
   try {
-    await createCoach({ name, email, password, specialties, languages });
+    const coach = await createCoach({ name, email, password, specialties, languages, bio });
+    coachId = coach.id;
   } catch {
     return { error: "Could not create the coach — is that email already in use?" };
+  }
+
+  // The photo needs the coach's id, so it's saved after creation. A photo
+  // failure isn't fatal — the coach exists and it can be added on the edit form.
+  try {
+    const imageUrl = await saveCoachImage(coachId, formData);
+    if (imageUrl) await updateCoach(coachId, { imageUrl });
+  } catch (err) {
+    console.error("[coach create] photo failed:", err);
   }
 
   revalidatePath("/admin/coaches");
@@ -67,6 +96,7 @@ export async function updateCoachAction(
     .filter(Boolean);
   const isActive = formData.get("isActive") === "on";
   const password = String(formData.get("password") ?? "");
+  const bio = String(formData.get("bio") ?? "").trim();
 
   if (!id || !name) return { error: "A name is required." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -78,6 +108,21 @@ export async function updateCoachAction(
     };
   }
 
+  // A new photo replaces the old one; the old object is removed so it doesn't
+  // orphan in storage.
+  let imageUrl: string | undefined;
+  try {
+    const url = await saveCoachImage(id, formData);
+    if (url) {
+      imageUrl = url;
+      const existing = await getCoach(id);
+      if (existing?.imageUrl) void storage.remove(existing.imageUrl).catch(() => {});
+    }
+  } catch (err) {
+    console.error("[coach edit] photo failed:", err);
+    return { error: "Could not save the photo. Please try again." };
+  }
+
   try {
     await updateCoach(id, {
       name,
@@ -85,7 +130,9 @@ export async function updateCoachAction(
       specialties,
       languages,
       isActive,
+      bio,
       ...(password ? { password } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
     });
   } catch {
     return { error: "Could not update the coach — is that email already in use?" };

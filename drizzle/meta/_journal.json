@@ -43,6 +43,13 @@
       "when": 1785609669996,
       "tag": "0005_lush_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785622621448,
+      "tag": "0006_flat_bug",
+      "breakpoints": true
     }
   ]
 }

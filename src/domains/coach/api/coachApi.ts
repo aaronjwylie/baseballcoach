@@ -22,6 +22,8 @@ function toCoach(row: typeof coaches.$inferSelect, email: string): Coach {
     specialties: row.specialties,
     languages: row.languages,
     isActive: row.isActive,
+    imageUrl: row.imageUrl ?? undefined,
+    bio: row.bio ?? undefined,
   };
 }
 
@@ -53,6 +55,7 @@ export async function createCoach(input: NewCoach): Promise<Coach> {
       name: input.name,
       specialties: input.specialties,
       languages: input.languages,
+      bio: input.bio,
     })
     .returning();
   return toCoach(row, operator.email);
@@ -74,6 +77,10 @@ export interface CoachPatch {
   email?: string;
   /** A new login password, set on the `users` row. Omit to leave it unchanged. */
   password?: string;
+  /** Storage locator for the coach's photo. */
+  imageUrl?: string;
+  /** Public bio blurb. */
+  bio?: string;
   specialties?: Focus[];
   languages?: string[];
   isActive?: boolean;

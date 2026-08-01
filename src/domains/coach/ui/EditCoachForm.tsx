@@ -79,6 +79,27 @@ export function EditCoachForm({ coach }: { coach: Coach }) {
         />
       </Field>
 
+      <Field label="Bio" hint="A short blurb for the public site.">
+        <textarea
+          name="bio"
+          rows={3}
+          defaultValue={coach.bio ?? ""}
+          className={inputClass}
+        />
+      </Field>
+
+      <Field label="Photo" hint="JPG or PNG. Leave blank to keep the current one.">
+        {coach.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/coach-image/${coach.id}`}
+            alt={`${coach.name}'s photo`}
+            className="mb-2 h-24 w-24 rounded-lg object-cover"
+          />
+        )}
+        <input name="image" type="file" accept="image/*" className={inputClass} />
+      </Field>
+
       <label className="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" name="isActive" defaultChecked={coach.isActive} />
         Active — can be assigned new submissions

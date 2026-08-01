@@ -14,6 +14,10 @@ export interface Coach {
   specialties: Focus[];
   languages: string[];
   isActive: boolean;
+  /** Storage locator for the coach's photo; absent until one is uploaded. */
+  imageUrl?: string;
+  /** A short public bio blurb. */
+  bio?: string;
 }
 
 /** What the admin submits to add a coach. */
@@ -23,4 +27,5 @@ export interface NewCoach {
   password: string;
   specialties: Focus[];
   languages: string[];
+  bio?: string;
 }

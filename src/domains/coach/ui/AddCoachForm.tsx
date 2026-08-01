@@ -50,6 +50,14 @@ export function AddCoachForm() {
         <input name="languages" placeholder="English, Japanese" className={inputClass} />
       </Field>
 
+      <Field label="Bio" hint="A short blurb for the public site.">
+        <textarea name="bio" rows={3} className={inputClass} />
+      </Field>
+
+      <Field label="Photo" hint="JPG or PNG, shown on the public site.">
+        <input name="image" type="file" accept="image/*" className={inputClass} />
+      </Field>
+
       <Button type="submit" disabled={pending}>
         {pending ? "Adding…" : "Add coach"}
       </Button>
