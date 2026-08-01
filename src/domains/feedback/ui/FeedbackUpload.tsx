@@ -98,7 +98,7 @@ export function FeedbackUpload({
   if (sent) {
     return (
       <p className="text-sm font-semibold text-purple-600">
-        Sent to Yuta for approval ✓
+        Sent for approval ✓
       </p>
     );
   }
@@ -140,7 +140,7 @@ export function FeedbackUpload({
           disabled={busy || files.length === 0}
           onClick={send}
         >
-          {busy ? "Working…" : "Send to Yuta for approval"}
+          {busy ? "Working…" : "Send for approval"}
         </Button>
       </div>
 
