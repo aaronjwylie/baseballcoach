@@ -66,14 +66,27 @@ export async function updateCoachAction(
     .map((s) => s.trim())
     .filter(Boolean);
   const isActive = formData.get("isActive") === "on";
+  const password = String(formData.get("password") ?? "");
 
   if (!id || !name) return { error: "A name is required." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Enter a valid email address." };
   }
+  if (password && password.length < 8) {
+    return {
+      error: "A new password must be at least 8 characters (or leave it blank).",
+    };
+  }
 
   try {
-    await updateCoach(id, { name, email, specialties, languages, isActive });
+    await updateCoach(id, {
+      name,
+      email,
+      specialties,
+      languages,
+      isActive,
+      ...(password ? { password } : {}),
+    });
   } catch {
     return { error: "Could not update the coach — is that email already in use?" };
   }

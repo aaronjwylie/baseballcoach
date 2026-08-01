@@ -7,7 +7,7 @@
  */
 import { asc, eq } from "drizzle-orm";
 import { db, coaches, users } from "@/shared/db";
-import { createOperator } from "@/domains/account";
+import { createOperator, setUserPassword } from "@/domains/account";
 import type { Focus } from "@/domains/submission";
 import type { Coach, NewCoach } from "../model/coach";
 
@@ -72,13 +72,15 @@ export interface CoachPatch {
   name?: string;
   /** The login email, updated on the `users` row. */
   email?: string;
+  /** A new login password, set on the `users` row. Omit to leave it unchanged. */
+  password?: string;
   specialties?: Focus[];
   languages?: string[];
   isActive?: boolean;
 }
 
 export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach> {
-  const { email, ...profile } = patch;
+  const { email, password, ...profile } = patch;
 
   // The profile fields live on `coaches`; only touch it if any were given.
   const [row] = Object.keys(profile).length
@@ -103,6 +105,9 @@ export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach>
       .limit(1);
     currentEmail = u.email;
   }
+
+  // An admin reset — no current-password check; Yuta's authority is the guard.
+  if (password) await setUserPassword(row.userId, password);
 
   return toCoach(row, currentEmail);
 }

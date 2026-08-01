@@ -41,6 +41,19 @@ export function EditCoachForm({ coach }: { coach: Coach }) {
         />
       </Field>
 
+      <Field
+        label="New password"
+        hint="Leave blank to keep their current one · min 8 characters"
+      >
+        <input
+          type="password"
+          name="password"
+          autoComplete="new-password"
+          minLength={8}
+          className={inputClass}
+        />
+      </Field>
+
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-ink">Specialties</legend>
         <div className="flex flex-wrap gap-3">

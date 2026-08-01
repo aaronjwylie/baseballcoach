@@ -16,6 +16,7 @@ export {
   getOperatorById,
   createOperator,
   changePassword,
+  setUserPassword,
 } from "./api/userApi";
 export type {
   Role,

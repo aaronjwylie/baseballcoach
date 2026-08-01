@@ -79,3 +79,17 @@ export async function changePassword(
   await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
   return true;
 }
+
+/**
+ * Set a password directly, no current-password check — for an admin resetting a
+ * coach's, and for the forgot-password flow. The authority comes from being an
+ * admin or holding a valid reset token, not from knowing the old password.
+ * Hashing stays in this file, the one home for it.
+ */
+export async function setUserPassword(
+  userId: string,
+  newPassword: string,
+): Promise<void> {
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+}
