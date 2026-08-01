@@ -5,6 +5,16 @@ import { runRetentionSweep } from "@/domains/upload";
 /**
  * The nightly retention sweep, driven by Vercel Cron (`vercel.json`).
  *
+ * **Daily (`0 4 * * *`), because Vercel's Hobby plan only permits once-a-day
+ * crons** — an hourly schedule fails the deployment outright. That costs
+ * precision on the RESOLVED rule only: "delete uploads 24h after completion"
+ * becomes 24–48h in practice, since the job can only notice an elapsed window
+ * when it runs. The ABANDONED rule doesn't depend on this schedule at all —
+ * `startSubmissionAction` sweeps unpaid submissions too, so the flow cleans up
+ * after itself under any real traffic. Move to `0 * * * *` on Pro.
+ * (This note lived in `vercel.json` as a `"//"` key, which Vercel's schema
+ * rejects — it broke every build until it was moved here.)
+ *
  * Guarded by `CRON_SECRET`, which Vercel sends as `Authorization: Bearer …` on
  * its own invocations. Without the guard this is a public endpoint that deletes
  * customer files, so a **missing secret refuses rather than allows** — the one

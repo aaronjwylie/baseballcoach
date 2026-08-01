@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "//": "Daily, because Vercel's Hobby plan only permits once-a-day crons — an hourly schedule fails the deployment outright. That costs precision on the RESOLVED rule only: 'delete uploads 24h after completion' becomes 24-48h in practice, since the job can only notice an elapsed window when it runs. The ABANDONED rule does not depend on this schedule at all — startSubmissionAction sweeps unpaid submissions too, so the flow cleans up after itself under any real traffic. Move to '0 * * * *' on Pro.",
       "path": "/api/cron/sweep",
       "schedule": "0 4 * * *"
     }
