@@ -67,6 +67,22 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 
 Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
 
+### Outside the submission arc
+
+The nine above are the *submission's* messages, which is why they carry the path
+table's numbering. One message exists that isn't on that path at all:
+
+| Trigger | To | Status |
+|---|---|---|
+| Operator requested a password reset | operator | ✅ **built** — `domains/account/api/resetEmail.ts`, one-hour link |
+
+It's listed here because this doc's job is knowing which emails exist, not only
+which ones a submission causes. **It's also the second message in the product that
+best-effort sending serves badly** — the same shape as the verification code: the
+person is *blocked* on it, so a silent failure isn't degradation, it's a dead end.
+Two instances is a pattern, and it's worth deciding whether "blocking" messages
+should report their failure rather than swallow it.
+
 **④ and ⑦ are the same message twice**, pointed at the same recipient — "a
 download happened, the pipeline moved". Worth building as one mechanism with two
 subjects rather than two templates that drift.

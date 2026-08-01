@@ -197,23 +197,23 @@ What each column holds:
 
 | # | Stage | Who | Before | Viable when | Trigger | ① | ② | ③ | ④ | ⑤ | ⑥ | Outcome | Email | Retention | `status` |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Details submitted | customer | • Step 1 of 4 — the customer is filling in the form<br>• Their previous unfinished attempt, if any, is still on record | the form is valid · they're under the abuse limit<br>No account or session — this is the front door | **“Continue to email verification”** → `startSubmissionAction` | any earlier unpaid attempt of theirs is discarded — files and row | stale abandoned submissions elsewhere are tidied up *(best-effort; never blocks this customer)* | the submission is created and gets its permanent id | a **30-minute sliding window** opens — **the only clock in the flow** | a 6-digit code is minted; only its hash is stored | the code is **confirmed accepted for delivery** before they're advanced *(today: the send is silent, so they advance regardless — ⚠️ see Q1)* | they land on step 2 knowing a code is on its way | ① code → customer | scratch pad — discardable at any moment | `—` → `draft` |
-| 2 | Email verified | customer | • Step 2 — waiting on the code<br>• They can ask for a fresh one, or go back and fix the address | 6 digits · **still inside the 30-minute window** — the code has no expiry of its own · fewer than 5 wrong guesses · matches the stored hash<br>*(today: the window is 30 min as intended, but `CODE_TTL_MINUTES` still runs a separate 10-minute clock — two clocks where there should be one)* | **“Verify and continue”** → `verifyCodeAction` | the attempt is counted *before* the comparison, so abandoning a request still spends one | the code is compared against its hash | the address is marked proven, and the code is burned — single-use | the window slides forward | a **resent** code inherits the remaining time — it never buys a fresh 30 |  | the upload gate opens; they move to step 3 |  | scratch pad | `draft` → `awaiting_payment` |
+| 1 | Details submitted | customer | • Step 1 of 4 — the customer is filling in the form<br>• Their previous unfinished attempt, if any, is still on record | the form is valid · they're under the abuse limit<br>No account or session — this is the front door | **“Continue to email verification”** → `startSubmissionAction` | any earlier unpaid attempt of theirs is discarded — files and row | stale abandoned submissions elsewhere are tidied up *(best-effort; never blocks this customer)* | the submission is created and gets its permanent id | a **30-minute sliding window** opens — **the only clock in the flow** | a 6-digit code is minted; only its hash is stored | the code is **confirmed accepted for delivery** before they're advanced *(today: the send is silent, so they advance regardless)* | they land on step 2 knowing a code is on its way, **and where to look if it doesn't arrive** | ① code → customer | scratch pad — discardable at any moment | `—` → `draft` |
+| 2 | Email verified | customer | • Step 2 — waiting on the code<br>• The panel tells them to check their spam folder *(not built)*<br>• They can ask for a fresh one, or go back and fix the address | 6 digits · **still inside the 30-minute window** — the code has no expiry of its own · fewer than 5 wrong guesses · matches the stored hash<br>*(today: the window is 30 min as intended, but `CODE_TTL_MINUTES` still runs a separate 10-minute clock — two clocks where there should be one)* | **“Verify and continue”** → `verifyCodeAction` | the attempt is counted *before* the comparison, so abandoning a request still spends one | the code is compared against its hash | the address is marked proven, and the code is burned — single-use | the window slides forward | a **resent** code inherits the remaining time — it never buys a fresh 30 |  | the upload gate opens; they move to step 3 |  | scratch pad | `draft` → `awaiting_payment` |
 | 3 | Files attached | customer | • Step 3 — the upload gate is open<br>• Anything already added is listed with its size | the address is proven · not yet paid · under the file limit · each file is an allowed type and within the size limit | **picking a file** — no confirm button; each file commits on its own | a scoped, short-lived upload token is issued for this submission only | the browser uploads **straight to storage**, so file size isn't bounded by our server | the returned location is re-checked against this submission before it's trusted | the file is recorded as **client-original** *(today: no `kind` column — see the folders assessment)* | the window slides forward |  | the card shows done; another card is offered |  | scratch pad | *(unchanged)* |
 | 4 | Payment clears | customer + Stripe | • Step 4 — the amount and a card field are shown<br>• Everything they'll send is already uploaded | the address is proven · not yet paid · **at least one file attached** · the card clears · the payment provably belongs to *this* submission | **“Pay …”** → confirmed inline, on return from 3-D Secure, or by webhook — whichever arrives first | the card is confirmed with the payment provider | the submission is marked paid **exactly once**, however many confirmations arrive | a receipt listing every file is sent | the receipt carries a **non-guessable status link** the customer can use any time *(not built)* | **Yuta is told a paid submission has arrived** *(not built)* | the flow session is released — its job is done | they see a confirmation; it enters Yuta's queue | ② receipt → customer **and Yuta** *(not built)* | **retained from here on** | `awaiting_payment` → **`new`** |
 | 5 | Originals translated *(optional)* | Yuta | • Paid, in the queue — the files are in the customer's language<br>• The assigned coach reads Japanese | the submission is paid and has files *(not built)* | **download** from the *client* folder in the admin file view *(not built)* | translation happens **off-platform** — nothing runs on the server |  |  |  |  |  | Yuta holds translated copies locally |  | *(unchanged)* | *(unchanged)* |
 | 6 | Translations uploaded *(optional)* | Yuta | • Yuta has the translated files ready | the submission is paid *(not built)* | **upload** into the *client translated* folder *(not built)* | each file is recorded as **client-translated**, so the sets never blur | both languages are now available; the coach's hand-off will use the Japanese set |  |  |  |  | the folder view shows two populated sets | ⚠️ undecided — is the coach told a translation landed? | ⚠️ undecided — presumably the originals' clock | *(unchanged)* |
-| 7 | Coach assigned **+ what they get** | Yuta | • In the queue, paid and unassigned<br>• Both language sets exist, or only the originals | he's an admin · a coach is chosen · **a language set is chosen** · **the submission hasn't been delivered yet** *(today: role is checked but status isn't — the lock is UI-only, ⚠️ Q11)* | coach dropdown **+ radio: English · Japanese · both** → `assignCoachAction` | the coach is recorded against the submission | **the chosen set is recorded on the submission** — a decision made here and consumed at step 8 *(not built)* | the choice is offered only for sets that exist — no Japanese uploaded means no Japanese option *(not built)* |  |  |  | the row names the coach and what they'll receive |  | retained | `new` → `assigned` |
+| 7 | Coach assigned **+ what they get** | Yuta | • In the queue, paid and unassigned<br>• Both language sets exist, or only the originals | he's an admin · a coach is chosen · **a language set is chosen** · **the submission hasn't been delivered yet** *(today: role is checked but status isn't — the lock is UI-only)* | coach dropdown **+ radio: English · Japanese · both** → `assignCoachAction` | the coach is recorded against the submission | **the chosen set is recorded on the submission** — a decision made here and consumed at step 8 *(not built)* | the choice is offered only for sets that exist — no Japanese uploaded means no Japanese option *(not built)* |  |  |  | the row names the coach and what they'll receive |  | retained | `new` → `assigned` |
 | 8 | Handed to the coach | Yuta | • Assigned, with the language set chosen<br>• The coach hasn't been contacted | he's an admin · the submission is assigned and not yet handed over — so a second click can't re-send or skip ahead | **“Send email →”** → `notifyCoachAction` | the guard re-reads the submission and refuses anything already past this point | the coach is emailed the customer's details and a download link per file — **only the set chosen at step 7** *(today: every original, no curation)* | the submission is marked as sent, and Yuta can see it hasn't been picked up yet *(today: it jumps straight to `in_review` — see the status assessment)* |  |  |  | the coach has everything they need to start | ③ hand-off → coach | retained | `assigned` → **`sent_to_coach`** *(not built)* |
 | 9 | **Coach downloads** | coach | • Sent, but nothing proves the coach has the files<br>• Yuta is waiting to know work can begin | the link is theirs · the submission was sent to them · the files haven't been swept *(not built)* | **downloading** — the first file collected is the confirmation *(not built)* | the first successful download is stamped | the submission moves into review — **now `in_review` means the coach actually has it**, not merely that we emailed them | **Yuta is told the coach has picked it up** — the hand-off is closed | a re-download changes nothing — first success only |  |  | turnaround starts from a real event; a silent coach is now visible | ④ picked up → Yuta *(not built)* | retained | `sent_to_coach` → `in_review` *(not built)* |
-| 10 | Coach delivers | coach | • In review — the coach is recording their response | they're signed in and it's **their** submission · the file isn't empty · **the submission is actually in review** *(today: ownership is checked but status isn't — ⚠️ Q11)* | **“Send feedback”** → stores the response. **It does not reach the customer** | the response is saved to the *coach* folder | the submission is marked as having a response | **no clock is started** — unapproved work must not begin any countdown | **Yuta and the coach are both told it's waiting for approval** *(not built)* |  |  | it enters Yuta's approval queue; the customer sees nothing yet | ⑤ response submitted → Yuta + coach *(not built)* | retained | `in_review` → `awaiting_approval` |
+| 10 | Coach delivers | coach | • In review — the coach is recording their response | they're signed in and it's **their** submission · the file isn't empty · **the submission is actually in review** *(today: ownership is checked but status isn't)* | **“Send feedback”** → stores the response. **It does not reach the customer** | the response is saved to the *coach* folder | the submission is marked as having a response | **no clock is started** — unapproved work must not begin any countdown | **Yuta and the coach are both told it's waiting for approval** *(not built)* |  |  | it enters Yuta's approval queue; the customer sees nothing yet | ⑤ response submitted → Yuta + coach *(not built)* | retained | `in_review` → `awaiting_approval` |
 | 11 | Response translated *(optional)* | Yuta | • A response is waiting for approval, written in Japanese | a response has been delivered *(not built)* | **download** from the *coach* folder *(not built)* | translation happens **off-platform** — nothing runs on the server |  |  |  |  |  | Yuta holds the English version locally |  | *(unchanged)* | *(unchanged)* |
 | 12 | Translation uploaded *(optional)* | Yuta | • Yuta has the English version ready | a response has been delivered *(not built)* | **upload** into the *coach translated* folder *(not built)* | it's recorded as **coach-translated** | both language versions of the response now exist; step 13 chooses which to send |  |  |  |  | the folder view shows all four sets populated |  | **never swept** — this is what the customer bought | *(unchanged)* |
 | 13 | Approved &amp; sent **+ what they get** | Yuta | • A response is waiting on his check, in one or both languages | the submission is awaiting approval **and** a response is actually present · **a language set is chosen** — so a stray click can't send an empty review or the wrong language | **radio: English · Japanese · both** + **“Approve &amp; send →”** — **this is the moment it reaches the customer** | the guard refuses anything without a delivered response | **the chosen set is recorded** — what the customer was sent is a fact worth keeping *(not built)* | the submission is marked complete and the delivery is stamped | the customer is emailed a download link for **only the chosen set** *(today: always the coach's original)* | the download surface opens to them, showing the same set |  | the customer can collect what they bought | ⑥ feedback ready → customer | **no clock starts here** — the countdown waits for collection *(today: it starts here)* | `awaiting_approval` → `complete` |
 | 14 | **Customer downloads** | customer | • Complete — the response is available but hasn't been collected<br>• They can return whenever they like | they've proven who they are — a **verified status session** or the **link from their receipt** *(not built)* | **download**, from the status page or the emailed link *(not built)* | the first successful download is stamped | **this starts the 30-day retention countdown** — a re-download doesn't restart it | **Yuta is told the customer has collected** — the job is visibly finished *(not built)* |  |  |  | they have the response in hand; Yuta can mark it resolved | ⑦ collected → Yuta *(not built)* | **30 days from collection** | *(unchanged)* |
 | 15 | Resolved | Yuta | • Collected — the job is done | the customer has collected their response *(not built)* | **“Mark resolved”** on the queue row *(not built)* | the submission is stamped resolved — a timestamp, not a status | a thank-you and an invitation to come back is sent **while they still have their files** |  |  |  |  | the submission is closed and can be archived | ⑧ thank you → customer *(not built)* | unchanged — the countdown keeps running | *(unchanged)* |
 | 16 | Deletion warning | the system | • Collected 23 days ago; deletion is a week away | the countdown is 7 days from expiry and no warning has been sent *(not built)* | the scheduled sweep, extended to notice what's *approaching* *(not built)* | the customer is told their uploads will be deleted in a week | the warning is stamped so it can never send twice |  |  |  |  | they have a week to collect again if they want to | ⑨ deletion warning → customer *(not built)* | unchanged — nothing is deleted yet | *(unchanged)* |
-| 17 | Uploads purged | the system | • 30 days since collection; the warning has been sent | the countdown has expired and the submission hasn't already been swept<br>⚠️ **A submission never collected has no countdown** — it needs a backstop, see Q6 | the scheduled sweep | every uploaded file is removed from storage *(one failure is logged; the rest continue)* | the file **records survive** with their locations cleared, so the receipt and the portal can still say what was sent | the sweep is stamped, making a re-run a no-op |  |  |  | download links answer **410 Gone**; the response itself is untouched |  | uploads gone; record and response kept | *(unchanged)* |
+| 17 | Uploads purged | the system | • 30 days since collection; the warning has been sent | the countdown has expired and the submission hasn't already been swept<br>⚠️ **A submission never collected has no countdown** — it needs a backstop, see **Q1** | the scheduled sweep | every uploaded file is removed from storage *(one failure is logged; the rest continue)* | the file **records survive** with their locations cleared, so the receipt and the portal can still say what was sent | the sweep is stamped, making a re-run a no-op |  |  |  | download links answer **410 Gone**; the response itself is untouched |  | uploads gone; record and response kept | *(unchanged)* |
 
 ### Three paths that aren't stages
 
@@ -606,49 +606,124 @@ today and the northstar adds exactly one — `sent_to_coach`, because Yuta genui
 cannot see the difference without it. Everything else that "happened" is a
 timestamp.
 
-### Open questions — refine here first
+### Open questions — the decisions the northstar hasn't made
 
-Ordered by how much they'd hurt. The first four are places the pipeline stops
-moving on its own and waits for a person to notice something.
+**These are not the gaps.** Anything agreed but unbuilt is marked *(not built)* in
+the table above; it needs building, not discussing, and listing it here made work
+look like doubt. Two items left this list that way — see *Decided* below.
 
-1. **Step 1 advances without the code being delivered.** The send is best-effort
-   and silent, so a missing key or unverified domain leaves the customer on step 2
-   waiting for nothing.
-2. **Step 10 fires no email.** A coach presses “Send feedback” and the only person
-   who can release it has no idea. Every other handover notifies.
-3. **Nothing distinguishes "gone" from "wrong".** A scrubbed submission surfaces
-   as an inline error and the customer stays on a dead step. The single biggest
-   gap in the one-clock rule, because without it the scrub is invisible. 🔶 Half
-   closed — "Start over" resets properly and a lapsed upload names its cause, but
-   nothing returns the customer on its own.
-4. **Translation is untracked in both directions** (steps 5–6, 11–12). Optional,
-   off-platform, and nothing records whether it happened. The sharpest
-   sub-question: does translation belong to the *submission* or to the *coach*? If
-   it's the coach, steps 5–6 could fire on assignment instead of on memory.
-5. **A declined card tells nobody**, and the window keeps running — so a customer
-   who retries later finds their files gone.
-6. **Nothing purges a submission that was never downloaded.** Step 14 starts the
-   clock, so a customer who never collects leaves files indefinitely. Needs a
-   backstop; step 9 needs none, because a coach who never downloads leaves a
-   *visible* stuck row.
-7. **`sent_to_coach` is a schema change.** Step 9 only means something if the
-   status before it is distinguishable — otherwise "picked up" has nowhere to
-   move from. Migration plus the exhaustive paid-ness `Record`.
-8. **Two curation choices need somewhere to live.** What was sent to the coach and
-   what was sent to the customer are facts, not UI state. Both radios must degrade
-   gracefully when only one language exists.
-9. **Step 15 is manual.** A downloaded-but-never-resolved submission is purged at
-   day 30 with no thank-you. Should resolve auto-fire on download?
-10. **No transition runs backwards.** A wrong file, a wrong language set, or a
-    review Yuta wants to reject has no route back — and step 7's radio makes this
-    sharper, because picking the wrong set is an easy mistake with no undo.
-11. **No stage is transactional.** Each is an ordered chain; a failure partway
-    leaves earlier operations committed.
-12. **Two guards are UI-only** (steps 7 and 10). Unreachable by clicking, but
-    weaker than the guard column implies. Steps 8 and 13 show the pattern that
-    closes them.
+What remains is the smaller, harder set: **places where nobody could build the
+thing even with unlimited time, because we haven't decided what right looks like.**
+Each states the question, what turns on the answer, and a recommendation to argue
+with.
 
-*Closed by step 9:* "steps 7 and 8 split one intent in two, so `in_review` means
+#### Endings and retention
+
+**Q1 · When do we delete the files of a customer who never collects them?**
+The clock starts on collection (step 14), so someone who never downloads has no
+clock at all and their uploads live forever.
+*What turns on it:* unbounded storage, against deleting something a customer still
+intends to fetch.
+*Recommendation:* a second, longer window measured from step 13 — 90 days — and
+whichever expires later wins. A ceiling, not a change of policy.
+
+**Q2 · Should "resolved" fire on its own when the customer collects?**
+Step 15 is Yuta pressing a button. If he doesn't, the thank-you never sends and the
+files are purged anyway.
+*What turns on it:* whether *resolved* means **the work is finished** or **Yuta
+says it's finished**. Those are different claims and only one of them can be
+automated.
+*Recommendation:* fire automatically on first collection, and let Yuta un-resolve
+the rare case that isn't really done.
+
+**Q3 · Does a failed card buy the customer more time?**
+The declined-card path says the attempt should extend the window rather than let it
+run out underneath them. That's a proposal, not a settled rule.
+*What turns on it:* a customer who fails a card, goes to find another, and comes
+back to nothing.
+*Recommendation:* yes — extend on failure, and email a way back in. A decline is
+someone trying, not someone leaving.
+
+#### Language and translation
+
+**Q4 · What does the language radio offer when only one language exists?**
+Steps 7 and 13 assume a choice. Most submissions won't have one.
+*What turns on it:* whether the untranslated case is a graceful default or a
+disabled control the operator has to reason about.
+*Recommendation:* offer only sets that exist, and hide the control entirely when
+there's nothing to choose between.
+
+**Q5 · Does uploading a translation replace the original, or sit beside it?**
+*What turns on it:* whether "four folders" is the right model at all — replacing
+makes it two.
+*Recommendation:* sit beside. The original is the record of what was actually
+submitted, and a translation is an interpretation of it.
+
+**Q6 · Do translated originals get swept with the originals?**
+They're derived from customer content, so probably — but they're also Yuta's work.
+*What turns on it:* whether a purged submission leaves translated copies behind.
+*Recommendation:* sweep them with the originals. They describe the same content and
+shouldn't outlive it. The *coach*-translated response is the opposite case and must
+never be swept.
+
+**Q7 · Does translation belong to the submission, or to the coach?**
+Today it's a thing Yuta remembers to do. If a coach's languages are known, steps 5–6
+could fire from assignment automatically.
+*What turns on it:* whether translation is a per-submission chore or a property of
+who's working on it — and therefore whether it can ever be prompted rather than
+recalled.
+*Recommendation:* the coach. `coaches.languages` already exists.
+
+#### States, and going backwards
+
+**Q8 · Is "the coach has it" a status, or a timestamp?**
+Step 9 needs *sent-but-not-collected* to be distinguishable from *collected*. A new
+`sent_to_coach` status does that; so does a `sentToCoachAt` stamp with the status
+left alone.
+*What turns on it:* a migration and an entry in the exhaustive paid-ness `Record`,
+against a queue that can't filter on the distinction.
+*Recommendation:* a status. Yuta needs to *see* which coaches haven't picked work
+up, and a filter is how he'll do it.
+
+**Q9 · What in this pipeline is allowed to be undone?**
+Nothing runs backwards today: a wrong file, a wrong language set, or a review Yuta
+wants to reject has no route back. The curation radios make this sharper, because
+picking the wrong set is an easy mistake with no undo.
+*What turns on it:* whether operators can recover from ordinary errors without a
+developer.
+*Recommendation:* decide it as one rule, not per-stage. The narrow version — Yuta
+can return an `awaiting_approval` submission to the coach with a note — covers most
+of the real cases.
+
+**Q10 · Should a stage be all-or-nothing?**
+Each stage is an ordered chain; a failure partway leaves the earlier operations
+committed. Stage 1 can orphan a row nothing points at.
+*What turns on it:* whether "the trigger failed" and "nothing happened" are the same
+statement. Right now they aren't.
+*Recommendation:* not worth a transaction everywhere. Worth it where the residue is
+reachable by a customer — which today is stage 1 alone.
+
+#### Identity
+
+**Q11 · PIN, link, or both — and does the link expire?**
+The status path offers a mailed PIN *and* a non-guessable link from the receipt.
+*What turns on it:* the link is a bearer capability — whoever holds the URL is in,
+including anyone the customer forwards their receipt to.
+*Recommendation:* both, and the link doesn't expire but can be revoked. A parent
+forwarding feedback to their kid's other parent is a feature, not a breach.
+
+---
+
+**Decided, and no longer open:**
+
+- **Step 1's silent send.** There was never a question here — the northstar already
+  says the code must be confirmed accepted before the customer advances. It's work,
+  not doubt. Added alongside it: **step 2 tells the customer to check their spam
+  folder**, which costs nothing and catches the common case.
+- **Step 10's missing email.** Yuta and the coach both get one. Recorded as ⑤ in the
+  table and in the email matrix.
+
+**Closed by step 9:** "steps 7 and 8 split one intent in two, so `in_review` means
 'the coach has been told', not 'the coach has started' — turnaround can't be
 measured." The coach's first download is that missing event.
 
