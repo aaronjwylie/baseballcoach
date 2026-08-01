@@ -161,6 +161,8 @@ export const submissionFiles = pgTable(
  */
 export const settings = pgTable("settings", {
   id: text().primaryKey().default("default"),
+  /** What the customer pays per review, in cents. Operator-tunable. */
+  priceCents: integer().notNull().default(8000),
   maxFileSizeMb: integer().notNull().default(50),
   maxFilesPerSubmission: integer().notNull().default(5),
   /** Hours after a submission completes before its uploads are deleted. */

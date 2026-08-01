@@ -28,14 +28,14 @@ export const site = {
    */
   email: "contact@baseball-sensei.com",
   /**
-   * `amountCents` is what Stripe actually charges — the landing page's price
-   * and the PaymentIntent read the same field, so they cannot disagree.
-   * Set to $80 on 2026-07-30 to match Audrey's approved wireframe.
+   * The live price is the operator setting (`settings.priceCents`, edited at
+   * /admin/settings) — read by both the checkout charge and every place the
+   * figure is shown, so they can't disagree. `amountCents` here is only the
+   * default/last-resort fallback; `currency` and `unit` stay dev config.
    */
   price: {
     amountCents: 8000,
     currency: "cad",
-    label: "$80",
     unit: "per submission",
   },
   /**
@@ -45,3 +45,16 @@ export const site = {
    */
   turnaround: "48 hours",
 } as const;
+
+/**
+ * Format a cents amount as the site's price label, e.g. 8000 → "$80", 7999 →
+ * "$79.99". One home for how money reads, so the landing card, the checkout, and
+ * the terms page all render the operator's price the same way.
+ */
+export function formatPrice(cents: number): string {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: site.price.currency.toUpperCase(),
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+  }).format(cents / 100);
+}

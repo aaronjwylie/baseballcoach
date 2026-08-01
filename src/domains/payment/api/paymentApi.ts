@@ -11,6 +11,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/shared/stripe/client";
 import { env } from "@/shared/config/env";
 import { site } from "@/shared/config/site";
+import { getSettings } from "@/domains/settings";
 import type { Submission } from "@/domains/submission";
 
 export interface CreatedIntent {
@@ -30,17 +31,20 @@ export interface CreatedIntent {
  * "what it costs" answerable in one place per environment.
  */
 async function resolveAmount(): Promise<{ amount: number; currency: string }> {
-  if (!env.stripePriceId) {
-    return { amount: site.price.amountCents, currency: site.price.currency };
+  // A configured Stripe Price still wins, for when the amount must live in
+  // Stripe; otherwise the operator's setting is the source of truth.
+  if (env.stripePriceId) {
+    const price = await stripe().prices.retrieve(env.stripePriceId);
+    if (typeof price.unit_amount !== "number") {
+      throw new Error(
+        `Stripe price ${env.stripePriceId} has no unit_amount — it may be a tiered or metered price, which this flow can't charge.`,
+      );
+    }
+    return { amount: price.unit_amount, currency: price.currency };
   }
 
-  const price = await stripe().prices.retrieve(env.stripePriceId);
-  if (typeof price.unit_amount !== "number") {
-    throw new Error(
-      `Stripe price ${env.stripePriceId} has no unit_amount — it may be a tiered or metered price, which this flow can't charge.`,
-    );
-  }
-  return { amount: price.unit_amount, currency: price.currency };
+  const settings = await getSettings();
+  return { amount: settings.priceCents, currency: site.price.currency };
 }
 
 /**

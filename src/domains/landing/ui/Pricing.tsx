@@ -1,16 +1,17 @@
 import { ButtonLink, Container } from "@/shared/ui";
-import { site } from "@/shared/config/site";
+import { site, formatPrice } from "@/shared/config/site";
+import { getSettings } from "@/domains/settings";
 import { pricing } from "../model/copy";
 import { SectionHeading } from "./SectionHeading";
 
 /**
  * The ask, on a full-bleed band so the number can't be scrolled past.
  *
- * The price is read from `site.price` — the same field the PaymentIntent is
- * built from — so the figure on this card and the amount Stripe charges cannot
- * disagree.
+ * The figure is the operator's price (`settings.priceCents`) — the same value
+ * the PaymentIntent charges — so this card and Stripe cannot disagree.
  */
-export function Pricing() {
+export async function Pricing() {
+  const settings = await getSettings();
   return (
     <section id="pricing" className="scroll-mt-8 bg-band py-20 lg:py-28">
       <Container className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
@@ -22,7 +23,7 @@ export function Pricing() {
 
         <div className="rounded-3xl bg-paper-alt px-8 py-12 text-center sm:px-14">
           <p className="text-5xl font-medium tracking-tight lg:text-[56px]">
-            {site.price.label}
+            {formatPrice(settings.priceCents)}
           </p>
           <p className="mt-1 text-3xl font-medium tracking-tight lg:text-[40px]">
             {site.price.unit}

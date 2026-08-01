@@ -12,6 +12,8 @@
 import { z } from "zod";
 
 export interface PlatformSettings {
+  /** What the customer pays per review, in cents (e.g. 8000 = $80.00). */
+  priceCents: number;
   /** Largest single upload the customer may send, in megabytes. */
   maxFileSizeMb: number;
   /** How many files one submission may carry. */
@@ -29,6 +31,7 @@ export interface PlatformSettings {
  * when it creates the row.
  */
 export const DEFAULT_SETTINGS: PlatformSettings = {
+  priceCents: 8000,
   maxFileSizeMb: 50,
   maxFilesPerSubmission: 5,
   retainResolvedHours: 24,
@@ -45,6 +48,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
  * a coach who is still working.
  */
 export const settingsSchema = z.object({
+  // Cents. Floor $1 so a typo can't set the review free; ceiling $10,000 stops
+  // a fat-fingered charge. The form collects dollars and converts.
+  priceCents: z.coerce.number().int().min(100).max(1_000_000),
   maxFileSizeMb: z.coerce.number().int().min(1).max(2000),
   maxFilesPerSubmission: z.coerce.number().int().min(1).max(20),
   retainResolvedHours: z.coerce.number().int().min(1).max(8760),

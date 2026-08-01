@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "price_cents" integer DEFAULT 8000 NOT NULL;

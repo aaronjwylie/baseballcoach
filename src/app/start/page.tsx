@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ButtonLink, Container } from "@/shared/ui";
-import { site } from "@/shared/config/site";
+import { site, formatPrice } from "@/shared/config/site";
+import { getSettings } from "@/domains/settings";
 import { resolveFlowState } from "@/domains/checkout";
 import { CheckoutFlow } from "@/domains/checkout/ui/CheckoutFlow";
 
@@ -41,9 +42,10 @@ export default async function StartPage({
 }: {
   searchParams: Promise<{ payment?: string; paid?: string }>;
 }) {
-  const [state, params] = await Promise.all([
+  const [state, params, settings] = await Promise.all([
     resolveFlowState(),
     searchParams,
+    getSettings(),
   ]);
 
   if (params.paid === "1") {
@@ -88,7 +90,7 @@ export default async function StartPage({
             Send your clips for review
           </h1>
           <p className="mt-4 text-ink-soft">
-            {site.price.label} {site.price.unit} · attach your clips, and any
+            {formatPrice(settings.priceCents)} {site.price.unit} · attach your clips, and any
             stills or documents that help. Personal feedback from a professional
             coach in {site.turnaround}, and you pay at the end — once your files
             are safely in.

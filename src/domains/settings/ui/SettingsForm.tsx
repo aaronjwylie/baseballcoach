@@ -36,6 +36,28 @@ export function SettingsForm({ settings }: { settings: PlatformSettings }) {
 
       <fieldset className="space-y-4">
         <legend className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
+          Pricing
+        </legend>
+
+        <Field
+          label="Price per review ($ CAD)"
+          hint="What the customer pays at checkout. Shown across the site and charged by Stripe."
+        >
+          <input
+            name="priceDollars"
+            type="number"
+            min={1}
+            max={10000}
+            step="0.01"
+            required
+            defaultValue={(settings.priceCents / 100).toFixed(2)}
+            className={inputClass}
+          />
+        </Field>
+      </fieldset>
+
+      <fieldset className="space-y-4">
+        <legend className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
           Upload limits
         </legend>
 

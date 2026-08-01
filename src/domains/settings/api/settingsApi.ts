@@ -17,6 +17,7 @@ const SETTINGS_ID = "default";
 
 function fromRow(row: SettingsRow): PlatformSettings {
   return {
+    priceCents: row.priceCents,
     maxFileSizeMb: row.maxFileSizeMb,
     maxFilesPerSubmission: row.maxFilesPerSubmission,
     retainResolvedHours: row.retainResolvedHours,

@@ -16,7 +16,10 @@ export async function updateSettingsAction(
 ): Promise<SettingsFormState> {
   await requireRole("admin");
 
+  // The form collects the price in dollars; the schema and DB store cents.
+  const priceDollars = Number(formData.get("priceDollars"));
   const parsed = settingsSchema.safeParse({
+    priceCents: Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : NaN,
     maxFileSizeMb: formData.get("maxFileSizeMb"),
     maxFilesPerSubmission: formData.get("maxFilesPerSubmission"),
     retainResolvedHours: formData.get("retainResolvedHours"),
@@ -26,7 +29,7 @@ export async function updateSettingsAction(
   if (!parsed.success) {
     return {
       error:
-        "Check the values: size 1–2000 MB, 1–20 files, and retention between 1 hour and a year.",
+        "Check the values: price $1–$10,000, size 1–2000 MB, 1–20 files, and retention between 1 hour and a year.",
     };
   }
 
@@ -38,5 +41,10 @@ export async function updateSettingsAction(
   }
 
   revalidatePath("/admin/settings");
+  // The price shows on these (statically rendered) pages, so a change to it has
+  // to invalidate them too — otherwise the card and the charge could disagree.
+  revalidatePath("/");
+  revalidatePath("/start");
+  revalidatePath("/terms");
   return { ok: true };
 }

@@ -581,11 +581,16 @@ a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 
 | Column | Type | Default |
 | --- | --- | --- |
+| `priceCents` | integer | 8000 |
 | `maxFileSizeMb` | integer | 50 |
 | `maxFilesPerSubmission` | integer | 5 |
 | `retainResolvedHours` | integer | 24 |
 | `retainUnpaidHours` | integer | 24 |
 | `updatedAt` | timestamptz | |
+
+The **price is here, not `site.ts`** — the checkout charge and every place the
+figure is shown read `settings.priceCents`, so the operator can change it without
+a deploy and the card can't disagree with the charge.
 
 ### `status` lifecycle (enum, in order)
 

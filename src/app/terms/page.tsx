@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
-import { site } from "@/shared/config/site";
+import { site, formatPrice } from "@/shared/config/site";
+import { getSettings } from "@/domains/settings";
 
 export const metadata: Metadata = {
   title: "Terms and conditions",
@@ -20,7 +21,8 @@ export const metadata: Metadata = {
  * someone qualified, before the site takes live payments. A site taking money
  * and storing video of minors needs both.
  */
-export default function TermsPage() {
+export default async function TermsPage() {
+  const settings = await getSettings();
   return (
     <section className="py-20 lg:py-28">
       <Container className="max-w-2xl">
@@ -39,8 +41,9 @@ export default function TermsPage() {
             <h2 className="text-xl font-medium text-ink">What you&rsquo;re buying</h2>
             <p className="mt-3">
               One review, by one coach, of the files you attach to a single
-              submission — video, images, or documents — for {site.price.label}{" "}
-              {site.price.unit}. There is no subscription and no recurring
+              submission — video, images, or documents — for{" "}
+              {formatPrice(settings.priceCents)} {site.price.unit}. There is no
+              subscription and no recurring
               charge. Payment is taken once, at checkout, by Stripe.
             </p>
           </section>
