@@ -15,21 +15,24 @@
  * verified lives on the row (`emailVerifiedAt`), so there is one home for that
  * fact and a stale cookie can never claim a verification that didn't happen.
  *
- * **Ten minutes, and it slides.** Every action the customer takes re-issues the
- * cookie, so the clock measures *idleness*, not total time — which matters
+ * **Thirty minutes, and it slides.** Every action the customer takes re-issues
+ * the cookie, so the clock measures *idleness*, not total time — which matters
  * because uploading a 50 MB clip on hotel wifi can legitimately take longer than
- * the whole window. An absolute ten minutes would expire people mid-upload.
+ * the whole window. An absolute window would expire people mid-upload.
  *
- * It was six hours; Yuta asked for ten minutes (2026-07-30) so an abandoned
- * half-finished submission doesn't greet the next person on a shared machine.
- * The sliding behaviour is what makes that short window survivable.
+ * It was six hours, then ten minutes (2026-07-30) so an abandoned half-finished
+ * submission wouldn't greet the next person on a shared machine — but ten proved
+ * too tight in practice: a customer verifying their email and then choosing
+ * files could idle past it mid-flow. Thirty is the compromise, still short
+ * enough for the shared-machine concern, and the sliding behaviour makes it
+ * survivable.
  */
 import { readSignedCookie, setSignedCookie, clearSignedCookie } from "@/shared/auth";
 
 const FLOW_COOKIE = "bs_flow";
 
 /** Idle timeout. Refreshed by `touchFlowSession` on every action. */
-export const FLOW_MAX_AGE_S = 60 * 10;
+export const FLOW_MAX_AGE_S = 60 * 30;
 
 interface FlowPayload {
   submissionId: string;

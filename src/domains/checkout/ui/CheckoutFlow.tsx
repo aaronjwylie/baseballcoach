@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button, ButtonLink } from "@/shared/ui";
 import { PlayerInfoForm } from "@/domains/submission/ui/PlayerInfoForm";
 import type {
@@ -66,8 +65,6 @@ export function CheckoutFlow({
   /** Set when the redirect return trip couldn't be confirmed. */
   paymentNotice?: string;
 }) {
-  const router = useRouter();
-
   const [step, setStep] = useState<FlowStep>("details");
   const [email, setEmail] = useState("");
   const [playerName, setPlayerName] = useState("");
@@ -90,12 +87,28 @@ export function CheckoutFlow({
       <Confirmation
         playerName={playerName}
         fileCount={files.length}
-        onStartAnother={async () => {
-          await startAnotherAction();
-          router.refresh();
-        }}
+        onStartAnother={startOver}
       />
     );
+  }
+
+  /*
+    Abandon the current attempt and return to a clean step 1. The state lives
+    only in React (a page load always starts fresh), so `router.refresh()` did
+    NOT reset it — a soft refresh keeps client state, so "Start over" cleared the
+    cookie but left the customer stranded on the same step. Resetting the state
+    here is what actually takes them back.
+  */
+  async function startOver() {
+    await startAnotherAction();
+    setStep("details");
+    setEmail("");
+    setPlayerName("");
+    setFiles([]);
+    setIntent(null);
+    setDetails(undefined);
+    setFolder("");
+    setError(null);
   }
 
   async function submitDetails(values: SubmissionInput) {
@@ -233,10 +246,7 @@ export function CheckoutFlow({
         <p className="text-center text-sm text-ink-muted">
           <button
             type="button"
-            onClick={async () => {
-              await startAnotherAction();
-              router.refresh();
-            }}
+            onClick={startOver}
             className="underline hover:text-ink"
           >
             Start over

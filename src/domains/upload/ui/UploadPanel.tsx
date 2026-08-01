@@ -51,9 +51,13 @@ function describeUploadFailure(signal: AbortSignal, err: unknown): string {
     }
     return "The upload kept restarting and couldn't complete — usually a setup issue on our side, not your file. Please try again shortly.";
   }
-  return err instanceof Error
-    ? err.message
-    : "That upload didn't finish. Please try again.";
+  const message = err instanceof Error ? err.message : "";
+  // The Blob client can't get an upload token when the flow session has lapsed;
+  // it reports that as an opaque "client token" error. Name the real cause.
+  if (/client token|session (has )?expired|verify your email/i.test(message)) {
+    return "Your session timed out. Choose “Start over” below and run through the steps again.";
+  }
+  return message || "That upload didn't finish. Please try again.";
 }
 
 export function UploadPanel({
