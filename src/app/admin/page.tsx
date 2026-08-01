@@ -184,9 +184,11 @@ function SubmissionRow({
             />
           </div>
         ) : submission.status === "complete" ||
-          submission.status === "awaiting_approval" ? (
-          // The coach is locked in once they've submitted — show the name, not a
-          // reassign dropdown. The per-status action lives underneath it.
+          submission.status === "awaiting_approval" ||
+          submission.status === "in_review" ? (
+          // The coach is locked in once the review is under way (in_review) or
+          // done — show the name, not a reassign dropdown, so notified work
+          // can't be pulled out from under them. Any per-status action is below.
           <div className="flex flex-col items-start gap-2">
             <span className="font-medium text-ink">
               {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
