@@ -10,6 +10,7 @@ Four numbers, one row, one admin form:
 
 | Setting | Default | What it governs |
 | --- | --- | --- |
+| `priceCents` | 8000 | what one submission costs |
 | `maxFileSizeMb` | 50 | the largest single upload |
 | `maxFilesPerSubmission` | 5 | how many files one submission carries |
 | `retainResolvedHours` | 24 | when a completed review's uploads are deleted |
@@ -22,7 +23,7 @@ Worth knowing before anyone asks for "a timer in admin":
 
 | Clock | Value | How it's enforced |
 | --- | --- | --- |
-| **The flow window** — one clock for the whole unfinished attempt | **30 min**, sliding *(today: 10, plus a second 10-min clock on the verification code — see below)* | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
+| **The flow window** — one clock for the whole unfinished attempt | **30 min**, sliding *(today: correct, but a second 10-min clock still runs on the verification code — see below)* | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
 | **Deferred cleanup** — a completed review's uploads | `retainResolvedHours` | the nightly sweep, against that submission's own `completedAt`. Files go, **record stays** |
 | **Deferred cleanup** — an abandoned submission | `retainUnpaidHours` | the sweep *and* every new submission. **Deleted outright** — files and record |
 
@@ -32,8 +33,11 @@ inherits whatever time is left rather than starting a new 30 minutes. A customer
 should be able to hold one number in their head ("I have half an hour"), not
 discover a second, shorter clock they were never told about.
 
-⚠️ Today there are two: a 10-minute session **and** a separate 10-minute code TTL,
-enforced independently in `domains/verification`. Collapsing them is part of the
+The window itself is now **30 minutes and sliding** (`FLOW_MAX_AGE_S`, widened
+from 10 on 2026-08-01 — ten proved too tight to verify an email and then choose
+files). ⚠️ What remains is the *second* clock: `CODE_TTL_MINUTES` is still 10 and
+enforced independently in `domains/verification`, so a customer well inside their
+window can still find the code dead. Collapsing the two is the rest of the
 one-clock rework.
 
 Both cleanup clocks are **relative to the submission**, never to a wall-clock
@@ -48,7 +52,12 @@ the queue.
 verification attempts are exhausted, the unfinished submission is discarded exactly
 as a refresh discards it, and the customer is returned to step 1. One outcome, three
 routes to it; the flow never leaves someone standing on a step whose submission is
-gone. ⚠️ Not built — today an expiry surfaces as an inline error in place.
+gone.
+
+🔶 **Half built.** A lapse during upload is now *named* rather than surfacing as an
+opaque token error — "Your session timed out. Choose Start over…" — and "Start over"
+genuinely resets to step 1. But the customer still has to press it: nothing returns
+them automatically, and a lapse at step 2 or 4 is still an anonymous inline error.
 
 **Only the resolved clock depends on the cron.** Vercel's Hobby plan permits one
 cron run a day, so "24 hours after completion" is 24–48 in practice; hourly needs
