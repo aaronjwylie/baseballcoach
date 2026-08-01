@@ -3,6 +3,10 @@ import { getSubmission } from "@/domains/submission";
 import { storage } from "@/shared/storage";
 import { readSession } from "@/shared/auth";
 
+// Private blobs stream through this route rather than redirecting, so a large
+// feedback video on a slow connection needs room to finish (Hobby caps at 60s).
+export const maxDuration = 60;
+
 /**
  * Download a submission's feedback file.
  *

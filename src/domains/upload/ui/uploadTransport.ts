@@ -53,7 +53,10 @@ async function viaBlob({
   // submission's folder. Blob appends its own random suffix, so two files of the
   // same name don't collide.
   const blob = await blobUpload(`${folder}/${file.name}`, file, {
-    access: "public",
+    // Private, matching the store: customer files (video of minors) require auth
+    // to read rather than living behind an unguessable public URL. Downloads go
+    // through our access-checked routes, which stream the bytes.
+    access: "private",
     handleUploadUrl: "/api/upload/blob",
     contentType: file.type || undefined,
     // Multipart splits large files and retries failed parts on its own, which

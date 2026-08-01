@@ -3,6 +3,10 @@ import { getSession } from "@/domains/account";
 import { getSubmissionFile } from "@/domains/submission";
 import { storage } from "@/shared/storage";
 
+// Private blobs stream through this route rather than redirecting, so a large
+// clip on a slow connection needs room to finish (Hobby caps this at 60s).
+export const maxDuration = 60;
+
 /**
  * Download one of a customer's uploaded files. **Operator-only** — a coach or
  * the admin, checked here rather than trusting the proxy.

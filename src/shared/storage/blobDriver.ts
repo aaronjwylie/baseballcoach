@@ -6,7 +6,7 @@
  * random, unguessable token — the same URL-as-capability trade-off the app
  * already makes for the customer status lookup.
  */
-import { put, del } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 import { env } from "@/shared/config/env";
 import type { OpenResult, StorageDriver } from "./types";
 
@@ -17,7 +17,9 @@ export const blobDriver: StorageDriver = {
 
   async save(key, bytes, contentType) {
     const { url } = await put(key, Buffer.from(bytes), {
-      access: "public",
+      // Private to match the store, and right for the content — customer video
+      // of minors shouldn't be reachable by URL alone.
+      access: "private",
       contentType,
       addRandomSuffix: false,
       token: env.blobToken,
@@ -25,8 +27,20 @@ export const blobDriver: StorageDriver = {
     return url;
   },
 
+  // A private blob has no public URL to redirect to, so fetch it with the
+  // store's token and hand the stream back. The download routes have already
+  // checked the caller may have it, and stream what we return.
   async open(locator): Promise<OpenResult> {
-    return { redirectTo: locator };
+    const result = await get(locator, {
+      access: "private",
+      token: env.blobToken,
+    });
+    if (!result) throw new Error(`Blob not found: ${locator}`);
+    return {
+      stream: result.stream ?? undefined,
+      contentType: result.blob.contentType ?? undefined,
+      size: result.blob.size ?? undefined,
+    };
   },
 
   async remove(locator) {
