@@ -151,6 +151,9 @@ export const submissionFiles = pgTable(
     contentType: text().notNull(),
     sizeBytes: integer().notNull(),
     fileUrl: text(),
+    // `submission` = the customer's uploads; `feedback` = the coach's response
+    // files. One table, two roles, kept apart by this discriminator.
+    kind: text().notNull().default("submission"),
     uploadedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("submission_files_submission_id_idx").on(table.submissionId)],

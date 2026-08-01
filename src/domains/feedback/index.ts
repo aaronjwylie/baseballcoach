@@ -1,10 +1,16 @@
 /**
- * The feedback domain — the coach's response coming back.
+ * The feedback domain — the coach's response coming back, now multi-file.
  *
- * Two steps: the coach uploads their file (`storeFeedback`), which parks the
- * submission at `awaiting_approval`; then Yuta reviews and `approveAndComplete`s
- * it, which marks it complete and emails the customer their download link.
+ * The coach attaches one or more files (each a `feedback` row in
+ * `submission_files`), then `sendFeedbackForApproval` parks the submission at
+ * `awaiting_approval` for Yuta; `approveAndComplete` marks it complete and emails
+ * the customer that their feedback is ready.
  */
 export { sendFeedbackReady } from "./api/feedbackEmail";
-export { storeFeedback, approveAndComplete } from "./api/feedbackApi";
-export { UploadFeedback } from "./ui/UploadFeedback";
+export {
+  saveFeedbackFile,
+  recordFeedbackFile,
+  sendFeedbackForApproval,
+  approveAndComplete,
+} from "./api/feedbackApi";
+export { FeedbackUpload } from "./ui/FeedbackUpload";

@@ -1,57 +1,85 @@
 /**
- * Delivering feedback — a two-step hand-off.
+ * Delivering feedback — a two-step hand-off, now multi-file.
  *
- * 1. `storeFeedback` (coach): save the file and move the submission to
- *    `awaiting_approval`. The customer is **not** emailed yet — Yuta reviews the
- *    coach's material first.
- * 2. `approveAndComplete` (admin): mark it `complete`, stamp `completedAt`, and
- *    email the customer their download link. Best-effort email ([ADR 004]) so a
- *    mail hiccup never blocks completion.
+ * A coach attaches **one or more** response files to a submission (each a row in
+ * `submission_files` with `kind = "feedback"`), then hands the set to Yuta:
+ *
+ * 1. Files arrive one at a time — `saveFeedbackFile` (dev proxy) or
+ *    `recordFeedbackFile` (prod direct-to-Blob). Attaching a file does **not**
+ *    move the submission on its own.
+ * 2. `sendFeedbackForApproval` (coach): with at least one file attached, park the
+ *    submission at `awaiting_approval`. The customer is **not** emailed yet.
+ * 3. `approveAndComplete` (admin): mark it `complete`, stamp `completedAt`, and
+ *    email the customer that their feedback is ready. Best-effort email
+ *    ([ADR 004]) so a mail hiccup never blocks completion.
  */
-import { storage, feedbackKey } from "@/shared/storage";
+import { storage, feedbackFileKey } from "@/shared/storage";
 import {
+  addSubmissionFile,
   getSubmission,
+  listFeedbackFiles,
   updateSubmission,
   type Submission,
+  type SubmissionFile,
 } from "@/domains/submission";
 import { env } from "@/shared/config/env";
 import { sendFeedbackReady } from "./feedbackEmail";
 
 /**
- * Coach uploads their breakdown. Stores the file and parks the submission at
- * `awaiting_approval` for Yuta — no customer email at this step.
+ * Save a feedback file the bytes of which came through us — the dev proxy path,
+ * where there's no Blob store. Records a `feedback` row; leaves the status alone.
  */
-export async function storeFeedback(
+export async function saveFeedbackFile(
   submissionId: string,
   filename: string,
   bytes: Uint8Array,
   contentType: string,
-): Promise<Submission> {
-  const key = feedbackKey(submissionId, filename);
-  const feedbackUrl = await storage.save(key, bytes, contentType);
-
-  return updateSubmission(submissionId, {
-    feedbackUrl,
-    status: "awaiting_approval",
-  });
+): Promise<SubmissionFile> {
+  const key = feedbackFileKey(submissionId, filename);
+  const fileUrl = await storage.save(key, bytes, contentType);
+  return addSubmissionFile(
+    { submissionId, filename, contentType, sizeBytes: bytes.byteLength, fileUrl },
+    "feedback",
+  );
 }
 
 /**
- * Yuta approves the coach's work: complete the submission and send the customer
- * their feedback. Only acts on a submission that's actually awaiting approval
- * and has a file, so a stray click can't email an empty review.
+ * Record a feedback file the browser uploaded straight to Blob — the prod path.
+ * The object already landed; this only writes the `feedback` row.
+ */
+export async function recordFeedbackFile(
+  submissionId: string,
+  input: { filename: string; contentType: string; sizeBytes: number; fileUrl: string },
+): Promise<SubmissionFile> {
+  return addSubmissionFile({ submissionId, ...input }, "feedback");
+}
+
+/**
+ * Coach hands their breakdown to Yuta. Requires at least one feedback file, so a
+ * stray click can't park an empty review for approval. No customer email here.
+ */
+export async function sendFeedbackForApproval(
+  submissionId: string,
+): Promise<Submission | null> {
+  const files = await listFeedbackFiles(submissionId);
+  if (files.length === 0) return null;
+  return updateSubmission(submissionId, { status: "awaiting_approval" });
+}
+
+/**
+ * Yuta approves the coach's work: complete the submission and tell the customer
+ * their feedback is ready. Only acts on a submission that's actually awaiting
+ * approval and has at least one feedback file, so a stray click can't email an
+ * empty review.
  */
 export async function approveAndComplete(
   submissionId: string,
 ): Promise<Submission | null> {
   const submission = await getSubmission(submissionId);
-  if (
-    !submission ||
-    submission.status !== "awaiting_approval" ||
-    !submission.feedbackUrl
-  ) {
-    return null;
-  }
+  if (!submission || submission.status !== "awaiting_approval") return null;
+
+  const files = await listFeedbackFiles(submissionId);
+  if (files.length === 0) return null;
 
   const now = new Date().toISOString();
   const updated = await updateSubmission(submissionId, {
@@ -64,9 +92,11 @@ export async function approveAndComplete(
   });
 
   if (updated.customerEmail) {
+    // Multiple files now, so the email points at the status page — the customer
+    // looks up their email and downloads each file — rather than one deep link.
     await sendFeedbackReady(
       updated.customerEmail,
-      `${env.siteUrl}/api/feedback/${updated.id}`,
+      `${env.siteUrl}/status`,
       updated.playerName,
     );
   }

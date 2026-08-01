@@ -69,8 +69,10 @@ export {
   countSubmissionFiles,
   deleteSubmissionFile,
   getSubmissionFile,
+  listFeedbackFiles,
   listFilesForSubmissions,
   listSubmissionFiles,
+  type FileKind,
 } from "./api/submissionFileApi";
 
 export {

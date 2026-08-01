@@ -1,0 +1,1 @@
+ALTER TABLE "submission_files" ADD COLUMN "kind" text DEFAULT 'submission' NOT NULL;

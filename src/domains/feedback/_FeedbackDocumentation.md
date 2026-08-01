@@ -55,6 +55,17 @@ flowchart LR
 >   `complete`, stamps `completedAt`, and emails the customer. The coach no longer reaches the
 >   customer directly. Still missing: anything that *tells* Yuta a response is waiting — see
 >   [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
+>
+> **Updated 2026-08-01 · feedback is multi-file now.** A coach can attach **several** files
+> and hand the set to Yuta. Each file is a row in `submission_files` with `kind = "feedback"`
+> (the old single `feedbackUrl` column is unused), uploaded through the customer's own
+> transport with operator-gated endpoints — direct-to-Blob in prod (`/api/feedback/blob` +
+> `/api/feedback/complete`), proxied to disk in dev (`/api/feedback/upload`). Attaching a file
+> no longer advances the submission; a separate `sendFeedbackForApproval` (guarded to require
+> ≥1 file) parks it at `awaiting_approval`, and `approveAndComplete` (guarded the same way)
+> finishes it. `/api/feedback/[id]` now serves a feedback file **by the file's own id**, and
+> the customer's status page + the admin review both list every file. The feedback-ready email
+> points at `/status` rather than one deep link, since a review can be several files.
 
 ## 2 · Where we are now — 2026-07-29
 

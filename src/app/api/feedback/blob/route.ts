@@ -1,0 +1,68 @@
+import { NextResponse } from "next/server";
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { env } from "@/shared/config/env";
+import { getSession } from "@/domains/account";
+import { getCoachByUserId } from "@/domains/coach";
+import { getSubmission } from "@/domains/submission";
+import { ALLOWED_MIME_TYPES, isAllowedFilename } from "@/domains/upload";
+import { getSettings, maxFileSizeBytes } from "@/domains/settings";
+
+/**
+ * The coach's counterpart to `/api/upload/blob`: issue a short-lived token so a
+ * coach can upload a feedback file straight to Vercel Blob.
+ *
+ * The gate is **operator** rather than the customer flow cookie — a coach may
+ * only deliver for their own assignments, the admin for anyone. The submission
+ * is named by the pathname (`submissions/<id>/feedback/…`), which the browser
+ * proposes, so it's parsed and ownership re-checked before any token is minted.
+ */
+export async function POST(request: Request) {
+  const body = (await request.json()) as HandleUploadBody;
+
+  try {
+    const result = await handleUpload({
+      body,
+      request,
+      token: env.blobToken,
+
+      onBeforeGenerateToken: async (pathname) => {
+        const session = await getSession();
+        if (!session) throw new Error("Sign in to upload feedback.");
+
+        const match = pathname.match(/^submissions\/([^/]+)\/feedback\//);
+        if (!match) {
+          throw new Error("Feedback must go in the submission's feedback folder.");
+        }
+        const submissionId = match[1];
+
+        const submission = await getSubmission(submissionId);
+        if (!submission) throw new Error("That submission doesn't exist.");
+
+        if (session.role !== "admin") {
+          const coach = await getCoachByUserId(session.userId);
+          if (!coach || submission.assignedCoachId !== coach.id) {
+            throw new Error("That isn't your submission.");
+          }
+        }
+
+        if (!isAllowedFilename(pathname)) {
+          throw new Error("That file type isn't supported.");
+        }
+
+        const settings = await getSettings();
+        return {
+          allowedContentTypes: ALLOWED_MIME_TYPES,
+          maximumSizeInBytes: maxFileSizeBytes(settings),
+          addRandomSuffix: true,
+        };
+      },
+    });
+
+    return NextResponse.json(result);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "We couldn't start that upload.";
+    console.error("[feedback/blob] refused:", message);
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}

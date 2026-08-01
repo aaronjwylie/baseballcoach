@@ -22,13 +22,18 @@ import {
   countSubmissionFiles,
   createSubmission,
   getSubmission,
+  listFeedbackFiles,
   listSubmissionFiles,
   updateSubmission,
 } from "@/domains/submission";
 import { issueCode, verifyCode } from "@/domains/verification";
 import { getSettings } from "@/domains/settings";
 import { runRetentionSweep, storeUploadedFile } from "@/domains/upload";
-import { storeFeedback, approveAndComplete } from "@/domains/feedback";
+import {
+  saveFeedbackFile,
+  sendFeedbackForApproval,
+  approveAndComplete,
+} from "@/domains/feedback";
 import { db, submissions as submissionsTable } from "@/shared/db";
 import { eq as eqFn } from "drizzle-orm";
 
@@ -135,12 +140,13 @@ async function main() {
   // then Yuta approves (→ complete). Assert the approval stamps completedAt —
   // an earlier version set the status without the timestamp, so a completed
   // submission was never due for sweeping.
-  await storeFeedback(
+  await saveFeedbackFile(
     submission.id,
     "feedback.mp4",
     new TextEncoder().encode("probe feedback bytes"),
     "video/mp4",
   );
+  await sendFeedbackForApproval(submission.id);
   await approveAndComplete(submission.id);
   const completed = await getSubmission(submission.id);
   check(
@@ -168,8 +174,9 @@ async function main() {
   );
   const sweptSubmission = await getSubmission(submission.id);
   check(!!sweptSubmission?.filesPurgedAt, "filesPurgedAt is stamped");
+  const sweptFeedback = await listFeedbackFiles(submission.id);
   check(
-    !!sweptSubmission?.feedbackUrl,
+    sweptFeedback.length === 1 && sweptFeedback.every((f) => !!f.fileUrl),
     "the coach's feedback file survives the sweep",
   );
 

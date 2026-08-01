@@ -557,21 +557,28 @@ customer's words to a coach without hand-cleaning `[system]` lines out of them.
 
 ### `submission_files`
 
-One row per file the customer uploaded. Replaced the single `videoUrl` column
-when the flow moved to multi-file uploads.
+One row per file, of two kinds. Replaced the single `videoUrl` column when the
+flow moved to multi-file uploads; a `kind` discriminator was added when coach
+feedback became multi-file too, so the customer's uploads and the coach's
+response files share one table.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | uuid, primary key | the id in `/api/files/[id]` |
+| `id` | uuid, primary key | the id in `/api/files/[id]` (customer) and `/api/feedback/[id]` (feedback) |
 | `submissionId` | uuid, FK → `submissions.id`, cascade | indexed |
-| `filename` | text | the customer's own name for it — display only, never a path |
+| `filename` | text | the uploader's own name for it — display only, never a path |
 | `contentType` | text | |
 | `sizeBytes` | integer | |
-| `fileUrl` | text, **null** | storage locator. **Goes null when swept — the row survives** |
+| `fileUrl` | text, **null** | storage locator. **A `submission` row goes null when swept; a `feedback` row is never swept** |
+| `kind` | text, default `'submission'` | `submission` = a customer upload, `feedback` = a coach response file |
 | `uploadedAt` | timestamptz, default `now()` | |
 
-The record outliving the bytes is deliberate: the portal and the receipt can
-still say what was sent. `/api/files/[id]` answers **410 Gone**, not 404.
+A **customer** file's record outliving its bytes is deliberate: the portal and
+the receipt can still say what was sent, and `/api/files/[id]` answers **410
+Gone**, not 404. **Feedback** files are the coach's response — the customer
+downloads them once the review is `complete`, so the retention sweep never
+touches them (`feedbackUrl` on the submission is the old single-file path, now
+unused). Every read is scoped to one kind; the two never bleed together.
 
 ### `settings`
 

@@ -175,32 +175,45 @@ const STATUS_META: Record<
 
 function StatusRow({ submission }: { submission: PublicSubmission }) {
   const meta = STATUS_META[submission.status];
+  const files = submission.feedbackFiles;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
-      <div>
-        <div className="font-semibold text-ink">{submission.playerName}</div>
-        <div className="mt-0.5 text-sm text-ink-muted">
-          {submission.focus ? `${submission.focus} · ` : ""}
-          {formatDate(submission.submittedAt)}
+    <li className="rounded-2xl border border-line bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-semibold text-ink">{submission.playerName}</div>
+          <div className="mt-0.5 text-sm text-ink-muted">
+            {submission.focus ? `${submission.focus} · ` : ""}
+            {formatDate(submission.submittedAt)}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-3">
         <span
           className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}
         >
           {meta.label}
         </span>
-        {submission.hasFeedback && (
-          <ButtonLink
-            href={`/api/feedback/${submission.id}`}
-            size="md"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Watch feedback
-          </ButtonLink>
-        )}
       </div>
+
+      {files.length > 0 && (
+        <div className="mt-4 border-t border-line pt-4">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            Your feedback ({files.length} file{files.length === 1 ? "" : "s"})
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {files.map((file) => (
+              <li key={file.id}>
+                <ButtonLink
+                  href={`/api/feedback/${file.id}`}
+                  size="md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {file.filename}
+                </ButtonLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </li>
   );
 }

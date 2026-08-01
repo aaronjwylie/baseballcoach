@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
 import { getSubmission } from "@/domains/submission";
-import { storeFeedback } from "@/domains/feedback";
+import { saveFeedbackFile } from "@/domains/feedback";
 
 /**
- * A coach delivers feedback for a submission: stores the file and parks it at
- * `awaiting_approval` for Yuta to review before the customer is emailed. A coach
- * may only deliver for their own assignments; the admin may deliver for anyone.
+ * The **development** feedback path: the bytes come through us onto local disk,
+ * because there's no Blob store. Records one `feedback` file and returns it; it
+ * does **not** advance the submission — the coach hands the set to Yuta with a
+ * separate "send for approval" action. A coach may only deliver for their own
+ * assignments; the admin may deliver for anyone.
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -41,8 +43,10 @@ export async function POST(request: Request) {
     }
     const contentType =
       request.headers.get("content-type") || "application/octet-stream";
-    await storeFeedback(submissionId, filename, bytes, contentType);
-    return NextResponse.json({ ok: true });
+    const file = await saveFeedbackFile(submissionId, filename, bytes, contentType);
+    return NextResponse.json({
+      file: { id: file.id, filename: file.filename, sizeBytes: file.sizeBytes },
+    });
   } catch (err) {
     console.error("[feedback upload] failed:", err);
     return NextResponse.json(

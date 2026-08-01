@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
 import {
+  listFeedbackFiles,
   listFilesForSubmissions,
   listSubmissions,
   SubmissionFileList,
@@ -77,6 +78,19 @@ export default async function AdminHomePage({
   // One query for the whole page rather than one per row.
   const filesBySubmission = await listFilesForSubmissions(rows.map((s) => s.id));
 
+  // The coach's feedback files, for the rows where Yuta acts on them — reviewing
+  // before approval, and after it's delivered.
+  const feedbackBySubmission = new Map(
+    await Promise.all(
+      rows
+        .filter(
+          (s) =>
+            s.status === "awaiting_approval" || s.status === "complete",
+        )
+        .map(async (s) => [s.id, await listFeedbackFiles(s.id)] as const),
+    ),
+  );
+
   return (
     <Container>
       <div>
@@ -131,6 +145,7 @@ export default async function AdminHomePage({
                     key={s.id}
                     submission={s}
                     files={filesBySubmission.get(s.id) ?? []}
+                    feedbackFiles={feedbackBySubmission.get(s.id) ?? []}
                     coaches={coaches}
                   />
                 ))}
@@ -145,10 +160,12 @@ export default async function AdminHomePage({
 function SubmissionRow({
   submission,
   files,
+  feedbackFiles,
   coaches,
 }: {
   submission: Submission;
   files: SubmissionFile[];
+  feedbackFiles: SubmissionFile[];
   coaches: Coach[];
 }) {
   const status = STATUS_LABEL[submission.status];
@@ -196,12 +213,7 @@ function SubmissionRow({
 
             {submission.status === "awaiting_approval" && (
               <>
-                <a
-                  href={`/api/feedback/${submission.id}`}
-                  className="text-xs font-semibold text-accent hover:underline"
-                >
-                  Review feedback ↓
-                </a>
+                <FeedbackFileLinks files={feedbackFiles} />
                 <RowActionForm
                   action={completeSubmissionAction}
                   submissionId={submission.id}
@@ -212,12 +224,15 @@ function SubmissionRow({
             )}
 
             {submission.status === "complete" && (
-              <RowActionForm
-                action={archiveSubmissionAction}
-                submissionId={submission.id}
-                label="Archive"
-                className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-              />
+              <>
+                <FeedbackFileLinks files={feedbackFiles} />
+                <RowActionForm
+                  action={archiveSubmissionAction}
+                  submissionId={submission.id}
+                  label="Archive"
+                  className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+                />
+              </>
             )}
           </div>
         ) : (
@@ -241,6 +256,27 @@ function SubmissionRow({
         )}
       </td>
     </tr>
+  );
+}
+
+/** The coach's feedback files as download links — Yuta reviews each before he
+ * approves, and can still pull them after delivery. */
+function FeedbackFileLinks({ files }: { files: SubmissionFile[] }) {
+  if (files.length === 0) {
+    return <span className="text-xs text-ink-muted">No feedback files</span>;
+  }
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {files.map((file) => (
+        <a
+          key={file.id}
+          href={`/api/feedback/${file.id}`}
+          className="text-xs font-semibold text-accent hover:underline"
+        >
+          {file.filename} ↓
+        </a>
+      ))}
+    </div>
   );
 }
 

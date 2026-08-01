@@ -39,9 +39,14 @@ export function submissionFileKey(
   return `${submissionFolder(submissionId)}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
 }
 
-/** Build the storage key for a coach's feedback file. */
-export function feedbackKey(submissionId: string, filename: string): string {
-  return `${submissionFolder(submissionId)}/feedback${extname(filename)}`;
+/**
+ * Build the storage key for one of a coach's feedback files. Lives in a
+ * `feedback/` subfolder so a submission's own uploads and the coach's response
+ * never share a name, and carries a random prefix so multiple feedback files of
+ * the same name don't collide.
+ */
+export function feedbackFileKey(submissionId: string, filename: string): string {
+  return `${submissionFolder(submissionId)}/feedback/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
 }
 
 /**
@@ -64,14 +69,6 @@ function safeName(filename: string): string {
     .replace(/^\.+/, "")
     .slice(0, 80);
   return cleaned || "file";
-}
-
-function extname(filename: string): string {
-  const dot = filename.lastIndexOf(".");
-  if (dot < 0) return "";
-  const ext = filename.slice(dot).toLowerCase();
-  // Only allow a short known-safe set; anything else is dropped.
-  return /^\.[a-z0-9]{1,5}$/.test(ext) ? ext : "";
 }
 
 export type { StorageDriver, OpenResult } from "./types";

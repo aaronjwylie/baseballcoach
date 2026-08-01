@@ -19,6 +19,8 @@ export interface SubmissionFile {
   contentType: string;
   sizeBytes: number;
   fileUrl?: string;
+  /** `submission` = a customer upload, `feedback` = a coach response file. */
+  kind: "submission" | "feedback";
   uploadedAt?: string;
 }
 

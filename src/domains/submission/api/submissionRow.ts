@@ -41,6 +41,7 @@ export function fromFileRow(row: SubmissionFileRow): SubmissionFile {
     contentType: row.contentType,
     sizeBytes: row.sizeBytes,
     fileUrl: row.fileUrl ?? undefined,
+    kind: row.kind === "feedback" ? "feedback" : "submission",
     uploadedAt: row.uploadedAt?.toISOString(),
   };
 }

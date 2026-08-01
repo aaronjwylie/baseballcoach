@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
+import { storage } from "@/shared/storage";
 import { requireRole } from "@/domains/account";
 import { getCoachByUserId } from "@/domains/coach";
 import {
   findByCoach,
+  listFeedbackFiles,
   listFilesForSubmissions,
   SubmissionFileList,
   type Submission,
   type SubmissionFile,
 } from "@/domains/submission";
-import { UploadFeedback } from "@/domains/feedback";
+import { FeedbackUpload } from "@/domains/feedback";
+import type { UploadMode } from "@/domains/upload/ui/uploadTransport";
 
 export const metadata: Metadata = {
   title: "Coach portal",
@@ -25,10 +28,25 @@ export default async function CoachHomePage() {
     submissions.map((s) => s.id),
   );
 
-  // A coach's work is "open" until they upload; once uploaded it's awaiting
-  // Yuta's approval (or delivered), and out of their hands.
+  // Prod uploads straight to Blob; dev proxies to disk. Same seam the customer
+  // flow reads.
+  const uploadMode: UploadMode = storage.supportsDirectUpload ? "blob" : "proxy";
+
+  // A coach's work is "open" until they hand it to Yuta; once sent it's awaiting
+  // approval (or delivered), and out of their hands.
   const open = submissions.filter(
     (s) => s.status === "assigned" || s.status === "in_review",
+  );
+
+  // Feedback files a coach has already attached to an open submission but not yet
+  // sent — one query for the open set, so the card can show what's staged.
+  const feedbackByOpen = new Map(
+    await Promise.all(
+      open.map(
+        async (s) =>
+          [s.id, await listFeedbackFiles(s.id)] as const,
+      ),
+    ),
   );
   const done = submissions.filter(
     (s) => s.status === "awaiting_approval" || s.status === "complete",
@@ -60,6 +78,8 @@ export default async function CoachHomePage() {
               key={s.id}
               submission={s}
               files={filesBySubmission.get(s.id) ?? []}
+              uploadMode={uploadMode}
+              feedbackFiles={feedbackByOpen.get(s.id) ?? []}
             />
           ))}
         </ul>
@@ -102,9 +122,13 @@ export default async function CoachHomePage() {
 function ReviewCard({
   submission,
   files,
+  uploadMode,
+  feedbackFiles,
 }: {
   submission: Submission;
   files: SubmissionFile[];
+  uploadMode: UploadMode;
+  feedbackFiles: SubmissionFile[];
 }) {
   return (
     <li className="rounded-2xl border border-line bg-white p-5">
@@ -130,7 +154,15 @@ function ReviewCard({
       </div>
 
       <div className="mt-4 border-t border-line pt-4">
-        <UploadFeedback submissionId={submission.id} />
+        <FeedbackUpload
+          submissionId={submission.id}
+          uploadMode={uploadMode}
+          existingFiles={feedbackFiles.map((f) => ({
+            id: f.id,
+            filename: f.filename,
+            sizeBytes: f.sizeBytes,
+          }))}
+        />
       </div>
     </li>
   );

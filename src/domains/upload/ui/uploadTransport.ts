@@ -29,6 +29,26 @@ export interface UploadedFile {
   sizeBytes: number;
 }
 
+/**
+ * The three server routes an upload talks to. Defaulted to the customer's, but
+ * the coach's feedback upload passes its own (operator-gated) set — same
+ * machinery, different auth.
+ */
+export interface UploadEndpoints {
+  /** Issues the Blob client token (prod, blob mode). */
+  blobToken: string;
+  /** Records a directly-uploaded file (prod, blob mode). */
+  complete: string;
+  /** Takes the bytes through us to local disk (dev, proxy mode). */
+  proxy: string;
+}
+
+const CUSTOMER_ENDPOINTS: UploadEndpoints = {
+  blobToken: "/api/upload/blob",
+  complete: "/api/upload/complete",
+  proxy: "/api/upload",
+};
+
 export interface UploadRequest {
   mode: UploadMode;
   /** `submissions/<id>` — where this submission's files live. */
@@ -36,6 +56,8 @@ export interface UploadRequest {
   file: File;
   onProgress: (percentage: number) => void;
   signal?: AbortSignal;
+  /** Defaults to the customer routes. */
+  endpoints?: UploadEndpoints;
 }
 
 export async function uploadFile(request: UploadRequest): Promise<UploadedFile> {
@@ -47,6 +69,7 @@ async function viaBlob({
   file,
   onProgress,
   signal,
+  endpoints = CUSTOMER_ENDPOINTS,
 }: UploadRequest): Promise<UploadedFile> {
   // The filename is passed through unsanitized on purpose: this is a Blob key,
   // not a filesystem path, and the server only checks that it lands inside this
@@ -57,7 +80,7 @@ async function viaBlob({
     // to read rather than living behind an unguessable public URL. Downloads go
     // through our access-checked routes, which stream the bytes.
     access: "private",
-    handleUploadUrl: "/api/upload/blob",
+    handleUploadUrl: endpoints.blobToken,
     contentType: file.type || undefined,
     // Multipart splits large files and retries failed parts on its own, which
     // is what makes a 50 MB upload survive a phone changing cell towers.
@@ -66,7 +89,7 @@ async function viaBlob({
     onUploadProgress: ({ percentage }) => onProgress(percentage),
   });
 
-  const res = await fetch("/api/upload/complete", {
+  const res = await fetch(endpoints.complete, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     signal,
@@ -117,10 +140,16 @@ function viaProxy({
   file,
   onProgress,
   signal,
+  endpoints = CUSTOMER_ENDPOINTS,
 }: UploadRequest): Promise<UploadedFile> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `/api/upload?filename=${encodeURIComponent(file.name)}`);
+    // The feedback proxy carries `?submission=…` already; the customer's doesn't.
+    const sep = endpoints.proxy.includes("?") ? "&" : "?";
+    xhr.open(
+      "POST",
+      `${endpoints.proxy}${sep}filename=${encodeURIComponent(file.name)}`,
+    );
     xhr.setRequestHeader(
       "Content-Type",
       file.type || "application/octet-stream",

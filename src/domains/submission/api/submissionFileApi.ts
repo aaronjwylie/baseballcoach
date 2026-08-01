@@ -1,12 +1,14 @@
 /**
- * The customer's uploaded files — everything the app does to the
+ * Files attached to a submission — everything the app does to the
  * `submission_files` table.
  *
- * Separate from `submissionApi` because it's a separate table with its own
- * lifecycle: rows are added as each upload lands, and are emptied (not deleted)
- * by the retention sweep. The record of *what was sent* outlives the bytes.
+ * The table holds two kinds, kept apart by the `kind` column: `submission` (the
+ * customer's uploads) and `feedback` (the coach's response files). Every read
+ * here is scoped to one kind, so the two never bleed together. Customer uploads
+ * are emptied (not deleted) by the retention sweep; **feedback files are never
+ * swept** — the customer's download depends on them.
  */
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, submissionFiles } from "@/shared/db";
 import type {
   NewSubmissionFile,
@@ -14,8 +16,11 @@ import type {
 } from "../model/submissionFile";
 import { fromFileRow } from "./submissionRow";
 
+export type FileKind = "submission" | "feedback";
+
 export async function addSubmissionFile(
   input: NewSubmissionFile,
+  kind: FileKind = "submission",
 ): Promise<SubmissionFile> {
   const [row] = await db
     .insert(submissionFiles)
@@ -25,28 +30,49 @@ export async function addSubmissionFile(
       contentType: input.contentType,
       sizeBytes: input.sizeBytes,
       fileUrl: input.fileUrl,
+      kind,
     })
     .returning();
   return fromFileRow(row);
 }
 
-/** One submission's files, oldest first — the order the customer added them. */
+/** One submission's customer files, oldest first. */
 export async function listSubmissionFiles(
   submissionId: string,
 ): Promise<SubmissionFile[]> {
   const rows = await db
     .select()
     .from(submissionFiles)
-    .where(eq(submissionFiles.submissionId, submissionId))
+    .where(
+      and(
+        eq(submissionFiles.submissionId, submissionId),
+        eq(submissionFiles.kind, "submission"),
+      ),
+    )
+    .orderBy(asc(submissionFiles.uploadedAt));
+  return rows.map(fromFileRow);
+}
+
+/** One submission's coach-feedback files, oldest first. */
+export async function listFeedbackFiles(
+  submissionId: string,
+): Promise<SubmissionFile[]> {
+  const rows = await db
+    .select()
+    .from(submissionFiles)
+    .where(
+      and(
+        eq(submissionFiles.submissionId, submissionId),
+        eq(submissionFiles.kind, "feedback"),
+      ),
+    )
     .orderBy(asc(submissionFiles.uploadedAt));
   return rows.map(fromFileRow);
 }
 
 /**
- * Files for several submissions at once — the portal's read.
- *
- * One query for a whole page of submissions rather than one per row; the caller
- * groups by `submissionId`.
+ * Customer files for several submissions at once — the portal's read. One query
+ * for a whole page; the caller groups by `submissionId`.
  */
 export async function listFilesForSubmissions(
   submissionIds: string[],
@@ -57,7 +83,12 @@ export async function listFilesForSubmissions(
   const rows = await db
     .select()
     .from(submissionFiles)
-    .where(inArray(submissionFiles.submissionId, submissionIds))
+    .where(
+      and(
+        inArray(submissionFiles.submissionId, submissionIds),
+        eq(submissionFiles.kind, "submission"),
+      ),
+    )
     .orderBy(asc(submissionFiles.uploadedAt));
 
   for (const row of rows) {
@@ -80,26 +111,36 @@ export async function getSubmissionFile(
   return row ? fromFileRow(row) : null;
 }
 
-/** How many files a submission already carries — checked against the limit. */
+/** How many customer files a submission carries — checked against the limit. */
 export async function countSubmissionFiles(
   submissionId: string,
 ): Promise<number> {
   const rows = await db
     .select({ id: submissionFiles.id })
     .from(submissionFiles)
-    .where(eq(submissionFiles.submissionId, submissionId));
+    .where(
+      and(
+        eq(submissionFiles.submissionId, submissionId),
+        eq(submissionFiles.kind, "submission"),
+      ),
+    );
   return rows.length;
 }
 
 /**
- * Forget the bytes, keep the record. Called by the retention sweep once the
- * storage object is gone.
+ * Forget the bytes, keep the record — the retention sweep, once the storage
+ * object is gone. Only customer uploads; feedback files are never swept.
  */
 export async function clearFileLocators(submissionId: string): Promise<void> {
   await db
     .update(submissionFiles)
     .set({ fileUrl: null })
-    .where(eq(submissionFiles.submissionId, submissionId));
+    .where(
+      and(
+        eq(submissionFiles.submissionId, submissionId),
+        eq(submissionFiles.kind, "submission"),
+      ),
+    );
 }
 
 /** Drop a file record outright — used when an upload half-completes. */
