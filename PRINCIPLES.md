@@ -104,12 +104,35 @@ code it describes. Three sections, each answering one question:
 Why the third section is worth the effort: a future reader can check themselves against
 *why*, not just *what*. That's what makes a decision reviewable instead of merely visible.
 
+**Write the real names.** A doc names the actual functions, fields, statuses, routes and env
+vars — `startSubmissionAction`, `emailVerifiedAt`, `awaiting_approval`, `/api/cron/sweep` —
+never "the submit handler" or "the verified flag". Paraphrase reads more smoothly and is
+worth less. Three things follow from using the real ones:
+
+- a reader goes from the sentence to the source with no translation step;
+- the doc becomes a **check on naming**. If a term here doesn't match what's on screen or in
+  the code, one of the three is stale — and that mismatch is now *discoverable by reading*
+  rather than latent until something breaks;
+- it exposes bad names. A term that needs a gloss every time it appears is a term that's
+  wrong in the code. **Nomenclature should carry meaning, not require it** — if the doc keeps
+  having to explain a name, rename the thing.
+
+That's rule 2 applied to words: the name *is* the fact, and every doc that mentions it is a
+surface deriving from that one home.
+
 ### 12 · Tense marks the world
 
 **Present tense = the northstar** (the model as it *is* in the destination we're building).
 **Past tense = what we left.** *"The codec owns every column name"; "column names used to be
 scattered across six files."* Present tense is never about legacy, so every sentence is
 unambiguous about which world it describes — and the northstar is the default reality.
+
+**The present tense is not softened to fit the code.** Where the build lags the destination,
+the sentence still states the destination and an **appended note** records the distance:
+*(today: …)* when the thing exists but differs, *(not built)* when nothing implements it,
+⚠️ when the northstar itself is undecided. Never the reverse — a doc that describes what the
+code happens to do can only ever justify the code, and a divergence written as a hedge stops
+being a to-do.
 
 ### 13 · Discuss before build
 

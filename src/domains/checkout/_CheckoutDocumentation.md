@@ -16,8 +16,12 @@ It owns the **sequence**, not the steps.
 | 3 | Upload files | `domains/upload/ui/UploadPanel` | it moves bytes |
 | 4 | Payment | `domains/payment/ui/PaymentPanel` | it charges a card |
 
-This slice puts them in order, decides where a returning customer resumes, and
-holds the verbs that move between them. That is why it depends on four domains
+This slice puts them in order and holds the verbs that move between them.
+
+**It covers steps 1–4 of a longer path.** Everything after payment — assignment,
+hand-off, the coach's response, approval, retention — is in
+[`submission/_SubmissionDocumentation.md` §2](../submission/_SubmissionDocumentation.md),
+which is the canonical lifecycle. That is why it depends on four domains
 and **nothing depends on it** — it's the composition root for the customer flow,
 the way `app/` is for a page.
 
@@ -27,10 +31,11 @@ the way `app/` is for a page.
   Elements so payment feels like part of the product rather than an errand; a
   full page navigation between steps reintroduces exactly the seam that bought,
   and the client secret would have to travel through a URL to survive it.
-- **The server decides which step you're on.** `resolveFlowState()` reads the
-  flow cookie and the submission's own state — never the URL, never client
-  storage. This is what makes a refresh, a re-opened tab, and the redirect back
-  from 3-D Secure all land where the customer left off.
+- **There is no resume.** Every page load starts at step 1. `resolveFlowState()`
+  reads no cookie at all; the flow cookie is a *capability* the server uses to
+  answer "which submission may this request touch", never a memory of where
+  someone was. Only a completed payment earns retention, so a half-finished
+  submission is a scratch pad.
 - **Every action re-derives the submission from the cookie.** None of them takes
   a submission id from the browser, so there is nothing to tamper with.
 - **Order is a product decision, made in `model/steps.ts`.** Verification is
@@ -44,8 +49,10 @@ the way `app/` is for a page.
 
 - ✅ **All four steps built** and walked end to end in a real browser: step 1 → a
   code → two uploads → Stripe Elements showing `Pay CA$80.00`.
-- ✅ **Resume works.** Reloading mid-flow returns to the right step with files
-  restored; verified by reloading at steps 2 and 3.
+- ✅ **Resume is gone.** Reloading mid-flow starts at step 1 and the unfinished
+  submission is discarded, files and all — matching the invariant above. It used
+  to restore the step and the file list; that was removed on 2026-07-31 once
+  "only a completed payment earns retention" became the rule.
 - ✅ **Server Actions, not API routes.** The browser needs a typed answer, not an
   HTTP contract, and every verb reads the flow cookie anyway. Only the things
   that genuinely need HTTP stayed as routes: raw upload bodies, the Blob token

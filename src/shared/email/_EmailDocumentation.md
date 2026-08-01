@@ -11,23 +11,36 @@ emails exist and which don't" is a question no single domain can answer.
 
 ---
 
-## Where we are now — 2026-07-30
+## Where we are now — 2026-08-01
 
-Four of six built. The transport is stable and the approval gate has landed, so
-the remaining three are templates plus one small decision each. Detail below.
+**Four of nine built.** The set grew from six on 2026-08-01, when the northstar
+path added two download confirmations and a deletion warning. The transport is
+stable and the approval gate has landed, so most of what's missing is templates —
+but three of the five gaps need a **trigger that doesn't exist yet**, which is the
+real work.
 
 ---
 
+> Where each message sits in the submission's life — who drives that stage and
+> what else changes there — is the canonical path in
+> [`submission/_SubmissionDocumentation.md` §2](../../domains/submission/_SubmissionDocumentation.md).
+> The circled numbers below match its table.
+
 ## Who gets told what
 
-**Status: partly built.** This is the agreed target (Yuta, 2026-07-30), pinned
-here so the gaps are visible rather than remembered. **Four of the six exist.**
+**Status: partly built.** This is the agreed target (Yuta, 2026-07-30, extended
+2026-08-01), pinned here so the gaps are visible rather than remembered.
+**Four of the nine exist.**
 
-The approval gate this doc used to call "not built" now *is* built — a coach's
-upload moves the submission to `awaiting_approval`, and `approveAndComplete`
-releases it. So what's left is templates, not workflow: tell Yuta when a payment
-lands (#2's other half), tell Yuta and the coach when a response is submitted
-(#4), and the resolved follow-up (#6).
+**Yuta is the notable pattern.** Five of the nine tell him something, and four of
+those five don't exist. Today he learns that a payment landed, that a coach picked
+the work up, that a response is waiting, and that a customer collected — by
+*looking*. Every one of those is a moment the pipeline moved without him, which is
+exactly when a queue stops being trustworthy.
+
+Two of the new messages hang off a **download**, which nothing currently observes.
+They can't be written as templates alone; they need the stamp that step 9 and step
+14 describe.
 
 Every send is **best-effort** — a failure logs and never throws into a webhook or
 a portal action ([ADR 004](../../../docs/decisions/004-best-effort-email.md)). The one
@@ -36,22 +49,43 @@ usable product, because the customer is blocked on it.
 
 ---
 
-## The six messages
+## The nine messages
 
-| # | Trigger | To | Status |
-|---|---|---|---|
-| 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
-| 2 | Payment succeeded, submission accepted | customer **+ Yuta** | 🔶 **half** — the customer receipt is built; Yuta is not told |
-| 3 | Coach assigned to a submission | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
-| 4 | Coach uploaded their response | Yuta **+ coach** | ❌ **not built** — the status moves to `awaiting_approval`, but nobody is told, so Yuta has to notice |
-| 5 | Yuta approved the response → released | customer | ✅ **built** — `approveAndComplete` → `feedback/api/feedbackEmail.ts` |
-| 6 | Yuta marks the submission resolved | customer + coach | ❌ **not built** — trigger decided, see below |
+Numbered to match the path table's ①–⑨, so the two can be read side by side.
+
+| # | Step | Trigger | To | Status |
+|---|---|---|---|---|
+| ① | 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
+| ② | 4 | Payment succeeded, submission accepted | customer **+ Yuta** | 🔶 **half** — the customer receipt is built; Yuta is not told |
+| ③ | 8 | Handed to the coach | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
+| ④ | 9 | **Coach picked the work up** | Yuta | ❌ **not built** — needs the download stamp first |
+| ⑤ | 10 | Coach submitted their response | Yuta **+ coach** | ❌ **not built** — the status moves to `awaiting_approval`, but nobody is told, so Yuta has to notice |
+| ⑥ | 13 | Yuta approved the response → released | customer | ✅ **built** — `approveAndComplete` → `feedback/api/feedbackEmail.ts` |
+| ⑦ | 14 | **Customer collected their feedback** | Yuta | ❌ **not built** — needs the download stamp first |
+| ⑧ | 15 | Yuta marks the submission resolved | customer | ❌ **not built** — trigger decided, see below |
+| ⑨ | 16 | **Uploads will be deleted in a week** | customer | ❌ **not built** — the only *scheduled* message in the set |
+
+Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
+
+**④ and ⑦ are the same message twice**, pointed at the same recipient — "a
+download happened, the pipeline moved". Worth building as one mechanism with two
+subjects rather than two templates that drift.
+
+**⑨ is unlike every other message here.** The other eight fire from an action
+someone took. This one fires because *time passed* — it must be found by a sweep,
+sent exactly once, and guarded by its own stamp. See the timer taxonomy in
+[`settings/_SettingsDocumentation.md`](../../domains/settings/_SettingsDocumentation.md).
 
 Lifecycle as built:
 
 `draft → awaiting_payment → new → assigned → in_review → awaiting_approval → complete`
 
-Still to add for #6: a **`resolvedAt`** timestamp (not a status — see below).
+The northstar inserts **`sent_to_coach`** between `assigned` and `in_review`, so
+that ④ has a state to move *from* — without it, "picked up" is indistinguishable
+from "emailed".
+
+Still to add for ⑧: a **`resolvedAt`** timestamp (not a status — see below). ④ and
+⑦ each need a download stamp; ⑨ needs a warning stamp.
 
 ---
 

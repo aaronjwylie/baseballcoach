@@ -22,17 +22,33 @@ Worth knowing before anyone asks for "a timer in admin":
 
 | Clock | Value | How it's enforced |
 | --- | --- | --- |
-| **Session expiry** — abandon an unfinished attempt | 10 min, sliding | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
+| **The flow window** — one clock for the whole unfinished attempt | **30 min**, sliding *(today: 10, plus a second 10-min clock on the verification code — see below)* | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
 | **Deferred cleanup** — a completed review's uploads | `retainResolvedHours` | the nightly sweep, against that submission's own `completedAt`. Files go, **record stays** |
 | **Deferred cleanup** — an abandoned submission | `retainUnpaidHours` | the sweep *and* every new submission. **Deleted outright** — files and record |
 
-Both clocks are **relative to the submission**, never to a wall-clock schedule —
-"24 hours after *it* completed", not "at 4am".
+**One window covers the whole attempt.** The verification code does *not* get an
+expiry of its own — it lives and dies with the flow window, and a resent code
+inherits whatever time is left rather than starting a new 30 minutes. A customer
+should be able to hold one number in their head ("I have half an hour"), not
+discover a second, shorter clock they were never told about.
+
+⚠️ Today there are two: a 10-minute session **and** a separate 10-minute code TTL,
+enforced independently in `domains/verification`. Collapsing them is part of the
+one-clock rework.
+
+Both cleanup clocks are **relative to the submission**, never to a wall-clock
+schedule — "24 hours after *it* completed", not "at 4am".
 
 The two are not symmetrical, and shouldn't be. A paid submission's history
 matters, so its record survives its files. Nothing was ever bought in the
 abandoned case, so **nothing is retained** — a kept row would just be noise in
 the queue.
+
+**Running out is not an error — it's a scrub.** When the window lapses, or the
+verification attempts are exhausted, the unfinished submission is discarded exactly
+as a refresh discards it, and the customer is returned to step 1. One outcome, three
+routes to it; the flow never leaves someone standing on a step whose submission is
+gone. ⚠️ Not built — today an expiry surfaces as an inline error in place.
 
 **Only the resolved clock depends on the cron.** Vercel's Hobby plan permits one
 cron run a day, so "24 hours after completion" is 24–48 in practice; hourly needs
@@ -40,6 +56,13 @@ Pro. The abandoned clock sidesteps that entirely — `startSubmissionAction` swe
 unpaid submissions as well, so the flow cleans up after itself whenever anyone
 starts one. With no traffic nothing is running anyway, and with traffic the cron
 is only a backstop.
+
+⚠️ **The proposed retention rework changes all of this.** The northstar path now
+keys the resolved clock off the *customer's download* (30 days) rather than off
+completion (24h), and adds a **one-week warning email** before deletion. That
+warning is the "fourth kind" below — the first genuinely scheduled effect in the
+system — so it can't be folded into the existing derivable sweeps. See
+[`submission/_SubmissionDocumentation.md` §2](../submission/_SubmissionDocumentation.md).
 
 **A fourth kind doesn't exist yet and isn't cheap.** "Email the coach if a
 submission sits untouched for 48h" is not another row here — nothing on the

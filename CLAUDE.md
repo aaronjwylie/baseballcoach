@@ -611,6 +611,11 @@ paid-ness is a `Record<SubmissionStatus, boolean>` in `domains/submission`, not 
 list. Adding a status without answering the question is a compile error. It was a
 list once, and `awaiting_approval` slipped through it.
 
+**The canonical end-to-end path — inception to completion, with who drives each
+stage, what changes, which email fires, and what is retained — lives in
+[`domains/submission/_SubmissionDocumentation.md` §2](src/domains/submission/_SubmissionDocumentation.md).** It's the one place the whole arc is written down; refine it there
+before changing any stage.
+
 There is no "paid but no file yet" state any more: files arrive before payment,
 so `awaiting_upload` was retired with the flow that needed it. The status lookup
 collapses the middle states into calm customer-facing language — a parent doesn't

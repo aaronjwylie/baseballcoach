@@ -236,11 +236,10 @@ export function CheckoutFlow({
       )}
 
       {/*
-        An explicit way out. A customer on a shared machine, or one who simply
-        wants to start again, shouldn't have to clear cookies or wait out the
-        timeout — and refreshing deliberately does NOT reset (see the comment on
-        `initialStep`), so without this there'd be no way to abandon a
-        half-finished submission on purpose.
+        An explicit way out. Refreshing already starts over, but it also loses
+        any uploaded files silently; this makes abandoning deliberate, and lets a
+        customer on a shared machine hand the browser back knowing the server has
+        let go of their submission rather than waiting out the idle window.
       */}
       {step !== "details" && (
         <p className="text-center text-sm text-ink-muted">
