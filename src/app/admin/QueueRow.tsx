@@ -21,6 +21,7 @@ import type { SubmissionEvent } from "@/domains/submission/api/submissionEventAp
  */
 export function QueueRow({
   playerName,
+  shortId,
   meta,
   facts,
   flag,
@@ -33,7 +34,9 @@ export function QueueRow({
   override,
 }: {
   playerName: string;
-  /** Focus · file count · when — the one quiet line under the name. */
+  /** First eight characters of the uuid — the handle people actually say. */
+  shortId: string;
+  /** Focus · file count · customer — the one quiet line under the name. */
   meta: string;
   /** The right-hand summary: who has it, how long it's been sitting. */
   facts: ReactNode;
@@ -59,7 +62,10 @@ export function QueueRow({
       >
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-ink">{playerName}</span>
-          <span className="mt-px block truncate text-[11.5px] text-ink-muted">{meta}</span>
+          <span className="mt-px block truncate text-[11.5px] text-ink-muted">
+            <span className="font-mono text-ink-soft">{shortId}</span>
+            {meta ? ` · ${meta}` : ""}
+          </span>
         </span>
 
         <span className="pt-0.5 max-[860px]:col-span-2">

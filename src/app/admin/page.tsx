@@ -397,6 +397,15 @@ function SubmissionRow({
   return (
     <QueueRow
       playerName={submission.playerName}
+      /*
+        The short id leads, because it's the handle.
+
+        A uuid is unusable in conversation and the first eight characters are
+        unambiguous at any volume this product will see — enough to say "look at
+        6dccefdb" and both people know which row. The full one is in the details,
+        where it can be copied.
+      */
+      shortId={submission.id.slice(0, 8)}
       meta={[
         submission.focus,
         `${folderMap.intake.length} file${folderMap.intake.length === 1 ? "" : "s"}`,
@@ -457,6 +466,10 @@ function SubmissionRow({
       }
       details={
         <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 text-xs">
+          <dt className="text-ink-muted">ID</dt>
+          <dd className="m-0 font-mono text-[11.5px] break-all text-ink-soft">
+            {submission.id}
+          </dd>
           <dt className="text-ink-muted">Customer</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerEmail}</dd>
           <dt className="text-ink-muted">Coach</dt>
