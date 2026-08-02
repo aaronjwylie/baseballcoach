@@ -22,6 +22,7 @@ export {
   verifyFeedbackViewCode,
   type FeedbackGroup,
   type PendingFeedbackCode,
+  type StatusAccess,
 } from "./api/feedbackViewCode";
 export {
   saveFeedbackFile,

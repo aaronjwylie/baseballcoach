@@ -16,6 +16,7 @@ import {
   getSubmission,
   isPaid,
   listSubmissionFiles,
+  signStatusToken,
   updateSubmission,
 } from "@/domains/submission";
 import { site } from "@/shared/config/site";
@@ -41,7 +42,15 @@ export async function completePayment({
     amountCents: submission.stripeAmount ?? site.price.amountCents,
     currency: site.price.currency,
     files,
-    statusUrl: `${env.siteUrl}/status`,
+    /*
+      The capability link, not the bare `/status` page.
+
+      It was mailed to an address that verified itself at step 2 and paid at
+      step 4, so it goes straight in — asking them to prove themselves a third
+      time would be friction that buys nothing. The typed-email door still asks
+      for a code, because typing proves nothing.
+    */
+    statusUrl: `${env.siteUrl}/status/${await signStatusToken(submission.customerEmail)}`,
   });
 
   // The other half of ②. Gated on `justPaid` above, so a redelivered webhook

@@ -241,8 +241,8 @@ the submission, as often as the customer likes. Two ways in:
 
 | Route | How it works | Notes |
 | --- | --- | --- |
-| **Email + PIN** | They enter their email; a **fresh 6-digit code** is mailed each time; entering it opens a status session | ⚠️ not built. Today `/status` shows results from an **unverified** email — anyone guessing an address sees them. This closes that |
-| **Magic link** | A non-guessable link carried in the ② receipt, and in ⑤ | ⚠️ not built. A bearer capability: whoever holds the URL is in, so it must be long, random, and revocable |
+| **Email + PIN** | They enter their email; a **fresh 6-digit code** is mailed each time; entering it opens the whole view — the list *and* the downloads | ✅ built. The open `POST /api/status` was **removed** with it: gating the page while leaving the endpoint open would have been theatre |
+| **Magic link** | A signed, purpose-bound link carried in the ② receipt | ✅ built. **The link is the proof** — it only reaches an address that verified at step 2 *and* paid at step 4, so it goes straight in. A bearer capability: whoever holds the URL is in |
 
 Both land on the same page, and both grant the same thing: see the status, and —
 once step 13 has run — download the response. **This is the surface step 14

@@ -311,6 +311,18 @@ export async function findByCoach(coachId: string): Promise<Submission[]> {
 /** The status-lookup read: a customer's submissions, trimmed to what's safe.
  * Feedback files are deliberately not exposed here — delivery rides on the
  * signed link in the customer's email, not on this email lookup. */
+/**
+ * A customer's submissions, sanitised for their own eyes.
+ *
+ * ⚠️ **Sensitive — call only behind proof of the inbox.** It carries a child's
+ * first name, a focus and a date, keyed on an email address that is trivially
+ * guessable. There used to be an open `POST /api/status` in front of this; it
+ * was removed on 2026-08-01, because gating the *page* while leaving the
+ * *endpoint* open would have been theatre.
+ *
+ * The two callers that may use it: the capability link (the link itself is the
+ * proof) and the code-verified lookup.
+ */
 export async function lookupPublicSubmissions(
   email: string,
 ): Promise<PublicSubmission[]> {

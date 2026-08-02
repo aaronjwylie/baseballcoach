@@ -3,29 +3,39 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Button, ButtonLink, Field, inputClass } from "@/shared/ui";
+import { Button, Field, inputClass } from "@/shared/ui";
 // A client component imports the slice's own client-safe model directly, not
 // the barrel — the barrel re-exports submissionApi (Postgres), which can't be
 // bundled for the browser.
 import { lookupSchema, type LookupInput } from "../model/submissionInput";
 import type { PublicSubmission } from "../model/publicSubmission";
-// Direct path, not the feedback barrel: the barrel re-exports Postgres code, and
-// this is a client component. FeedbackAccess is client-only.
-import { FeedbackAccess } from "@/domains/feedback/ui/FeedbackAccess";
+import { StatusList } from "./StatusList";
 
 type Result =
   | { state: "idle" }
+  | { state: "codeSent"; email: string }
   | { state: "error"; message: string }
   | { state: "loaded"; email: string; submissions: PublicSubmission[] };
 
 /**
- * Email-as-identity status lookup.
+ * Status lookup by email — **and a code, because typing an address proves
+ * nothing.**
  *
- * Validates with the same schema the API re-validates with, so a typo is caught
- * before it spends one of the caller's five-per-minute lookups.
+ * The two doors into this page are deliberately asymmetric:
+ *
+ * - **The link in a receipt goes straight in.** It was mailed to an address that
+ *   verified itself at step 2 and paid at step 4, so holding it is stronger
+ *   evidence than anything a form could ask for afterwards.
+ * - **A typed address gets a code.** Anyone can type anyone's email, and the
+ *   list carries a child's name, a focus and a date. That is not catastrophic to
+ *   leak, but it is somebody's child, and it costs one email to stop.
+ *
+ * The same code then covers the downloads — one act of proof, one grant.
  */
 export function StatusLookup() {
   const [result, setResult] = useState<Result>({ state: "idle" });
+  const [code, setCode] = useState("");
+  const [checking, setChecking] = useState(false);
 
   const {
     register,
@@ -38,18 +48,14 @@ export function StatusLookup() {
 
   const onSubmit = handleSubmit(async ({ customerEmail }) => {
     try {
-      const res = await fetch("/api/status", {
+      const res = await fetch("/api/status/feedback/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerEmail }),
       });
-      const json = (await res.json().catch(() => ({}))) as {
-        submissions?: PublicSubmission[];
-        error?: string;
-      };
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
 
       if (!res.ok) {
-        // 429 carries its own message about waiting; anything else is generic.
         setResult({
           state: "error",
           message: json.error ?? "Something went wrong.",
@@ -57,15 +63,51 @@ export function StatusLookup() {
         return;
       }
 
-      setResult({
-        state: "loaded",
-        email: customerEmail,
-        submissions: json.submissions ?? [],
-      });
+      /*
+        Always "we've sent a code", even for an address we've never seen.
+
+        The route answers ok either way, on purpose: a different message for a
+        known address turns this form into a way to test whether someone is a
+        customer. The cost is that a mistyped address looks like a slow email,
+        which is why the panel says so.
+      */
+      setResult({ state: "codeSent", email: customerEmail });
     } catch {
       setResult({ state: "error", message: "Network error. Please try again." });
     }
   });
+
+  async function submitCode() {
+    if (result.state !== "codeSent") return;
+    setChecking(true);
+    try {
+      const res = await fetch("/api/status/feedback/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerEmail: result.email, code }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        submissions?: PublicSubmission[];
+        error?: string;
+      };
+      if (!res.ok) {
+        setResult({
+          state: "error",
+          message: json.error ?? "That code didn't match.",
+        });
+        return;
+      }
+      setResult({
+        state: "loaded",
+        email: result.email,
+        submissions: json.submissions ?? [],
+      });
+    } catch {
+      setResult({ state: "error", message: "Network error. Please try again." });
+    } finally {
+      setChecking(false);
+    }
+  }
 
   return (
     <div>
@@ -91,7 +133,7 @@ export function StatusLookup() {
           disabled={isSubmitting}
           className="shrink-0 sm:mt-7"
         >
-          {isSubmitting ? "Checking…" : "Check status"}
+          {isSubmitting ? "Sending…" : "Email me a code"}
         </Button>
       </form>
 
@@ -102,34 +144,43 @@ export function StatusLookup() {
           </p>
         )}
 
-        {result.state === "loaded" && result.submissions.length === 0 && (
-          <div className="rounded-2xl border border-line bg-white p-6 text-center">
+        {result.state === "codeSent" && (
+          <div className="rounded-2xl border border-line bg-white p-6">
             <p className="text-ink">
-              No submissions found for{" "}
-              <span className="font-medium">{result.email}</span>.
+              If <span className="font-medium">{result.email}</span> has
+              submissions with us, a 6-digit code is on its way.
             </p>
             <p className="mt-1.5 text-sm text-ink-muted">
-              Double-check the address, or start a new review.
+              Check your spam folder if it hasn&rsquo;t arrived.
             </p>
-            <div className="mt-5">
-              <ButtonLink href="/start">Start a review</ButtonLink>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                aria-label="6-digit code"
+                className={`${inputClass} sm:max-w-[10rem] tracking-[0.3em]`}
+              />
+              <Button
+                type="button"
+                size="lg"
+                disabled={checking || code.length !== 6}
+                onClick={submitCode}
+                className="shrink-0"
+              >
+                {checking ? "Checking…" : "See my submissions"}
+              </Button>
             </div>
           </div>
         )}
 
-        {result.state === "loaded" && result.submissions.length > 0 && (
-          <>
-            <ul className="space-y-3">
-              {result.submissions.map((submission, index) => (
-                <StatusRow key={index} submission={submission} />
-              ))}
-            </ul>
-            {result.submissions.some((s) => s.hasFeedback) && (
-              <div className="mt-6">
-                <FeedbackAccess email={result.email} />
-              </div>
-            )}
-          </>
+        {result.state === "loaded" && (
+          <StatusList
+            submissions={result.submissions}
+            email={result.email}
+          />
         )}
       </div>
     </div>
@@ -143,105 +194,3 @@ export function StatusLookup() {
  * telling a parent their video is "unassigned" is alarming and not actionable.
  * They collapse into honest, calm language about where the submission actually is.
  */
-/**
- * The two sentences most of the ladder collapses into. Named constants rather
- * than repeated literals so a wording change lands everywhere at once — eleven
- * of the sixteen rungs share one of these.
- */
-const WITH_YOUR_COACH = {
-  label: "With your coach",
-  className: "bg-blue-50 text-blue-700 border-blue-200",
-} as const;
-
-const READY = {
-  label: "Feedback ready",
-  className: "bg-emerald-50 text-emerald-700 border-emerald-200",
-} as const;
-
-const STATUS_META: Record<
-  PublicSubmission["status"],
-  { label: string; className: string }
-> = {
-  // A draft never reaches the lookup — `findByCustomerEmail` filters it out —
-  // but the map is exhaustive so a new status can't be added without deciding
-  // what a customer should be told about it.
-  //
-  // **Sixteen operator states collapse into five customer ones.** A parent has
-  // no use for `response_translating`; they want to know whether it has arrived,
-  // whether it's being worked on, and whether they can still download it. Every
-  // middle rung is therefore the same sentence, deliberately — the collapse is
-  // the feature, not laziness.
-  draft: {
-    label: "Not finished",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  awaiting_payment: {
-    label: "Awaiting payment",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  // Not "video received" — a submission is a pack of files, and naming it after
-  // one of them is how the old single-video model kept creeping back.
-  new: {
-    label: "Received",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-
-  // Everything between assignment and release is one sentence to the customer.
-  // Translation and Yuta's approval check are internal steps; surfacing them
-  // would invite questions the parent can't act on.
-  assigned: WITH_YOUR_COACH,
-  intake_translating: WITH_YOUR_COACH,
-  intake_translated: WITH_YOUR_COACH,
-  sent_to_coach: WITH_YOUR_COACH,
-  in_review: WITH_YOUR_COACH,
-  awaiting_approval: WITH_YOUR_COACH,
-  response_translating: WITH_YOUR_COACH,
-  response_translated: WITH_YOUR_COACH,
-
-  // Ready to collect. `resolved` is Yuta closing his side of the job — nothing
-  // changes for the customer, who can still download.
-  complete: READY,
-  collected: READY,
-  resolved: READY,
-
-  // The one middle state worth surfacing: it changes what they should *do*.
-  purge_imminent: {
-    label: "Ready — expiring soon",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  purged: {
-    label: "No longer available",
-    className: "bg-stone-50 text-stone-600 border-stone-200",
-  },
-};
-
-function StatusRow({ submission }: { submission: PublicSubmission }) {
-  const meta = STATUS_META[submission.status];
-  return (
-    <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
-      <div>
-        <div className="font-semibold text-ink">{submission.playerName}</div>
-        <div className="mt-0.5 text-sm text-ink-muted">
-          {submission.focus ? `${submission.focus} · ` : ""}
-          {formatDate(submission.submittedAt)}
-        </div>
-      </div>
-      <span
-        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}
-      >
-        {meta.label}
-      </span>
-    </li>
-  );
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}

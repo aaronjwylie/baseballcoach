@@ -95,6 +95,8 @@ export {
   listAllSubmissionFiles,
 } from "./api/submissionFileApi";
 
+export { signStatusToken, verifyStatusToken } from "./api/statusToken";
+
 export {
   listSubmissionEvents,
   recordSubmissionEvent,
@@ -109,5 +111,6 @@ export {
   touchFlowSession,
 } from "./api/flowSession";
 
+export { StatusList } from "./ui/StatusList";
 export { StatusLookup } from "./ui/StatusLookup";
 export { SubmissionFileList } from "./ui/SubmissionFileList";

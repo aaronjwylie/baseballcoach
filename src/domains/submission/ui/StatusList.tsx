@@ -1,0 +1,155 @@
+"use client";
+
+import { ButtonLink } from "@/shared/ui";
+import { FeedbackAccess } from "@/domains/feedback/ui/FeedbackAccess";
+import type { PublicSubmission } from "../model/publicSubmission";
+
+/**
+ * A customer's submissions, rendered.
+ *
+ * Extracted from `StatusLookup` so **both doors show the same page**: the
+ * capability link from an email lands here directly, and the typed-email lookup
+ * lands here after a code. Two entrances, one room — written twice they would
+ * drift, and the row a customer sees would depend on how they arrived.
+ */
+export function StatusList({
+  submissions,
+  email,
+}: {
+  submissions: PublicSubmission[];
+  email: string;
+}) {
+  if (submissions.length === 0) {
+    return (
+      <div className="rounded-2xl border border-line bg-white p-6 text-center">
+        <p className="text-ink">
+          No submissions found for <span className="font-medium">{email}</span>.
+        </p>
+        <p className="mt-1.5 text-sm text-ink-muted">
+          Double-check the address, or start a new review.
+        </p>
+        <div className="mt-5">
+          <ButtonLink href="/start">Start a review</ButtonLink>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ul className="space-y-3">
+        {submissions.map((submission, index) => (
+          <StatusRow key={index} submission={submission} />
+        ))}
+      </ul>
+      {submissions.some((s) => s.hasFeedback) && (
+        <div className="mt-6">
+          <FeedbackAccess email={email} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * The two sentences most of the ladder collapses into. Named constants rather
+ * than repeated literals so a wording change lands everywhere at once — eleven
+ * of the sixteen rungs share one of these.
+ */
+const WITH_YOUR_COACH = {
+  label: "With your coach",
+  className: "bg-blue-50 text-blue-700 border-blue-200",
+} as const;
+
+const READY = {
+  label: "Feedback ready",
+  className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+} as const;
+
+const STATUS_META: Record<
+  PublicSubmission["status"],
+  { label: string; className: string }
+> = {
+  // A draft never reaches the lookup — `findByCustomerEmail` filters it out —
+  // but the map is exhaustive so a new status can't be added without deciding
+  // what a customer should be told about it.
+  //
+  // **Sixteen operator states collapse into five customer ones.** A parent has
+  // no use for `response_translating`; they want to know whether it has arrived,
+  // whether it's being worked on, and whether they can still download it. Every
+  // middle rung is therefore the same sentence, deliberately — the collapse is
+  // the feature, not laziness.
+  draft: {
+    label: "Not finished",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  awaiting_payment: {
+    label: "Awaiting payment",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  // Not "video received" — a submission is a pack of files, and naming it after
+  // one of them is how the old single-video model kept creeping back.
+  new: {
+    label: "Received",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+
+  // Everything between assignment and release is one sentence to the customer.
+  // Translation and Yuta's approval check are internal steps; surfacing them
+  // would invite questions the parent can't act on.
+  assigned: WITH_YOUR_COACH,
+  intake_translating: WITH_YOUR_COACH,
+  intake_translated: WITH_YOUR_COACH,
+  sent_to_coach: WITH_YOUR_COACH,
+  in_review: WITH_YOUR_COACH,
+  awaiting_approval: WITH_YOUR_COACH,
+  response_translating: WITH_YOUR_COACH,
+  response_translated: WITH_YOUR_COACH,
+
+  // Ready to collect. `resolved` is Yuta closing his side of the job — nothing
+  // changes for the customer, who can still download.
+  complete: READY,
+  collected: READY,
+  resolved: READY,
+
+  // The one middle state worth surfacing: it changes what they should *do*.
+  purge_imminent: {
+    label: "Ready — expiring soon",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  purged: {
+    label: "No longer available",
+    className: "bg-stone-50 text-stone-600 border-stone-200",
+  },
+};
+
+function StatusRow({ submission }: { submission: PublicSubmission }) {
+  const meta = STATUS_META[submission.status];
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
+      <div>
+        <div className="font-semibold text-ink">{submission.playerName}</div>
+        <div className="mt-0.5 text-sm text-ink-muted">
+          {submission.focus ? `${submission.focus} · ` : ""}
+          {formatDate(submission.submittedAt)}
+        </div>
+      </div>
+      <span
+        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}
+      >
+        {meta.label}
+      </span>
+    </li>
+  );
+}
+
+function formatDate(iso?: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}

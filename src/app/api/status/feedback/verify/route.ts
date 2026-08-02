@@ -9,7 +9,8 @@ import {
 } from "@/domains/feedback";
 
 /**
- * Check a feedback access code and, on a match, return the email's feedback.
+ * Check an access code and, on a match, return **the customer's whole view** —
+ * their submissions and any feedback ready to download.
  *
  * The bcrypt check is the whole gate, so the endpoint is rate-limited to keep a
  * 6-digit code out of brute-force range within its 10-minute life. A miss
@@ -43,12 +44,12 @@ export async function POST(request: Request) {
     const pending = await readSignedCookie<PendingFeedbackCode>(
       FEEDBACK_CODE_COOKIE,
     );
-    const groups = await verifyFeedbackViewCode(
+    const access = await verifyFeedbackViewCode(
       pending,
       parsed.data.customerEmail,
       parsed.data.code,
     );
-    if (!groups) {
+    if (!access) {
       return NextResponse.json(
         { error: "That code didn't match. Check it and try again." },
         { status: 400 },
@@ -56,7 +57,9 @@ export async function POST(request: Request) {
     }
     // Single-use: a matched code is spent.
     await clearSignedCookie(FEEDBACK_CODE_COOKIE);
-    return NextResponse.json({ groups });
+    // The whole view, not just the downloads: the code proved the inbox, and
+    // both belong to whoever controls it.
+    return NextResponse.json(access);
   } catch (err) {
     console.error("[status/feedback/verify] failed:", err);
     return NextResponse.json(

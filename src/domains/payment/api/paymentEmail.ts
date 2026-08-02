@@ -46,6 +46,7 @@ export function sendSubmissionReceipt(to: string, details: ReceiptDetails) {
        ${fileList(files)}
 
        <p style="margin-top:28px;">A coach will review it and send a personal video walkthrough within <strong>${site.turnaround}</strong>. We'll email you the moment it's ready.</p>`,
+      // A capability link — straight in, no code. See `signStatusToken`.
       { label: "Check your status", url: statusUrl },
     ),
   });

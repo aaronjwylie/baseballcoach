@@ -19,6 +19,8 @@ import {
   findByCustomerEmail,
   isReleased,
   listFeedbackFiles,
+  lookupPublicSubmissions,
+  type PublicSubmission,
 } from "@/domains/submission";
 import { sendFeedbackViewCode } from "./feedbackEmail";
 
@@ -58,7 +60,15 @@ export async function issueFeedbackViewCode(
 ): Promise<PendingFeedbackCode | null> {
   const email = emailRaw.trim().toLowerCase();
   const submissions = await findByCustomerEmail(email);
-  if (!submissions.some(isReleased)) return null;
+  /*
+    Any submission earns a code, not just a released one.
+
+    The code now gates the **status list** as well as the downloads, because a
+    typed email proves nothing and the list carries a child's name. Requiring
+    released feedback would have meant a customer mid-review couldn't see their
+    own submission at all.
+  */
+  if (submissions.length === 0) return null;
 
   const code = generateCode();
   const hash = await bcrypt.hash(code, 10);
@@ -72,11 +82,24 @@ export async function issueFeedbackViewCode(
  * feedback. A mismatch (or a cookie for a different email) returns null; the
  * route maps that to a generic error and the caller can retry within the window.
  */
+export interface StatusAccess {
+  submissions: PublicSubmission[];
+  groups: FeedbackGroup[];
+}
+
+/**
+ * One code, one grant: **the customer's whole view.**
+ *
+ * The code proves control of the inbox, and everything behind it belongs to
+ * whoever controls that inbox — the list and the downloads alike. Splitting it
+ * into two grants would mean two codes for one act of proof, and a customer
+ * being asked to check their email twice on the same page.
+ */
 export async function verifyFeedbackViewCode(
   pending: PendingFeedbackCode | null,
   emailRaw: string,
   code: string,
-): Promise<FeedbackGroup[] | null> {
+): Promise<StatusAccess | null> {
   const email = emailRaw.trim().toLowerCase();
   if (
     !pending ||
@@ -90,7 +113,10 @@ export async function verifyFeedbackViewCode(
   const matches = await bcrypt.compare(code, pending.hash);
   if (!matches) return null;
 
-  return listFeedbackForEmail(email);
+  return {
+    submissions: await lookupPublicSubmissions(email),
+    groups: await listFeedbackForEmail(email),
+  };
 }
 
 /** Every completed review's feedback files for an email, grouped by player.

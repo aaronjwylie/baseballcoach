@@ -378,18 +378,39 @@ collected-recently warned and left alone, never-collected-but-old purged on the
 backstop, just-delivered untouched. All four folders' bytes went; all four rows'
 records stayed.
 
-## Phase 7 · The status capability — ✅ **effectively complete**
+## Phase 7 · The status capability — ✅ **shipped 2026-08-01**
 
-Aaron's `853edf9` shipped the email + 6-digit code path on `/status`, which was
-7.2 and the bulk of the value. Combined with the capability link in ⑥, a customer
-has two independent ways back to their feedback and both enforce inbox control.
+Aaron's `853edf9` shipped 7.2, the email + 6-digit code path. **7.1 followed, and
+my reason for deferring it didn't survive a test drive.**
 
-**7.1 — a `status` purpose on the token, carried in the ② receipt — is deliberately
-not built.** It would be a third door to the same room. The receipt already links
-to `/status`, where the code path takes over; adding a bearer link to a page that
-lists *every* submission for an address is strictly more exposure than the
-per-submission link ⑥ already carries. Worth revisiting only if customers report
-trouble getting back in.
+I argued a status link would expose more than the per-submission feedback link,
+because it lists *every* submission for an address. True in kind — but that
+exposure **already existed**: `/status` took an unverified email and returned the
+list, so anyone who guessed an address got the same page without a link at all.
+Deferring the link left the hole and removed the convenience.
+
+### The design that replaced it: two doors, deliberately asymmetric
+
+| Door | Proof | Behaviour |
+| --- | --- | --- |
+| **Link in a receipt** | the link *is* the proof — mailed to an address that verified at step 2 and paid at step 4 | straight in, no code |
+| **Typed email on the site** | none. Anyone can type anyone's address | a 6-digit code, then in |
+
+Asking someone who followed a link from their own receipt to prove themselves a
+third time is friction that buys nothing. Asking someone who typed an address to
+prove *anything* is the minimum, and it costs one email.
+
+**One code, one grant.** The same verification now covers the list and the
+downloads, rather than proving the same inbox twice on one page. The code is also
+issued for *any* submission rather than only a released one — a customer
+mid-review could otherwise not see their own submission at all.
+
+**The list is worth gating**, which was the thing my earlier reasoning missed: it
+carries a child's first name, a focus and a date. Not catastrophic to leak, but it
+is somebody's child, and one email stops it.
+
+Both doors render the same component, so the row a customer sees never depends on
+how they arrived.
 
 ---
 
