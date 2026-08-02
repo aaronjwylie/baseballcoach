@@ -20,7 +20,24 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
-## Where we are
+## Where we are — 2026-08-01
+
+- ✅ **`listAdminEmails()`** — where operator notifications go, read from the
+  `users` table rather than an env var. The people who should hear about a stalled
+  hand-off or a new payment are exactly the people who can log in and act on it,
+  and a config value would let those two drift the moment an operator changes.
+  Distinct from `site.email` (the public address) and `EMAIL_FROM` (who mail is
+  sent *as*) — three jobs, three sources.
+
+  Returns **every** admin, so a second one is added by creating a user rather
+  than by a deploy. Empty is survivable: the caller skips the send, because
+  nobody being told is better than a crash inside a webhook.
+- ✅ **Forgot-password** for operators (Aaron, 2026-08-01) — a one-hour reset
+  link. ⚠️ It joins the verification code as a message whose recipient is
+  **blocked** on it, which ADR 004's best-effort default serves badly. Two
+  instances is a pattern worth deciding about.
+
+## Where we were before that
 
 - ✅ `login` / `logout` server actions, credential check against Postgres
   (bcrypt), signed session cookie.

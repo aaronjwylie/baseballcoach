@@ -85,7 +85,36 @@ flowchart LR
 > exist. This is the sibling of the flow's upload-gating verification, for a different purpose:
 > proving inbox control to *release* feedback rather than to *accept* an upload.
 
-## 2 · Where we are now — 2026-07-29
+## 2 · Where we are now — 2026-08-01
+
+This slice grew from "the coach's response" into **the response's whole life after
+delivery** — collected, resolved, warned, purged — because all four are about the
+thing it produces.
+
+- ✅ **⑤ on delivery** — Yuta *and* the coach are told a review is waiting for
+  approval. The approval gate means delivered work sits still until a person looks
+  at it, and until this existed the only person who could release it had no idea.
+- ✅ **Step 13 carries a language choice** and records what the customer was sent.
+  Same component as the coach hand-off, because it's the same decision pointed at
+  a different person.
+- ✅ **⑥ states the retention window at delivery.** Not a nicety: everything is
+  swept together, so this line and ⑨ are the only protection against a parent
+  losing a review they can't recreate.
+- ✅ **`noteCustomerCollected`** — the customer's first download starts the
+  retention clock and tells Yuta the job is visibly finished. Gated on the caller
+  *not* being an operator: Yuta opening a response to check it would otherwise
+  delete their feedback thirty days after **he** looked at it.
+- ✅ **`resolveSubmission`** — step 15, and ⑧. Only a `collected` submission can
+  be resolved, so a thank-you can't go out for something the customer hasn't seen.
+- ✅ **⑨ the deletion warning.** The one genuinely *scheduled* message in the
+  system, stamped whether or not the send worked — retrying nightly would turn
+  one missed email into seven.
+- ✅ **Delivery is guarded on status**, not just ownership: a stale tab could
+  previously deliver twice, or deliver onto a submission Yuta had already
+  approved, walking it backwards over its own completion.
+
+
+### Before 2026-08-01
 
 - ✅ **The feedback-ready email template** (`sendFeedbackReady`), ready to fire from the coach
   portal's mark-complete action.

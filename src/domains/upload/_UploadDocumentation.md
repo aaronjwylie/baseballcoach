@@ -58,7 +58,34 @@ flowchart LR
 
 ---
 
-## 2 · Where we are now — 2026-07-30
+## 2 · Where we are now — 2026-08-01
+
+**The retention sweep was rewritten** (rollout Phase 6). Three changes, and the
+first is the one everything else rests on.
+
+- ✅ **The clock starts on collection**, not completion. 30 days from the
+  customer's first download, or 90 from delivery for the customer who never
+  comes — **whichever ends later**, so someone who collects on day 80 still gets
+  their full window.
+- ✅ **Everything is swept together**, the coach's response included. That is only
+  safe *because* of the line above: we never delete anything the customer hasn't
+  already got in hand. If retention ever moves back to keying off delivery, this
+  becomes wrong again — the flow test asserts it, and should start failing.
+- ✅ **The warning runs first, against a nearer cutoff.** Run the other way round,
+  a single night could both warn and delete — a warning in name only. Ordering the
+  two passes *is* the guarantee.
+- ✅ **Abandonment measures from `updatedAt`**, not `submittedAt`. "Gone quiet" is
+  about the last sign of life, so a customer mid-flow — or one whose card just
+  failed — isn't reaped while still working.
+- ✅ **Records survive; the submission is kept forever.** Only the bytes go, and
+  `/api/files/[id]` answers **410 Gone** so "you may have this, but it no longer
+  exists" stays a different sentence from "this was never yours".
+
+⚠️ **Vercel Hobby permits one cron run a day**, so "warn at day 23" means 23–24.
+Fine here, and it has already broken a deploy once — an hourly schedule needs Pro.
+
+
+### Before 2026-08-01
 
 - ✅ **Multi-file, one card at a time.** A card starts empty, becomes a live upload with a
   real percentage the moment a file is chosen, and only then does "Upload another file"

@@ -36,7 +36,27 @@ used to mean a bounced receipt and a support thread.
 
 ---
 
-## 2 · Where we are now — 2026-07-30
+## 2 · Where we are now — 2026-08-01
+
+- ✅ **One clock.** `CODE_TTL_MINUTES` is now the flow window, read from
+  `shared/lib/flowWindow` rather than declared here. A shorter TTL was a *second*
+  clock: a customer well inside their thirty minutes would find the code dead,
+  having been told one number and held to another.
+- ✅ **The send is confirmed before anyone advances.** `sendVerificationCode`
+  returns whether the message reached Resend, and step 1 fails rather than
+  parking someone on "enter the code" when no code is coming. This is a
+  deliberate departure from ADR 004: best-effort is honest degradation everywhere
+  the customer isn't *blocked*, and a dead end everywhere they are.
+- ✅ **"Check your spam folder"** on the panel, which catches the common case for
+  free.
+
+**Why the constant lives in `shared/`:** `submission` owns the flow session,
+`verification` owns the code, and neither can own a value the other needs without
+inverting a dependency. A constant copied into both is how one clock quietly
+becomes two (PRINCIPLES §5).
+
+
+### Before 2026-08-01
 
 - ✅ **Built and exercised** by `npm run flow`: issue, reject a wrong code, accept
   the right one, advance the status, and no-op on a replay.

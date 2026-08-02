@@ -50,7 +50,26 @@ shared/
 > [`email/_EmailDocumentation.md`](email/_EmailDocumentation.md). It's the only seam under
 > `shared/` that owns a decision rather than just a mechanism.
 
-## 2 · Where we are now — 2026-07-29
+## 2 · Where we are now — 2026-08-01
+
+Three things landed in the shared floor, each because two domains needed it and
+neither could own it (PRINCIPLES §5).
+
+- ✅ **`lib/flowWindow.ts`** — the flow window, 30 minutes sliding. `submission`
+  owns the session and `verification` owns the code; a constant copied into both
+  is how one clock quietly becomes two. Putting it here makes "one clock"
+  structural rather than a comment someone has to honour.
+- ✅ **`email/client.ts` reports.** `sendEmail` returns a boolean and still never
+  throws. "Best-effort" (ADR 004) was always about not failing a webhook or a
+  portal action; it never meant delivery should be *unknowable*, and the one
+  caller whose customer is blocked on the message needs to know.
+- ✅ **`storage/index.ts` gained `translationFileKey`** — the two translation
+  folders get their own subfolders in the object store, so the four folders are
+  visible in raw storage as well as in the database. That matters the one time
+  someone has to look.
+
+
+### Before 2026-08-01
 
 - ✅ **The seams** — `db` (Postgres/Drizzle), `storage` (local + Blob), `auth` (jose
   sessions), `stripe`, and `email` — each wrapping one boundary. Airtable and Mux are gone.

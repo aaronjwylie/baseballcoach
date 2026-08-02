@@ -20,6 +20,8 @@ A divergence without an ADR is a bug. A divergence with one is a decision.
 | [010](010-verification-gates-upload.md) | A verified email gates the upload | Accepted — replaces payment as the upload gate |
 | [011](011-client-direct-uploads.md) | The browser uploads straight to Blob | Accepted — fixes a latent prod bug in CLAUDE.md §7's upload route |
 | [012](012-retention-and-operator-settings.md) | Retention sweep, and limits the operator owns | Accepted — adds a table CLAUDE.md §8 didn't have |
+| [013](013-status-ladder-and-event-trail.md) | Sixteen statuses, and an event trail beside them | **Accepted and built — reshapes the lifecycle in CLAUDE.md §8** |
+| [014](014-retention-starts-on-collection.md) | Retention starts when the customer collects | **Accepted and built — amends ADR 012's clock** |
 
 ## Format
 

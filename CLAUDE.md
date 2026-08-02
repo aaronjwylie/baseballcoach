@@ -450,23 +450,29 @@ Sending goes through **`shared/email`**, never the Resend SDK directly:
 
 Each message lives in the domain that owns it, as `api/xEmail.ts`.
 
-**The agreed set is six messages; three are built** — the full matrix, the gaps,
-and the workflow change two of them require are pinned in
-[`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md). Built today:
+**Nine messages, numbered ①–⑨ to match the path table**, plus two off-spine. The
+full matrix is [`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md);
+each message lives in the domain that owns its event.
 
-- **verification code** (`domains/verification/api/verificationEmail.ts`) — step 2
-  of the flow;
-- **receipt** (`domains/payment/api/paymentEmail.ts`) — on payment, listing every
-  uploaded file by name and size;
-- **feedback ready** (`domains/feedback/api/feedbackEmail.ts`) — when a coach
-  marks a submission complete.
+**Five of the nine tell Yuta something** — a payment landed, a coach picked work
+up, a response is waiting, a customer collected. That's deliberate: a queue that
+doesn't announce its own arrivals has to be *watched* instead of used. They go to
+every `admin` in the `users` table, read at send time, because the people who
+should hear are exactly the people who can act — and an env var would let those
+two drift the moment an operator changes.
 
-*(The old "video received" message was deleted with the flow rebuild: payment is
-now last, so the receipt is the one confirmation and it already says what arrived.)*
+**Two sends depart from ADR 004's best-effort default, in opposite directions:**
 
-**One caveat that changed with the flow:** best-effort is right for a receipt, but
-the verification code is different in kind — the customer is *blocked* on it. A
-missing `RESEND_API_KEY` no longer degrades honestly; it stops anyone buying.
+- **① the verification code fails the flow** when it can't be sent. Everywhere
+  else a failed email is honest degradation — the work happened, someone wasn't
+  told. Here the customer is *blocked* on the message, so swallowing it strands
+  them on step 2 waiting for a code that was never sent.
+- **⑨ the deletion warning is stamped even when the send fails.** Retrying
+  nightly would turn one missed email into seven, which is worse than the miss.
+  Nobody is blocked on a warning.
+
+`sendEmail` returns a boolean and still never throws. "Best-effort" was always
+about not failing a webhook; it never meant delivery should be *unknowable*.
 
 **Escape customer-supplied values.** Filenames and player names land in HTML;
 `paymentEmail.ts` has the helper and any new template needs the same treatment.
@@ -516,7 +522,7 @@ customer reply lands in Yuta's `contact@` inbox. Dashboard/DNS detail:
 
 ## 8. Data Model (Postgres)
 
-The system of record is one Postgres database, **five tables**, accessed through
+The system of record is one Postgres database, **six tables**, accessed through
 Drizzle. **Column names live in exactly one place** — the Drizzle schema in
 `shared/db` (surfaced to the domain via `domains/submission/api/`) — and a
 migration is the only way they change. One home per fact.
@@ -536,49 +542,82 @@ of the flow**, before verification, files, or payment — see
 | `focus` | enum | `Hitting` · `Pitching` · `Fielding` · `Catching` · `Other` |
 | `customerNotes` | text | the customer's words, never overwritten |
 | `internalNotes` | text | system messages + operator notes |
-| `status` | enum | see lifecycle below |
+| `status` | enum | **sixteen rungs** — see the ladder below |
 | `emailVerifiedAt` | timestamptz, null | set when the 6-digit code is accepted; **the upload gate** |
 | `verificationCodeHash` | text, null | bcrypt hash — the code itself is never stored |
-| `verificationExpiresAt` | timestamptz, null | 10 minutes from issue |
+| `verificationExpiresAt` | timestamptz, null | the flow window from issue |
 | `verificationAttempts` | integer, default 0 | 5 before the code must be reissued |
 | `stripePaymentId` | text, unique | PaymentIntent id — the webhook's idempotency key |
 | `stripeAmount` | integer (cents) | |
 | `paidAt` | timestamptz, null | |
 | `assignedCoachId` | uuid, FK → `coaches.id`, null | set by the admin on assignment |
-| `feedbackUrl` | text, null | storage key/URL for the coach's response. **Never swept** |
+| `coachFileSet` | enum, null | **which language set the coach was sent** (step 8) |
+| `customerFileSet` | enum, null | **which language set the customer was sent** (step 13) |
+| `feedbackUrl` | text, null | legacy single-file locator; the response is now rows in `submission_files` |
 | `feedbackEmailedAt` | timestamptz, null | idempotency guard on the feedback email |
-| `filesPurgedAt` | timestamptz, null | when the retention sweep removed the uploads |
+| `collectedAt` | timestamptz, null | **the retention clock's anchor** — the customer's first download |
+| `deletionWarnedAt` | timestamptz, null | guard on the one *scheduled* email; stamped even if the send failed |
+| `filesPurgedAt` | timestamptz, null | when the sweep removed the files |
 | `submittedAt` | timestamptz, default `now()` | |
-| `completedAt` | timestamptz, null | starts the retention clock |
-| `updatedAt` | timestamptz | |
+| `completedAt` | timestamptz, null | delivery — the backstop clock counts from here |
+| `archivedAt` | timestamptz, null | out of the active queue; orthogonal to status |
+| `updatedAt` | timestamptz | **what the abandonment sweep measures from** — the last sign of life |
 
 `customerNotes` and `internalNotes` stay separate so an operator can forward a
 customer's words to a coach without hand-cleaning `[system]` lines out of them.
 
+**`collectedAt` and `deletionWarnedAt` duplicate facts `submission_events` also
+holds, deliberately.** The trail is history; these are the working values the
+nightly sweep scans on, and a scan against a join is one we'd have to justify at
+every row. Same relationship `status` has to its own events.
+
 ### `submission_files`
 
-One row per file, of two kinds. Replaced the single `videoUrl` column when the
-flow moved to multi-file uploads; a `kind` discriminator was added when coach
-feedback became multi-file too, so the customer's uploads and the coach's
-response files share one table.
+One row per file, **both directions**. The `kind` column is the four folders.
 
 | Column | Type | Notes |
 | --- | --- | --- |
-| `id` | uuid, primary key | the id in `/api/files/[id]` (customer) and `/api/feedback/[id]` (feedback) |
+| `id` | uuid, primary key | the id in `/api/files/[id]` |
 | `submissionId` | uuid, FK → `submissions.id`, cascade | indexed |
-| `filename` | text | the uploader's own name for it — display only, never a path |
+| `kind` | enum | `intake` · `intake_translation` · `response` · `response_translation` |
+| `filename` | text | the customer's own name for it — display only, never a path |
 | `contentType` | text | |
 | `sizeBytes` | integer | |
-| `fileUrl` | text, **null** | storage locator. **A `submission` row goes null when swept; a `feedback` row is never swept** |
-| `kind` | text, default `'submission'` | `submission` = a customer upload, `feedback` = a coach response file |
+| `fileUrl` | text, **null** | storage locator. **Goes null when swept — the row survives** |
 | `uploadedAt` | timestamptz, default `now()` | |
 
-A **customer** file's record outliving its bytes is deliberate: the portal and
-the receipt can still say what was sent, and `/api/files/[id]` answers **410
-Gone**, not 404. **Feedback** files are the coach's response — the customer
-downloads them once the review is `complete`, so the retention sweep never
-touches them (`feedbackUrl` on the submission is the old single-file path, now
-unused). Every read is scoped to one kind; the two never bleed together.
+**Kinds are nouns, statuses are participles** (`_NomenclatureLaw.md` §2): the kind
+is `intake_translation` (*what this file is*), the status is `intake_translated`
+(*what has happened*). One stem, two axes, neither reading as the other.
+
+Reads scope by **side**, not by a single kind — "the customer's files" means the
+originals *and* their translation, because a translation sits beside its original
+rather than replacing it.
+
+The record outliving the bytes is deliberate: the portal can still say what was
+sent. `/api/files/[id]` answers **410 Gone**, not 404.
+
+### `submission_events`
+
+The trail. One row per status transition.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid, primary key | |
+| `submissionId` | uuid, FK → `submissions.id`, cascade | indexed |
+| `status` | enum | the rung it moved to |
+| `at` | timestamptz, default `now()` | |
+| `actorId` | uuid, FK → `users.id`, null | **null is meaningful** — the customer and the cron have no session |
+| `note` | text, null | why, for the operator overrides that owe an explanation |
+
+**Chosen over sixteen nullable `*At` columns**, and it answers strictly more: a
+column remembers one moment, and a submission can reach the same rung twice once
+an operator can reset a status. Written inside the same transaction as the update
+that caused it, so the trail cannot disagree with `submissions.status`.
+
+**The actor is read from the session, not passed in.** A parameter gets forgotten
+eventually, and the forgotten case writes an anonymous event indistinguishable
+from a legitimate one.
 
 ### `settings`
 
@@ -591,32 +630,57 @@ a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 | `priceCents` | integer | 8000 |
 | `maxFileSizeMb` | integer | 50 |
 | `maxFilesPerSubmission` | integer | 5 |
-| `retainResolvedHours` | integer | 24 |
+| `retainCollectedDays` | integer | 30 |
+| `retainDeliveredDays` | integer | 90 |
+| `warnBeforeDeletionDays` | integer | 7 |
 | `retainUnpaidHours` | integer | 24 |
 | `updatedAt` | timestamptz | |
 
-The **price is here, not `site.ts`** — the checkout charge and every place the
-figure is shown read `settings.priceCents`, so the operator can change it without
-a deploy and the card can't disagree with the charge.
+### `status` lifecycle — the ladder (enum, in order)
 
-### `status` lifecycle (enum, in order)
+Sixteen rungs. The enum's own order matches the ladder's, so `ORDER BY status`
+means "how far along" without a lookup.
 
-`draft → awaiting_payment → new → assigned → in_review → awaiting_approval → complete`
+```
+draft → awaiting_payment → new → assigned →
+  intake_translating → intake_translated →          (optional)
+sent_to_coach → in_review → awaiting_approval →
+  response_translating → response_translated →      (optional)
+complete → collected → resolved → purge_imminent → purged
+```
 
-The customer flow writes the first three — `draft` at step 1, `awaiting_payment`
-once the email is verified, `new` when the payment clears. The admin drives
-`assigned` and `in_review` from the portal as he works the queue. A coach
-delivering their file sets **`awaiting_approval`** — it does *not* reach the
-customer yet — and Yuta approving it sets `complete`, **which fires the feedback
-email** and starts the retention clock.
+**It is a path with branches, not a progress bar.** A coach who reads English
+takes `assigned → sent_to_coach` and `awaiting_approval → complete` directly;
+four rungs are only touched when a submission needs translating. Anything
+rendering this as a linear track will be wrong for most submissions.
 
-**`isPaid()` is the line that matters, and it is not "status === complete".**
-Everything from `new` onwards has been paid for, including `awaiting_approval`.
-Several places act destructively on the answer — discarding an unfinished
-submission, deciding whether a redelivered Stripe webhook is a fresh payment — so
-paid-ness is a `Record<SubmissionStatus, boolean>` in `domains/submission`, not a
-list. Adding a status without answering the question is a compile error. It was a
-list once, and `awaiting_approval` slipped through it.
+Three rungs carry the weight:
+
+- **`new`** — paid. The boundary: before it a scratch pad, after it a record.
+- **`in_review`** — **the coach actually has the files**, earned by their first
+  download, not by an email being sent.
+- **`collected`** — **the customer has downloaded it**, which starts the
+  retention clock.
+
+### A question about the ladder is a predicate, never a comparison
+
+`status === "complete"` was how thirteen call sites asked *may the customer see
+this?* — true until `collected` existed, and then false **the instant a customer
+downloads**, revoking their own access by using it. No type error, no failing
+test.
+
+So every question about the ladder is an exhaustive
+`Record<SubmissionStatus, boolean>` in `domains/submission`, which makes adding a
+rung without answering a **compile error**:
+
+| Predicate | Asks |
+| --- | --- |
+| `isPaid` | has money changed hands? |
+| `hasResponse` | has the coach delivered? |
+| `isReleased` | may the customer see it? |
+| `isWithCoach` | is it on a coach's desk? |
+
+It was a list once, and `awaiting_approval` slipped through it.
 
 **The canonical end-to-end path — inception to completion, with who drives each
 stage, what changes, which email fires, and what is retained — lives in
@@ -627,9 +691,8 @@ what must be settled before each one starts.
 
 There is no "paid but no file yet" state any more: files arrive before payment,
 so `awaiting_upload` was retired with the flow that needed it. The status lookup
-collapses the middle states into calm customer-facing language — a parent doesn't
-need to know their submission is "unassigned." The transition rules live in
-`domains/submission`, not scattered across the UI.
+collapses eleven middle rungs into one calm sentence — a parent has no use for
+`response_translating` — and that collapse lives in one function, not in the page.
 
 ### `coaches`
 
@@ -673,8 +736,10 @@ coach action in the portal, not a webhook.
 
 - `payment_intent.succeeded` → mark the submission paid (`new`) + send the
   receipt, which lists every uploaded file
-- `payment_intent.payment_failed` → log for admin visibility; the submission
-  stays in `awaiting_payment` with its files intact, so the customer can retry
+- `payment_intent.payment_failed` → the submission stays in `awaiting_payment`
+  with its files intact, **the customer is emailed a way back in**, and the row
+  is touched — which is what extends the abandonment window, since the sweep
+  measures from `updatedAt`. A decline is someone trying, not someone leaving
 
 **Signature verification:** `stripe.webhooks.constructEventAsync()` over the raw
 body with `STRIPE_WEBHOOK_SECRET`. Verify before doing anything.
@@ -724,10 +789,10 @@ serverless request body is capped near 4.5 MB and a phone video is not
 | `POST /api/upload/complete` | record a file the browser uploaded directly (prod) |
 | `POST /api/upload` | take the bytes through us onto local disk (**dev only**) |
 | `POST /api/feedback/upload` | the coach's response — operator-gated |
-| `GET /api/files/[id]` | download one uploaded file — operator-only; **410** once swept |
-| `GET /api/feedback/[id]` | the coach's response — public once complete |
+| `GET /api/files/[id]` | download one file — operator-only; **410** once swept. **Also where the coach's first collection is observed** (step 9) |
+| `GET /api/feedback/[id]` | the coach's response — public once released. **Also where the customer's first collection is observed** (step 14) |
 | `GET /api/payment/return` | where Stripe sends a 3-D Secure customer back |
-| `GET /api/cron/sweep` | the nightly retention sweep — `CRON_SECRET` required |
+| `GET /api/cron/sweep` | the nightly sweep — warns first, then purges; `CRON_SECRET` required |
 
 See the endpoint table in [OPERATIONS.md](OPERATIONS.md).
 
@@ -739,63 +804,60 @@ The original 8-sprint plan is retired — the platform pivot reshaped it, and gi
 holds the history. The build is **live in production** at `www.baseball-sensei.com`,
 behind an HTTP Basic Auth gate while it's being finished.
 
+**The whole seventeen-stage pipeline is built** (2026-08-01). Phases 1–6 of
+[`docs/design/rollout.md`](docs/design/rollout.md) shipped in a day; the path
+doc's table carries no `(not built)` markers for the first time.
+
 **Built, deployed, and verified:**
 
-- ✅ **Customer flow, four steps on `/start`** — player details → email
-  verification (6-digit code) → multi-file upload → payment → confirmation.
-  Walked end to end in a real browser 2026-07-30. *(This was the "in flight"
-  signup/verification + upload-and-pay work; it has landed.)*
+- ✅ **Customer flow, four steps on `/start`** — details → 6-digit verification →
+  multi-file upload → payment → confirmation. Walked in a browser 2026-07-30.
+  A scrubbed submission now resets the flow to step 1 rather than stranding
+  someone on a dead form; the code's TTL *is* the flow window; the code send is
+  confirmed before anyone advances; a declined card emails a way back and extends
+  the abandonment window.
 - ✅ **Landing page** — Audrey's approved design.
 - ✅ **Foundation** — Postgres (Supabase in prod, Docker in dev), Drizzle
-  migrations, seed.
-- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts` gate, `/login`,
-  operator **change-password** (`/account`), plus a separate short-lived customer
-  *flow* cookie (not an account).
-- ✅ **Persistence + storage** — submissions and per-file rows on Postgres, files
-  on the storage seam. **Direct-to-Blob in prod**, proxied to disk in dev.
-- ✅ **Admin portal** — submissions queue with **status filters** and per-file
-  downloads, coach management + **editing**, assignment, and **settings** (upload
-  limits + retention).
-- ✅ **Coach portal** — assigned reviews, per-file download, feedback delivery →
-  complete → customer email.
-- ✅ **Transactional email** — verification code, receipt with the file list,
-  feedback ready. On **Resend** with the verified `baseball-sensei.com` domain.
-- ✅ **Retention sweep** — nightly Vercel Cron, resolved and abandoned rules,
-  customer uploads only.
+  migrations through `0010`, seed.
+- ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts`, `/login`,
+  change-password, operator forgot-password, plus the short-lived customer *flow*
+  cookie (not an account).
+- ✅ **The ladder + the trail** — sixteen statuses and `submission_events`, with
+  four exhaustive predicates guarding every question about them.
+- ✅ **The four folders** — `intake` · `intake_translation` · `response` ·
+  `response_translation`, with translation need **derived** from the assigned
+  coach's languages and a curation radio on each of the two hand-offs.
+- ✅ **Both collection stamps** — the coach's first download earns `in_review`,
+  the customer's starts the retention clock. Each gated on *who* is asking.
+- ✅ **Operator control** — purge any folder now, reset a status to an earlier
+  rung; both recorded against the submission with the actor's name.
+- ✅ **Retention** — 30 days from collection or 90 from delivery, whichever is
+  later, with a one-week warning. **Everything is swept together**, which is only
+  safe because the clock can't start until the customer has the files.
+- ✅ **All nine emails**, plus the decline notice and the status access code.
 
-**Remaining — the first two block the deployed app:**
+**Remaining — all of it operations, none of it code:**
 
-- ✅ ~~Migrations `0001` + `0002`~~ — **applied** (verified 2026-07-30: `/start`
-  renders, which needs the `settings` table, and step 1 submits, which needs
-  `draft` in the enum).
-- ✅ ~~`CRON_SECRET`~~ — **set and deployed** (`/api/cron/sweep` answers 401, not
-  503).
-- 🔴 **`BLOB_READ_WRITE_TOKEN` is unset, and it blocks the funnel.** Production
-  serves `uploadMode: "proxy"`, so uploads fall back to local disk — which on a
-  serverless host cannot work at all. Create the Blob store and redeploy.
-- ⚠️ **Confirm `NEXT_PUBLIC_SITE_URL` is `https://www.baseball-sensei.com`** in
-  Vercel. It builds the links inside customer emails *and* the redirect target
-  for `/api/payment/return`. The flow cookie is host-only, so if this names the
-  apex while customers browse `www`, a 3-D Secure customer returns **after being
-  charged** to a host that doesn't send their cookie and sees "session expired".
-  It's a `NEXT_PUBLIC_*` var, so it's inlined at build time — changing it needs a
-  redeploy, not just a save.
 - **Stripe** — production keys + the `payment_intent.succeeded` webhook, so real
   payments mark submissions paid ([OPERATIONS.md](OPERATIONS.md) §5–§6). The last
   thing before the funnel can take money.
 - ⚠️ **The whole site is behind HTTP Basic Auth** (`BASIC_AUTH_USER` /
   `BASIC_AUTH_PASSWORD`). Nothing is publicly reachable until those are cleared
-  and redeployed — worth remembering before anyone is invited to test.
-- **Real coach content and photography** for the landing page — the current copy
-  is wireframe placeholder and cannot go live as written.
-- A **human test of the card field and 3-D Secure** — everything around it is
-  proven, but a real card needs a real person.
-- The **remaining three emails + Yuta's approval step**
-  ([`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md)) — agreed, not built.
-- Deferred: an in-app `/feedback/[id]` viewer, forgot-password (email reset),
-  coach deactivation UI, resumable uploads across a reload, React Email,
-  shadcn/ui.
-
+  and redeployed.
+- ⚠️ **Confirm `NEXT_PUBLIC_SITE_URL` is `https://www.baseball-sensei.com`** in
+  Vercel. It builds the links inside customer emails *and* the redirect target
+  for `/api/payment/return`; the flow cookie is host-only, so a mismatch strands
+  a 3-D Secure customer **after being charged**. It's inlined at build time, so
+  changing it needs a redeploy.
+- **Real coach content and photography** — the current copy is wireframe
+  placeholder and cannot go live as written.
+- **Record each coach's languages** in the portal. Translation need is derived
+  from them, and a coach with none recorded produces "no languages recorded"
+  rather than a prompt — correct, but it means the derivation does nothing until
+  someone fills them in.
+- A **human test of the card field and 3-D Secure**.
+- Deferred: an in-app `/feedback/[id]` viewer, coach deactivation UI, resumable
+  uploads across a reload, React Email, shadcn/ui.
 
 > **Handoff runbook:** the step-by-step go-live — accounts, env vars, migrations,
 > the Stripe webhook, DNS, and the end-to-end test — is in [OPERATIONS.md](OPERATIONS.md).

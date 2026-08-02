@@ -210,6 +210,21 @@ Adopted from `wrld-sandbox/_NomenclatureLaw.md` so the two codebases read alike.
 
 **No hyphens in folders**, so a folder name reads as one concept.
 
+### What landed in `shared/` on 2026-08-01, and why
+
+Three additions, each because **two domains needed it and neither could own it**
+without inverting a dependency (PRINCIPLES §5):
+
+| | Why it can't live in a domain |
+| --- | --- |
+| `lib/flowWindow.ts` | `submission` owns the flow session, `verification` owns the code, and they expire on the same clock. Copied into both, one clock quietly becomes two |
+| `email/client.ts` returning a boolean | the transport is domain-less; only the *caller* knows whether its customer is blocked on the message |
+| `storage/index.ts` → `translationFileKey` | the four folders are a storage layout, and `submission` shouldn't spell object keys |
+
+**`shared/` is not a junk drawer.** The test each of these passed: *would putting
+this in a domain force another domain to import it?* If yes it belongs here; if
+no it belongs in the domain that uses it.
+
 One exception to camelCase files, forced from outside: **`src/app/` follows Next.js**, whose
 router reserves `page.tsx`, `layout.tsx`, `route.ts`, and lowercase URL segments. Framework
 conventions win in the framework's own directory.

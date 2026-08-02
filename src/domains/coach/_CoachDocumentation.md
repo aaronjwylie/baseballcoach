@@ -40,7 +40,35 @@ flowchart LR
 
 ---
 
-## 2 · Where we are now — 2026-07-29
+## 2 · Where we are now — 2026-08-01
+
+**Phases 3–4 of the rollout landed here.**
+
+- ✅ **The hand-off stops at `sent_to_coach`.** Emailing a coach is not the same
+  as a coach starting work, and the gap between them is the one place a
+  submission stalls on a person outside the building. Yuta can now see it.
+- ✅ **`noteCoachCollected`** — the coach's first download earns `in_review` and
+  tells Yuta the hand-off closed. Gated on it being **that coach's** submission:
+  the download route can only see that *a* coach is logged in, and an admin
+  checking on the work must not count as the coach starting it.
+  Fire-and-forget and self-swallowing, because it hangs off a route whose real
+  job is delivering bytes.
+- ✅ **`needsTranslation`** — derived from `coaches.languages`. The platform is
+  English, so a submission needs translating exactly when *this* coach doesn't
+  read it. **Unknown is not the same as no**: no languages recorded returns
+  `null`, and the queue says so, rather than prompting on the strength of a blank
+  field until someone fills it in.
+- ✅ **The hand-off carries a language choice** (step 8's radio) and records what
+  was actually sent. The radio can't live on assignment — at that point the
+  translation doesn't exist to choose.
+- ✅ **Reassignment is guarded server-side**, not just hidden: a stale tab could
+  previously pull a submission out from under a coach who had already been
+  emailed it.
+- ⚠️ **The derivation does nothing until languages are recorded.** Every coach
+  needs their languages filled in from the portal before step 5's prompt appears.
+
+
+### Before 2026-08-01
 
 - ✅ **Create a coach** from `/admin/coaches` — login + profile, specialties, languages.
 - ✅ **Assign a coach** to a submission from the admin queue, moving it to `assigned`.

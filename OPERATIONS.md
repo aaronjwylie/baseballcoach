@@ -1,5 +1,38 @@
 # OPERATIONS.md — Setup & Runbook
 
+> ## ⚠️ Changed on 2026-08-01 — read this before following anything below
+>
+> The whole seventeen-stage pipeline shipped in one day
+> ([`docs/design/rollout.md`](docs/design/rollout.md)). Four things in this
+> runbook are now out of date:
+>
+> **Migrations run to `0010`.** `0008` grows the status enum to sixteen and adds
+> `submission_events`; `0009` adds the two file-set columns; `0010` adds the
+> retention anchors and replaces `retain_resolved_hours` with three settings.
+> `0008` and `0010` are **hand-corrected** — `drizzle-kit generate` emitted a
+> cast that fails on existing rows, and can't tell a rename from a drop-plus-add
+> without a TTY. Apply with `npm run db:migrate`; don't regenerate them.
+>
+> **Retention settings changed shape.** `retainResolvedHours` is gone. In its
+> place: `retainCollectedDays` (30), `retainDeliveredDays` (90) and
+> `warnBeforeDeletionDays` (7), all at `/admin/settings`. The clock starts when
+> the **customer downloads**, not when we send — see
+> [ADR 014](docs/decisions/014-retention-starts-on-collection.md).
+>
+> **The nightly sweep does two passes.** It warns first, then purges, and it now
+> deletes **all four folders** including the coach's response. Vercel Hobby still
+> permits only one cron run a day; an hourly schedule fails the deploy, and has.
+>
+> **Operator notifications go to every `admin` in the `users` table.** There is no
+> env var for this — add an admin user to add a recipient. Five of the nine emails
+> go to Yuta, so a production install with no admin row is a queue that announces
+> nothing.
+>
+> **New operational task:** record each coach's **languages** in the portal.
+> Translation need is derived from them; a coach with none recorded produces "no
+> languages recorded" rather than a prompt, so the derivation does nothing until
+> someone fills them in.
+
 Everything outside the codebase: local development, provisioning the client's
 accounts, deploying to Vercel, and the operator's day-to-day workflow.
 

@@ -116,7 +116,19 @@ and these are business judgements, not engineering constants.
 
 ---
 
-## 2 · Where we are now — 2026-07-30
+## 2 · Where we are now — 2026-08-01
+
+- ✅ **Retention is three knobs now**, not one: `retainCollectedDays` (30),
+  `retainDeliveredDays` (90) and `warnBeforeDeletionDays` (7). `retainResolvedHours`
+  is gone — it measured from completion, which deleted files the customer may
+  never have collected.
+- ✅ **`priceCents`** moved here from `site.ts`, so the price is Yuta's rather
+  than a deploy's.
+- ✅ **The fourth kind of clock exists.** The deletion warning is the first
+  genuinely *scheduled* effect in the system — see the timer taxonomy above.
+
+
+### Before 2026-08-01
 
 - ✅ **Built**, with the admin form at `/admin/settings`.
 - ✅ **Enforced server-side on every upload** — the browser is told the limits so

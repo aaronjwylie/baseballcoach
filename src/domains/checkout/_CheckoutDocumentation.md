@@ -45,7 +45,24 @@ the way `app/` is for a page.
 
 ---
 
-## 2 · Where we are now — 2026-07-30
+## 2 · Where we are now — 2026-08-01
+
+- ✅ **"Gone" is a flag, not a sentence.** Every action answers
+  `{ ok, error, gone? }`, and the flow reads the flag: a scrubbed submission
+  resets to step 1 with an explanation rather than rendering an error beside a
+  form that will never work again. Without it a customer could sit on step 3
+  uploading into something the server swept ten minutes ago.
+  Every action can return it, because every action re-derives the submission from
+  the flow cookie and any of them can find it missing.
+- ✅ **A lapsed window at the payment step says something true.** If the card did
+  go through, the webhook still fulfils the submission independently (ADR 003) and
+  a receipt arrives; what we can't do is show it to *this* browser, and the copy
+  says exactly that rather than something reassuring.
+- ✅ **The flow window is 30 minutes, sliding, and it's the only clock** — the
+  verification code expires on the same one.
+
+
+### Before 2026-08-01
 
 - ✅ **All four steps built** and walked end to end in a real browser: step 1 → a
   code → two uploads → Stripe Elements showing `Pay CA$80.00`.

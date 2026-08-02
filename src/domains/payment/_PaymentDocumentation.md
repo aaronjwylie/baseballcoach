@@ -71,7 +71,24 @@ flowchart LR
 
 ---
 
-## 2 · Where we are now — 2026-07-30
+## 2 · Where we are now — 2026-08-01
+
+- ✅ **A declined card is handled, not just logged.** `handleFailedPayment` emails
+  the customer a way back in and **touches the row** — which is what extends the
+  abandonment window, since the sweep measures from `updatedAt`. Recording the
+  decline *is* the extension; that's why it's a write rather than a log line.
+  Guarded on paid-ness, so a decline arriving after a successful retry can't
+  disturb a submission that has since gone through.
+- ✅ **② goes to Yuta as well as the customer.** A queue that doesn't announce its
+  own arrivals has to be watched instead of used. Gated on `justPaid` like the
+  receipt, so a redelivered webhook announces nothing twice.
+- 🔶 **The decline email is deliberately vague about the reason.** Stripe's own
+  wording is shown inline on the page where it's actionable; repeating
+  "insufficient funds" in an email that may be read over someone's shoulder isn't
+  our call to make.
+
+
+### Before 2026-08-01
 
 - ✅ **Stripe Elements on our own page**, now as step 4 of 4 — details, verification, files,
   then payment in place. Our layout, our order summary (which names the file count), our
