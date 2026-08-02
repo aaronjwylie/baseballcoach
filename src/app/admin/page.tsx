@@ -41,6 +41,7 @@ import {
   purgeFolderAction,
   resetStatusAction,
   resolveSubmissionAction,
+  sendForTranslationAction,
   uploadTranslationAction,
   unarchiveSubmissionAction,
 } from "./adminActions";
@@ -354,6 +355,13 @@ function SubmissionRow({
         className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
       />
     </div>
+  ) : act === "sendForTranslation" ? (
+    <RowActionForm
+      action={sendForTranslationAction}
+      submissionId={submission.id}
+      label="Send for translation →"
+      className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+    />
   ) : act === "uploadIntake" || act === "uploadResponse" ? (
     <p className="text-[11px] text-ink-muted">
       Off-platform work — upload the result into the{" "}

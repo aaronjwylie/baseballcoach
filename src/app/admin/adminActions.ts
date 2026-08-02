@@ -118,13 +118,24 @@ export async function uploadTranslationAction(
     translation step is filed without disturbing where it is — Yuta adding a
     late copy shouldn't walk a released submission backwards.
   */
-  if (kind === "intake_translation" && submission.status === "assigned") {
+  /*
+    Accept the upload from either side of the translation.
+
+    `intake_translating` is the rung a submission is *on* while out for
+    translation, so it is the ordinary case — and it was the one case this
+    refused, because the guard only knew about `assigned`. A late upload onto an
+    already-translated submission is filed without disturbing where it is.
+  */
+  const wasIntake =
+    submission.status === "assigned" || submission.status === "intake_translating";
+  const wasResponse =
+    submission.status === "awaiting_approval" ||
+    submission.status === "response_translating";
+
+  if (kind === "intake_translation" && wasIntake) {
     await updateSubmission(id, { status: "intake_translated" });
   }
-  if (
-    kind === "response_translation" &&
-    submission.status === "awaiting_approval"
-  ) {
+  if (kind === "response_translation" && wasResponse) {
     await updateSubmission(id, { status: "response_translated" });
   }
 
@@ -256,6 +267,41 @@ export async function resolveSubmissionAction(
 
   const settings = await getSettings();
   await resolveSubmission(id, settings.retainCollectedDays);
+  revalidatePath("/admin");
+}
+
+/**
+ * Rungs 5 and 10 — mark that the files have gone out for translation.
+ *
+ * **These rungs were unreachable.** Nothing in the app wrote them: uploading a
+ * translation jumped straight from `assigned` to `intake_translated`, so a
+ * submission sitting on Yuta's laptop for two days was indistinguishable from
+ * one he hadn't started. That is the exact thing the rung exists to show.
+ *
+ * It needs an explicit action because the download can't be it — an admin
+ * downloads a file to check it as often as to translate it, and inferring intent
+ * from a click would put submissions out for translation nobody sent.
+ */
+export async function sendForTranslationAction(
+  formData: FormData,
+): Promise<void> {
+  await requireRole("admin");
+  const id = String(formData.get("submissionId") ?? "");
+  if (!id) return;
+
+  const submission = await getSubmission(id);
+  if (!submission) return;
+
+  // Each side can only be sent from the rung that precedes it.
+  const next =
+    submission.status === "assigned"
+      ? "intake_translating"
+      : submission.status === "awaiting_approval"
+        ? "response_translating"
+        : null;
+  if (!next) return;
+
+  await updateSubmission(id, { status: next });
   revalidatePath("/admin");
 }
 

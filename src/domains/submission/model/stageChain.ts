@@ -48,6 +48,7 @@ export type ChainAction =
   | "handoff"
   | "approve"
   | "resolve"
+  | "sendForTranslation"
   | "uploadIntake"
   | "uploadResponse"
   | "waitCustomer"
@@ -99,6 +100,16 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       why: "without them, translation need can't be derived",
       met: (_s, f) => f.coachHasLanguages,
     },
+    {
+      what: "Sent out for translation, if this coach needs it",
+      from: "rung 5",
+      why: "optional — an English-reading coach skips it",
+      act: "sendForTranslation",
+      // Never blocks: most submissions skip translation entirely, so treating
+      // this as a gate would leave every English-coach row looking unfinished.
+      passive: true,
+      met: (_s, f) => f.files.intake_translation > 0,
+    },
     { what: "Handed to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
   ],
   intake_translating: [
@@ -132,6 +143,14 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   awaiting_approval: [
     { what: "Response uploaded", from: "response", met: has("response") },
     { what: "Yuta and the coach told", from: "⑤", met: sent("⑤ response submitted → Yuta + coach") },
+    {
+      what: "Sent out for translation, if the customer needs it",
+      from: "rung 10",
+      why: "optional — skipped when the response is already readable",
+      act: "sendForTranslation",
+      passive: true,
+      met: (_s, f) => f.files.response_translation > 0,
+    },
     { what: "Approved and sent", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
   ],
   response_translating: [

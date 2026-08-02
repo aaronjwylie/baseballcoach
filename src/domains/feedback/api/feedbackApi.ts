@@ -180,7 +180,17 @@ export async function approveAndComplete(
   fileSet: FileSet = "original",
 ): Promise<Submission | null> {
   const submission = await getSubmission(submissionId);
-  if (!submission || submission.status !== "awaiting_approval") return null;
+  /*
+    Two rungs can be approved, not one — the mirror of the hand-off.
+
+    A translated response sits at `response_translated`, so a guard that only
+    accepted `awaiting_approval` meant a review could be translated and then
+    never sent. Silently: the action returned null and the click did nothing.
+  */
+  const approvable =
+    submission?.status === "awaiting_approval" ||
+    submission?.status === "response_translated";
+  if (!submission || !approvable) return null;
 
   /*
     Step 13's curation — the mirror of step 8, and the same fallback logic.

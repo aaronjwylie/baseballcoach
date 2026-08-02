@@ -184,7 +184,18 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   if (!submissionId) return;
 
   const submission = await getSubmission(submissionId);
-  if (!submission || submission.status !== "assigned" || !submission.assignedCoachId) {
+  /*
+    Two rungs can hand off, not one.
+
+    A submission whose intake has been translated sits at `intake_translated`,
+    not `assigned` — so a guard that only accepted `assigned` made the hand-off
+    **impossible for exactly the submissions that needed translating**. The
+    button appeared, the action returned, and nothing happened. Found by
+    simulating the translation path, which no browser test had walked.
+  */
+  const handOffable =
+    submission?.status === "assigned" || submission?.status === "intake_translated";
+  if (!submission || !handOffable || !submission.assignedCoachId) {
     return;
   }
 
