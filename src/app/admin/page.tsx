@@ -376,11 +376,9 @@ function SubmissionRow({
   const courtName =
     court === "coach"
       ? (assignedCoach?.name ?? "the coach")
-      : court === "admin"
-        ? "you"
-        : court === "system"
-          ? "the sweep"
-          : court;
+      : court === "system"
+        ? "the sweep"
+        : court;
 
   return (
     <QueueRow
