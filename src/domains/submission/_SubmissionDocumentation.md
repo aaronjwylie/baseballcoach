@@ -756,9 +756,11 @@ one sentence explains most of the rest:
 - anything before step 4 is binned by `discardUnpaidSubmission` on a refresh,
   once the idle window lapses, or on "Start over" — `submissionFiles` rows and
   bytes together;
-- `listSubmissions` and `findByCustomerEmail` both exclude the pre-payment
-  states, so nothing before step 4 reaches Yuta's queue or the customer's status
-  lookup;
+- **`listSubmissions` no longer excludes the pre-payment states** (2026-08-02).
+  It did, on the reasoning that an unfinished attempt isn't work — true, and not
+  the same as *not worth seeing*: a row at `draft` is someone filling in the form
+  right now. They clear themselves, since the abandonment sweep deletes unpaid
+  rows outright, and an **In progress** tab keeps them out of the paid work;
 - step 4 is also where the work changes hands, customer → Yuta. Those two facts
   landing on the same row isn't a coincidence.
 
