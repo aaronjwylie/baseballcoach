@@ -8,7 +8,6 @@
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
 import {
-  PAID_STATUSES,
   SUBMISSION_STATUSES,
   isReleased,
   type NewSubmission,
@@ -287,19 +286,24 @@ export async function listSubmissions(): Promise<Submission[]> {
     .select()
     .from(submissions)
     /*
-      **Derived from `isPaid`, never listed.**
+      **Everything, including the scratch pads.**
 
-      This was a hardcoded list of five statuses, written when the ladder had
-      seven rungs, and it silently stopped matching when the ladder grew to
-      sixteen: everything from `sent_to_coach` onward — including every
-      translation rung, and every submission the customer had actually collected
-      — vanished from Yuta's queue. Nothing failed; the rows just weren't there.
+      This filtered to paid submissions on the reasoning that an unfinished
+      attempt isn't work. True, but it isn't the same as "not worth seeing": a
+      row sitting at `draft` is someone filling in the form *right now*, and at
+      this volume that's the most interesting thing on the page. Hiding it also
+      made the queue silent during a QA run, which is when you least want it to
+      be.
 
-      It is the same failure the retention sweep had, and the same rule fixes it:
-      a question about the ladder is a predicate, not a list. Adding a rung now
-      changes what this returns without anyone having to remember it exists.
+      They age out on their own — the abandonment sweep deletes them outright,
+      row and files — so nothing accumulates. The queue's tabs separate them from
+      the paid work rather than a query doing it invisibly.
+
+      It was also a hardcoded list of five statuses, written when the ladder had
+      seven rungs, which silently stopped matching when it grew to sixteen and
+      hid everything from `sent_to_coach` onward. Whatever this returns should be
+      derived or unfiltered — never a list someone has to remember to update.
     */
-    .where(inArray(submissions.status, PAID_STATUSES))
     .orderBy(desc(submissions.submittedAt));
   return rows.map(fromRow);
 }

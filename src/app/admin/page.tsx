@@ -70,6 +70,20 @@ export const metadata: Metadata = {
  */
 const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] = [
   { key: "all", label: "All", match: (s) => !s.archivedAt },
+  {
+    key: "unpaid",
+    label: "In progress",
+    /*
+      Someone filling in the form right now, or stalled before paying.
+
+      Its own tab rather than hidden: at this volume a live attempt is the most
+      interesting thing on the page, and during a test run a queue that shows
+      nothing until money moves is a queue you can't follow. They clear
+      themselves — the abandonment sweep deletes them outright — so nothing
+      accumulates here.
+    */
+    match: (s) => !isPaid(s) && !s.archivedAt,
+  },
   { key: "new", label: "New", match: (s) => s.status === "new" && !s.archivedAt },
   {
     key: "assigned",
