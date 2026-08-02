@@ -7,6 +7,7 @@
  * the customer that their feedback is ready.
  */
 export { sendFeedbackReady } from "./api/feedbackEmail";
+export { signFeedbackToken, verifyFeedbackToken } from "./api/feedbackToken";
 export {
   saveFeedbackFile,
   recordFeedbackFile,

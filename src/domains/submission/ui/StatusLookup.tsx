@@ -175,7 +175,6 @@ const STATUS_META: Record<
 
 function StatusRow({ submission }: { submission: PublicSubmission }) {
   const meta = STATUS_META[submission.status];
-  const files = submission.feedbackFiles;
   return (
     <li className="rounded-2xl border border-line bg-white p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -193,26 +192,12 @@ function StatusRow({ submission }: { submission: PublicSubmission }) {
         </span>
       </div>
 
-      {files.length > 0 && (
-        <div className="mt-4 border-t border-line pt-4">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Your feedback ({files.length} file{files.length === 1 ? "" : "s"})
-          </div>
-          <ul className="flex flex-wrap gap-2">
-            {files.map((file) => (
-              <li key={file.id}>
-                <ButtonLink
-                  href={`/api/feedback/${file.id}`}
-                  size="md"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {file.filename}
-                </ButtonLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {submission.hasFeedback && (
+        // The download itself lives behind the unguessable link in the customer's
+        // email — never here, where anyone who typed the address would reach it.
+        <p className="mt-4 border-t border-line pt-4 text-sm text-ink-muted">
+          Your feedback is ready — we&apos;ve emailed you a private download link.
+        </p>
       )}
     </li>
   );

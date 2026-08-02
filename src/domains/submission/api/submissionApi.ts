@@ -17,7 +17,6 @@ import {
   type PublicSubmission,
 } from "../model/publicSubmission";
 import { fromRow } from "./submissionRow";
-import { listFeedbackFiles } from "./submissionFileApi";
 
 /**
  * Domain patch → Drizzle update values.
@@ -203,22 +202,14 @@ export async function findByCoach(coachId: string): Promise<Submission[]> {
   return rows.map(fromRow);
 }
 
-/** The status-lookup read: a customer's submissions, trimmed to what's safe. */
+/** The status-lookup read: a customer's submissions, trimmed to what's safe.
+ * Feedback files are deliberately not exposed here — delivery rides on the
+ * signed link in the customer's email, not on this email lookup. */
 export async function lookupPublicSubmissions(
   email: string,
 ): Promise<PublicSubmission[]> {
   const submissionsForEmail = await findByCustomerEmail(email);
-  return Promise.all(
-    submissionsForEmail.map(async (submission) => {
-      // Only a completed review has feedback to hand over; skip the query for
-      // everything still in flight.
-      const feedbackFiles =
-        submission.status === "complete"
-          ? await listFeedbackFiles(submission.id)
-          : [];
-      return toPublicSubmission(submission, feedbackFiles);
-    }),
-  );
+  return submissionsForEmail.map(toPublicSubmission);
 }
 
 /**

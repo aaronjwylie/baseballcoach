@@ -24,6 +24,7 @@ import {
 } from "@/domains/submission";
 import { env } from "@/shared/config/env";
 import { sendFeedbackReady } from "./feedbackEmail";
+import { signFeedbackToken } from "./feedbackToken";
 
 /**
  * Save a feedback file the bytes of which came through us — the dev proxy path,
@@ -92,11 +93,13 @@ export async function approveAndComplete(
   });
 
   if (updated.customerEmail) {
-    // Multiple files now, so the email points at the status page — the customer
-    // looks up their email and downloads each file — rather than one deep link.
+    // An unguessable, signed capability link — not the email-lookup page, which
+    // anyone who guessed an address could use to collect a stranger's feedback.
+    // The link lands on a page that lists every file for this one submission.
+    const token = await signFeedbackToken(updated.id);
     await sendFeedbackReady(
       updated.customerEmail,
-      `${env.siteUrl}/status`,
+      `${env.siteUrl}/feedback/${token}`,
       updated.playerName,
     );
   }

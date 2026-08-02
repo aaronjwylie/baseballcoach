@@ -64,8 +64,16 @@ flowchart LR
 > no longer advances the submission; a separate `sendFeedbackForApproval` (guarded to require
 > ≥1 file) parks it at `awaiting_approval`, and `approveAndComplete` (guarded the same way)
 > finishes it. `/api/feedback/[id]` now serves a feedback file **by the file's own id**, and
-> the customer's status page + the admin review both list every file. The feedback-ready email
-> points at `/status` rather than one deep link, since a review can be several files.
+> the admin review lists every file.
+>
+> **Delivery is an unguessable capability link, not the email lookup.** The "feedback is
+> ready" email carries a **signed token** (`signFeedbackToken`, one-year expiry, bound to
+> `purpose: "feedback"`) and points at `/feedback/<token>` — a public page that lists this one
+> submission's files. The status lookup (`/status`, email-as-identity) **no longer exposes the
+> feedback files at all**: it only reports that a review is ready and tells the customer to
+> check their email. That closes a real hole — before, anyone who guessed an email got the
+> download links straight from the lookup. `PublicSubmission` carries a `hasFeedback` flag now,
+> never the file ids.
 
 ## 2 · Where we are now — 2026-07-29
 
