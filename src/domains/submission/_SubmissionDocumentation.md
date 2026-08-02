@@ -547,6 +547,23 @@ that would otherwise look like oversights.
 
 ⚠️ **That blank has a cost, found in QA on 2026-08-02.** Because step 3 moves
 nothing, `awaiting_payment` spans both uploading *and* paying — and its name is
+only true for the second. A customer who had just verified his email showed as
+"awaiting payment", which reads as *we're waiting on his money* when we were
+waiting on his files.
+
+The server can't tell the two apart: the payment intent id isn't stored until
+payment succeeds, so nothing marks "reached step 4". What it *can* see is whether
+any files have arrived, so the queue's pill says that instead — **"Verified —
+uploading"** with none, **"Uploaded N — not paid"** with some. It reports what is
+known rather than guessing which screen someone is on.
+
+**The rung is unchanged.** Renaming the enum would be a migration to fix a label,
+and the label was what was wrong. Worth revisiting only if step 3 ever earns a
+rung of its own — which the note above still argues against.
+
+
+⚠️ **That blank has a cost, found in QA on 2026-08-02.** Because step 3 moves
+nothing, `awaiting_payment` spans both uploading *and* paying — and its name is
 only true for the second. A customer who had just verified their email showed as
 "awaiting payment", which reads as *we're waiting on their money* when we were
 waiting on their files.
