@@ -57,6 +57,13 @@
       "when": 1785627749747,
       "tag": "0007_same_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785632252366,
+      "tag": "0008_naive_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }

@@ -2,25 +2,35 @@
  * Files attached to a submission — everything the app does to the
  * `submission_files` table.
  *
- * The table holds two kinds, kept apart by the `kind` column: `submission` (the
- * customer's uploads) and `feedback` (the coach's response files). Every read
- * here is scoped to one kind, so the two never bleed together. Customer uploads
- * are emptied (not deleted) by the retention sweep; **feedback files are never
- * swept** — the customer's download depends on them.
+ * The table holds **four kinds** (the four folders), kept apart by the `kind`
+ * column — `intake` and `intake_translation` for what the customer sent,
+ * `response` and `response_translation` for what the coach wrote back. Every
+ * read here is scoped to one side, so the two never bleed together.
+ *
+ * **Reads scope by *side*, not by a single kind.** "The customer's files" means
+ * the originals *and* their translation, because a translation sits beside its
+ * original rather than replacing it. `INTAKE_KINDS` / `RESPONSE_KINDS` carry
+ * that, so adding a fifth kind can't silently fall out of a query.
+ *
+ * ⚠️ Retention: today the sweep empties intake files only. The settled northstar
+ * is that **everything is swept together** — safe because the clock cannot start
+ * until the customer has collected. That lands with Phase 6 of the rollout plan;
+ * until then this file's behaviour is the old rule.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, submissionFiles } from "@/shared/db";
-import type {
-  NewSubmissionFile,
-  SubmissionFile,
+import {
+  INTAKE_KINDS,
+  RESPONSE_KINDS,
+  type FileKind,
+  type NewSubmissionFile,
+  type SubmissionFile,
 } from "../model/submissionFile";
 import { fromFileRow } from "./submissionRow";
 
-export type FileKind = "submission" | "feedback";
-
 export async function addSubmissionFile(
   input: NewSubmissionFile,
-  kind: FileKind = "submission",
+  kind: FileKind = "intake",
 ): Promise<SubmissionFile> {
   const [row] = await db
     .insert(submissionFiles)
@@ -36,7 +46,7 @@ export async function addSubmissionFile(
   return fromFileRow(row);
 }
 
-/** One submission's customer files, oldest first. */
+/** One submission's intake files — originals and translations — oldest first. */
 export async function listSubmissionFiles(
   submissionId: string,
 ): Promise<SubmissionFile[]> {
@@ -46,14 +56,14 @@ export async function listSubmissionFiles(
     .where(
       and(
         eq(submissionFiles.submissionId, submissionId),
-        eq(submissionFiles.kind, "submission"),
+        inArray(submissionFiles.kind, INTAKE_KINDS),
       ),
     )
     .orderBy(asc(submissionFiles.uploadedAt));
   return rows.map(fromFileRow);
 }
 
-/** One submission's coach-feedback files, oldest first. */
+/** One submission's response files — the coach's, translated or not. */
 export async function listFeedbackFiles(
   submissionId: string,
 ): Promise<SubmissionFile[]> {
@@ -63,7 +73,7 @@ export async function listFeedbackFiles(
     .where(
       and(
         eq(submissionFiles.submissionId, submissionId),
-        eq(submissionFiles.kind, "feedback"),
+        inArray(submissionFiles.kind, RESPONSE_KINDS),
       ),
     )
     .orderBy(asc(submissionFiles.uploadedAt));
@@ -71,7 +81,7 @@ export async function listFeedbackFiles(
 }
 
 /**
- * Customer files for several submissions at once — the portal's read. One query
+ * Intake files for several submissions at once — the portal's read. One query
  * for a whole page; the caller groups by `submissionId`.
  */
 export async function listFilesForSubmissions(
@@ -86,7 +96,7 @@ export async function listFilesForSubmissions(
     .where(
       and(
         inArray(submissionFiles.submissionId, submissionIds),
-        eq(submissionFiles.kind, "submission"),
+        inArray(submissionFiles.kind, INTAKE_KINDS),
       ),
     )
     .orderBy(asc(submissionFiles.uploadedAt));
@@ -111,7 +121,13 @@ export async function getSubmissionFile(
   return row ? fromFileRow(row) : null;
 }
 
-/** How many customer files a submission carries — checked against the limit. */
+/**
+ * How many files the customer has attached — checked against the upload limit.
+ *
+ * Counts `intake` only, not its translation: the limit is a promise to the
+ * customer about what *they* may send, and Yuta's translations must not eat into
+ * it.
+ */
 export async function countSubmissionFiles(
   submissionId: string,
 ): Promise<number> {
@@ -121,7 +137,7 @@ export async function countSubmissionFiles(
     .where(
       and(
         eq(submissionFiles.submissionId, submissionId),
-        eq(submissionFiles.kind, "submission"),
+        eq(submissionFiles.kind, "intake"),
       ),
     );
   return rows.length;
@@ -129,7 +145,9 @@ export async function countSubmissionFiles(
 
 /**
  * Forget the bytes, keep the record — the retention sweep, once the storage
- * object is gone. Only customer uploads; feedback files are never swept.
+ * object is gone.
+ *
+ * ⚠️ Intake only, for now. Phase 6 widens this to every kind.
  */
 export async function clearFileLocators(submissionId: string): Promise<void> {
   await db
@@ -138,7 +156,7 @@ export async function clearFileLocators(submissionId: string): Promise<void> {
     .where(
       and(
         eq(submissionFiles.submissionId, submissionId),
-        eq(submissionFiles.kind, "submission"),
+        inArray(submissionFiles.kind, INTAKE_KINDS),
       ),
     );
 }

@@ -15,7 +15,11 @@
 import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import type { JWTPayload } from "jose";
-import { findByCustomerEmail, listFeedbackFiles } from "@/domains/submission";
+import {
+  findByCustomerEmail,
+  isReleased,
+  listFeedbackFiles,
+} from "@/domains/submission";
 import { sendFeedbackViewCode } from "./feedbackEmail";
 
 export const FEEDBACK_CODE_COOKIE = "bs_fbcode";
@@ -54,7 +58,7 @@ export async function issueFeedbackViewCode(
 ): Promise<PendingFeedbackCode | null> {
   const email = emailRaw.trim().toLowerCase();
   const submissions = await findByCustomerEmail(email);
-  if (!submissions.some((s) => s.status === "complete")) return null;
+  if (!submissions.some(isReleased)) return null;
 
   const code = generateCode();
   const hash = await bcrypt.hash(code, 10);
@@ -98,7 +102,7 @@ export async function listFeedbackForEmail(
   const submissions = await findByCustomerEmail(email);
   const groups: FeedbackGroup[] = [];
   for (const submission of submissions) {
-    if (submission.status !== "complete") continue;
+    if (!isReleased(submission)) continue;
     const files = (await listFeedbackFiles(submission.id)).filter(
       (f) => !!f.fileUrl,
     );

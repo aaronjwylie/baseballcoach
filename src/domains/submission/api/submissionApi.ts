@@ -17,6 +17,7 @@ import {
   type PublicSubmission,
 } from "../model/publicSubmission";
 import { fromRow } from "./submissionRow";
+import { recordSubmissionEvent } from "./submissionEventApi";
 
 /**
  * Domain patch → Drizzle update values.
@@ -50,35 +51,83 @@ function toUpdateValues(
   return v;
 }
 
+/**
+ * Create a submission, and open its trail.
+ *
+ * The first rung is an event like any other: a history that begins at the second
+ * transition can't answer "when did this start", which is the question most often
+ * asked of a stalled submission.
+ */
 export async function createSubmission(
   input: NewSubmission,
 ): Promise<Submission> {
-  const [row] = await db
-    .insert(submissions)
-    .values({
-      customerEmail: input.customerEmail.trim().toLowerCase(),
-      playerName: input.playerName,
-      playerAge: input.playerAge,
-      focus: input.focus,
-      customerNotes: input.customerNotes,
-      status: input.status ?? "draft",
-      stripePaymentId: input.stripePaymentId,
-      stripeAmount: input.stripeAmount,
-    })
-    .returning();
-  return fromRow(row);
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(submissions)
+      .values({
+        customerEmail: input.customerEmail.trim().toLowerCase(),
+        playerName: input.playerName,
+        playerAge: input.playerAge,
+        focus: input.focus,
+        customerNotes: input.customerNotes,
+        status: input.status ?? "draft",
+        stripePaymentId: input.stripePaymentId,
+        stripeAmount: input.stripeAmount,
+      })
+      .returning();
+
+    await recordSubmissionEvent(tx, row.id, row.status);
+    return fromRow(row);
+  });
 }
 
+/**
+ * The one write path — and therefore the one place a transition is stamped.
+ *
+ * Every status change in the app funnels through here, so the trail is written
+ * *here* rather than at each caller. A caller that forgets to log would leave a
+ * status nobody can account for, and there is no way to notice that later.
+ *
+ * The read-before-write costs one extra query, and only when the patch carries a
+ * status. It buys the difference between "this transition happened" and "someone
+ * asked for this status again" — a redelivered webhook, or a double-clicked
+ * button, sets the same value and must not appear in the history as a second
+ * event.
+ *
+ * Both statements share a transaction: `submissions.status` and its trail cannot
+ * disagree, even if the process dies between them.
+ *
+ * `note` is carried for the operator overrides, which owe an explanation.
+ */
 export async function updateSubmission(
   id: string,
   patch: SubmissionPatch,
+  note?: string,
 ): Promise<Submission> {
-  const [row] = await db
-    .update(submissions)
-    .set({ ...toUpdateValues(patch), updatedAt: new Date() })
-    .where(eq(submissions.id, id))
-    .returning();
-  return fromRow(row);
+  return db.transaction(async (tx) => {
+    const previous =
+      patch.status === undefined
+        ? undefined
+        : (
+            await tx
+              .select({ status: submissions.status })
+              .from(submissions)
+              .where(eq(submissions.id, id))
+              .limit(1)
+          )[0]?.status;
+
+    const [row] = await tx
+      .update(submissions)
+      .set({ ...toUpdateValues(patch), updatedAt: new Date() })
+      .where(eq(submissions.id, id))
+      .returning();
+
+    if (patch.status !== undefined && patch.status !== previous) {
+      await recordSubmissionEvent(tx, id, patch.status, note);
+    }
+
+    return fromRow(row);
+  });
 }
 
 /**

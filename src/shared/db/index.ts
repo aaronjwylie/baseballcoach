@@ -10,7 +10,9 @@ export {
   coaches,
   submissions,
   submissionFiles,
+  submissionEvents,
   settings,
+  fileKind,
   focus,
   submissionStatus,
   userRole,
@@ -22,5 +24,6 @@ export type {
   NewSubmissionRow,
   SubmissionFileRow,
   NewSubmissionFileRow,
+  SubmissionEventRow,
   SettingsRow,
 } from "./schema";

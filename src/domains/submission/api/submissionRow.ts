@@ -41,7 +41,10 @@ export function fromFileRow(row: SubmissionFileRow): SubmissionFile {
     contentType: row.contentType,
     sizeBytes: row.sizeBytes,
     fileUrl: row.fileUrl ?? undefined,
-    kind: row.kind === "feedback" ? "feedback" : "submission",
+    // The column is the `file_kind` enum, so the row already carries one of the
+    // four values — no narrowing needed, and no default that could mask a
+    // mismatch between the enum and the union.
+    kind: row.kind,
     uploadedAt: row.uploadedAt?.toISOString(),
   };
 }

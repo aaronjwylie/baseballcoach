@@ -861,7 +861,42 @@ rollout plan and resolved in its Phase 6:
   has been told, not that the coach has started". The coach's first download is that
   missing event.
 
-## 3 · Where we are now — 2026-07-31
+## 3 · Where we are now — 2026-08-01
+
+**Phase 1 of the rollout landed today** — the ladder, the trail, and the four
+folders' foundation. What that means in this slice:
+
+- ✅ **Sixteen statuses**, in ladder order, enforced by the `submission_status`
+  enum (migration `0008`). The enum's own ordering matches the ladder's, so
+  `ORDER BY status` means "how far along" without a lookup table.
+- ✅ **`submission_events`** — one row per transition, written inside the same
+  transaction as the update that caused it. `listSubmissionEvents` reads a
+  submission's history oldest-first, with the operator who caused each move.
+- ✅ **`updateSubmission` is the one place a transition is stamped.** It reads the
+  previous status first, so setting the same value twice — a redelivered webhook,
+  a double-clicked button — writes no second event.
+- ✅ **Four file kinds** (`intake` · `intake_translation` · `response` ·
+  `response_translation`), now a DB enum rather than free text. Reads scope by
+  *side* (`INTAKE_KINDS` / `RESPONSE_KINDS`), because "the customer's files" means
+  the originals **and** their translation.
+- ✅ **Four derived predicates**, each an exhaustive `Record`: `isPaid`,
+  `hasResponse`, `isReleased`, `isWithCoach`.
+
+**The predicates are the part worth understanding.** Thirteen call sites asked
+"may the customer see this?" by writing `status === "complete"`. That was true
+until `collected` existed — and then it becomes false *the moment a customer
+downloads*, revoking their own access by using it. No type error, no test failure,
+nothing to notice. `isReleased` is the fix, and the general rule it carries:
+**a question about the ladder is a predicate, never a comparison.**
+
+- 🔶 **Actors are recorded only where a session exists.** Admin and coach
+  transitions carry `actorId`; the customer's four steps and the cron write null,
+  which is correct — neither is logged in.
+- ❌ **Nothing reads the trail yet.** `listSubmissionEvents` is built and exported;
+  no UI shows a submission's history. That arrives with the operator override in
+  Phase 5, which is the first feature that needs it.
+
+---
 
 - ✅ **On Postgres via Drizzle.** `Submission`, `NewSubmission`, `SubmissionPatch`, the
   `submission_status`/`focus` enums, and the `api/submissionRow.ts` mapper.

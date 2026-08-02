@@ -143,6 +143,21 @@ export function StatusLookup() {
  * telling a parent their video is "unassigned" is alarming and not actionable.
  * They collapse into honest, calm language about where the submission actually is.
  */
+/**
+ * The two sentences most of the ladder collapses into. Named constants rather
+ * than repeated literals so a wording change lands everywhere at once — eleven
+ * of the sixteen rungs share one of these.
+ */
+const WITH_YOUR_COACH = {
+  label: "With your coach",
+  className: "bg-blue-50 text-blue-700 border-blue-200",
+} as const;
+
+const READY = {
+  label: "Feedback ready",
+  className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+} as const;
+
 const STATUS_META: Record<
   PublicSubmission["status"],
   { label: string; className: string }
@@ -150,6 +165,12 @@ const STATUS_META: Record<
   // A draft never reaches the lookup — `findByCustomerEmail` filters it out —
   // but the map is exhaustive so a new status can't be added without deciding
   // what a customer should be told about it.
+  //
+  // **Sixteen operator states collapse into five customer ones.** A parent has
+  // no use for `response_translating`; they want to know whether it has arrived,
+  // whether it's being worked on, and whether they can still download it. Every
+  // middle rung is therefore the same sentence, deliberately — the collapse is
+  // the feature, not laziness.
   draft: {
     label: "Not finished",
     className: "bg-amber-50 text-amber-700 border-amber-200",
@@ -158,28 +179,39 @@ const STATUS_META: Record<
     label: "Awaiting payment",
     className: "bg-amber-50 text-amber-700 border-amber-200",
   },
+  // Not "video received" — a submission is a pack of files, and naming it after
+  // one of them is how the old single-video model kept creeping back.
   new: {
-    label: "Video received",
+    label: "Received",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
-  assigned: {
-    label: "With your coach",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
+
+  // Everything between assignment and release is one sentence to the customer.
+  // Translation and Yuta's approval check are internal steps; surfacing them
+  // would invite questions the parent can't act on.
+  assigned: WITH_YOUR_COACH,
+  intake_translating: WITH_YOUR_COACH,
+  intake_translated: WITH_YOUR_COACH,
+  sent_to_coach: WITH_YOUR_COACH,
+  in_review: WITH_YOUR_COACH,
+  awaiting_approval: WITH_YOUR_COACH,
+  response_translating: WITH_YOUR_COACH,
+  response_translated: WITH_YOUR_COACH,
+
+  // Ready to collect. `resolved` is Yuta closing his side of the job — nothing
+  // changes for the customer, who can still download.
+  complete: READY,
+  collected: READY,
+  resolved: READY,
+
+  // The one middle state worth surfacing: it changes what they should *do*.
+  purge_imminent: {
+    label: "Ready — expiring soon",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
   },
-  in_review: {
-    label: "With your coach",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  // The coach has submitted; Yuta is doing a final check before it's released.
-  // The customer doesn't need to know about that internal step — still "with
-  // your coach" from their side, until it's actually ready.
-  awaiting_approval: {
-    label: "With your coach",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  complete: {
-    label: "Feedback ready",
-    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  purged: {
+    label: "No longer available",
+    className: "bg-stone-50 text-stone-600 border-stone-200",
   },
 };
 

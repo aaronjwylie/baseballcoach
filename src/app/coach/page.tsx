@@ -10,6 +10,9 @@ import {
   SubmissionFileList,
   type Submission,
   type SubmissionFile,
+  hasResponse,
+  isReleased,
+  isWithCoach,
 } from "@/domains/submission";
 import { FeedbackUpload } from "@/domains/feedback";
 import type { UploadMode } from "@/domains/upload/ui/uploadTransport";
@@ -35,7 +38,7 @@ export default async function CoachHomePage() {
   // A coach's work is "open" until they hand it to Yuta; once sent it's awaiting
   // approval (or delivered), and out of their hands.
   const open = submissions.filter(
-    (s) => s.status === "assigned" || s.status === "in_review",
+    isWithCoach,
   );
 
   // Feedback files a coach has already attached to an open submission but not yet
@@ -49,7 +52,7 @@ export default async function CoachHomePage() {
     ),
   );
   const done = submissions.filter(
-    (s) => s.status === "awaiting_approval" || s.status === "complete",
+    hasResponse,
   );
 
   return (
@@ -99,7 +102,7 @@ export default async function CoachHomePage() {
                     {s.playerName}
                     {s.focus ? <span className="text-ink-muted"> · {s.focus}</span> : null}
                   </span>
-                  {s.status === "complete" ? (
+                  {isReleased(s) ? (
                     <span className="font-semibold text-emerald-600">Delivered ✓</span>
                   ) : (
                     <span className="font-semibold text-purple-600">Awaiting review</span>

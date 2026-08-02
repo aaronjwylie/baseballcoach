@@ -11,6 +11,7 @@ import {
   archiveSubmission,
   getSubmission,
   unarchiveSubmission,
+  isReleased,
 } from "@/domains/submission";
 import { approveAndComplete } from "@/domains/feedback";
 
@@ -21,7 +22,7 @@ export async function archiveSubmissionAction(formData: FormData): Promise<void>
 
   const submission = await getSubmission(id);
   // Only completed work is archivable, and never twice.
-  if (!submission || submission.status !== "complete" || submission.archivedAt) {
+  if (!submission || !isReleased(submission) || submission.archivedAt) {
     return;
   }
 

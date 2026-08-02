@@ -14,7 +14,7 @@
  *
  * **Adding a field here is a security decision**, not a convenience one.
  */
-import type { Submission, SubmissionStatus } from "./submission";
+import { isReleased, type Submission, type SubmissionStatus } from "./submission";
 
 export interface PublicSubmission {
   playerName: string;
@@ -34,6 +34,9 @@ export function toPublicSubmission(submission: Submission): PublicSubmission {
     focus: submission.focus,
     status: submission.status,
     submittedAt: submission.submittedAt,
-    hasFeedback: submission.status === "complete",
+    // Not `status === "complete"`: collecting moves the submission to
+    // `collected`, so a literal comparison would revoke the customer's access
+    // the moment they used it.
+    hasFeedback: isReleased(submission),
   };
 }

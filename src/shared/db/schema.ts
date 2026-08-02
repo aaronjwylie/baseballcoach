@@ -6,9 +6,10 @@
  * drizzle-kit maps them to snake_case columns, so the app reads camelCase and
  * the database stays idiomatic SQL. No other file spells a column name.
  *
- * Five tables: `users` (operator logins), `coaches` (the people who review),
- * `submissions` (the spine — one row per request), `submissionFiles` (what the
- * customer uploaded, one row per file), and `settings` (the operator's knobs).
+ * Six tables: `users` (operator logins), `coaches` (the people who review),
+ * `submissions` (the spine — one row per request), `submissionFiles` (the files,
+ * both directions, discriminated by `kind`), `submissionEvents` (one row per
+ * status transition — the trail), and `settings` (the operator's knobs).
  */
 import {
   pgTable,
@@ -32,24 +33,54 @@ export const focus = pgEnum("focus", [
 ]);
 
 /**
- * The submission lifecycle, in order.
+ * The submission lifecycle — **the ladder**. Sixteen rungs, in order.
  *
- * The customer flow writes the first three — `draft` when they give us player
- * details, `awaiting_payment` once their email is verified, `new` when the
- * payment clears. The portal drives the rest.
+ * Mirrors `SUBMISSION_STATUSES` in `domains/submission/model/submission.ts`,
+ * which carries the full account of what each rung means. Keep the two in step:
+ * this is the storage spelling, that one is the vocabulary.
  *
- * `awaiting_upload` is gone: upload now happens *before* payment, so a state
- * meaning "paid but no file yet" can no longer occur. The migration maps the
- * rows that had it onto `draft`.
+ * A path with branches, not a progress bar — the four `*_translating` /
+ * `*_translated` rungs are only touched when a coach needs a translation.
+ *
+ * `awaiting_upload` is gone: upload happens *before* payment, so a state meaning
+ * "paid but no file yet" can no longer occur.
  */
 export const submissionStatus = pgEnum("submission_status", [
   "draft",
   "awaiting_payment",
   "new",
   "assigned",
+  "intake_translating",
+  "intake_translated",
+  "sent_to_coach",
   "in_review",
   "awaiting_approval",
+  "response_translating",
+  "response_translated",
   "complete",
+  "collected",
+  "resolved",
+  "purge_imminent",
+  "purged",
+]);
+
+/**
+ * What a stored file *is* — the four folders, as one column.
+ *
+ * **Nouns, deliberately** (`_NomenclatureLaw.md` §2): a kind answers *what is
+ * this file*, while a status answers *what has happened*. That's why the kind is
+ * `intake_translation` and the status is `intake_translated` — one stem, two
+ * axes, no ambiguity at the call site.
+ *
+ * `intake` = what the customer sent · `response` = what the coach wrote back.
+ * Each has a translated counterpart, uploaded by Yuta and stored beside the
+ * original rather than replacing it.
+ */
+export const fileKind = pgEnum("file_kind", [
+  "intake",
+  "intake_translation",
+  "response",
+  "response_translation",
 ]);
 
 // Operator roles. Customers never get a user row.
@@ -151,9 +182,8 @@ export const submissionFiles = pgTable(
     contentType: text().notNull(),
     sizeBytes: integer().notNull(),
     fileUrl: text(),
-    // `submission` = the customer's uploads; `feedback` = the coach's response
-    // files. One table, two roles, kept apart by this discriminator.
-    kind: text().notNull().default("submission"),
+    // One table, four roles, kept apart by this discriminator. See `fileKind`.
+    kind: fileKind().notNull().default("intake"),
     uploadedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("submission_files_submission_id_idx").on(table.submissionId)],
@@ -167,6 +197,39 @@ export const submissionFiles = pgTable(
  * developer's configuration, these are the operator's. `id` is fixed so the
  * table cannot grow a second row.
  */
+/**
+ * One row per status transition — **the trail**.
+ *
+ * Chosen over sixteen nullable `*At` columns on `submissions`, and it answers
+ * strictly more: a column can only remember one moment, so a submission Yuta
+ * resets and which then reaches the same rung twice loses one of them. This
+ * keeps both, in order, with who caused each.
+ *
+ * `submissions.status` stays as the *current* value, so every existing query is
+ * unaffected — this is the history beside it, not a replacement for it.
+ *
+ * `actorId` is null when nobody was logged in: the customer, or the cron.
+ */
+export const submissionEvents = pgTable(
+  "submission_events",
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    submissionId: uuid()
+      .notNull()
+      .references(() => submissions.id, { onDelete: "cascade" }),
+    status: submissionStatus().notNull(),
+    at: timestamp({ withTimezone: true }).defaultNow().notNull(),
+    // Null for the customer and the scheduled sweep — neither has a login.
+    actorId: uuid().references(() => users.id, { onDelete: "set null" }),
+    // Why, for the operator overrides that need a reason.
+    note: text(),
+  },
+  (table) => [
+    // Read as "this submission's history, oldest first".
+    index("submission_events_submission_id_idx").on(table.submissionId),
+  ],
+);
+
 export const settings = pgTable("settings", {
   id: text().primaryKey().default("default"),
   /** What the customer pays per review, in cents. Operator-tunable. */
@@ -187,5 +250,6 @@ export type CoachRow = typeof coaches.$inferSelect;
 export type SubmissionRow = typeof submissions.$inferSelect;
 export type NewSubmissionRow = typeof submissions.$inferInsert;
 export type SubmissionFileRow = typeof submissionFiles.$inferSelect;
+export type SubmissionEventRow = typeof submissionEvents.$inferSelect;
 export type NewSubmissionFileRow = typeof submissionFiles.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;

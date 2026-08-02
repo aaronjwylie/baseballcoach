@@ -132,18 +132,52 @@ so they run in parallel — the constraint is only on the order they *finish*.
 
 ---
 
-## Phase 1 · The spine of record
+## Phase 1 · The spine of record — ✅ **shipped 2026-08-01**
 
 **Schema only. Nothing visible changes; almost everything after depends on it.**
 
-| | Ships | Size |
+| | Ships | |
 | --- | --- | --- |
-| 1.1 | Status enum: seven values → sixteen | M |
-| 1.2 | `submission_events` table — `submissionId` · `status` · `at` · `actorId` · `note` | M |
-| 1.3 | Every existing transition writes an event | S |
-| 1.4 | `submissionFiles.kind`: rename `submission`→`intake`, `feedback`→`response`, then extend to four | S — *no real rows; rename freely* |
-| 1.5 | The paid-ness `Record` answers all sixteen | S — *the compiler enforces it* |
-| 1.6 | The customer status lookup collapses sixteen states into calm language, in **one function** | S |
+| 1.1 | Status enum: seven values → sixteen | ✅ migration `0008` |
+| 1.2 | `submission_events` table — `submissionId` · `status` · `at` · `actorId` · `note` | ✅ |
+| 1.3 | Every existing transition writes an event | ✅ in `updateSubmission`, the one write path |
+| 1.4 | `submissionFiles.kind`: rename `submission`→`intake`, `feedback`→`response`, then extend to four | ✅ now a `file_kind` enum |
+| 1.5 | The paid-ness `Record` answers all sixteen | ✅ — **and three more like it** |
+| 1.6 | The customer status lookup collapses sixteen states into calm language | ✅ eleven rungs → one sentence |
+
+### What the build surfaced that the plan didn't
+
+**The hazard was worse than "grep before, not after".** Thirteen call sites compared
+`status === "complete"` to mean *the customer may see this*. The moment `collected`
+exists, that comparison goes false **the instant a customer downloads** — they would
+have revoked their own access by using it. None of it is a type error; all of it is
+silent.
+
+The fix is the `isPaid` lesson applied three more times: **derived predicates over
+literal comparisons**, each an exhaustive `Record<SubmissionStatus, boolean>` so a
+new rung can't be added without answering.
+
+| Predicate | Asks | Replaces |
+| --- | --- | --- |
+| `isReleased` | may the customer see it? | `status === "complete"` (13 sites) |
+| `hasResponse` | has the coach delivered? | `awaiting_approval \|\| complete` |
+| `isWithCoach` | is it on a coach's desk? | `assigned \|\| in_review` |
+
+**The actor is read from the session, not passed in.** Every caller would otherwise
+have to remember a parameter, and the one that forgets writes an anonymous event
+indistinguishable from a legitimate one. Reading it inside the event writer makes the
+right answer the default; null is meaningful — the customer and the cron genuinely
+have no session.
+
+**The trail is transactional, not best-effort.** `updateSubmission` reads the
+previous status, writes, and stamps, all in one transaction — so the history cannot
+disagree with `submissions.status`, and a *repeated* set (a redelivered webhook, a
+double-clicked button) produces no second event. That read-before-write is the extra
+query earning its place.
+
+**Verified** by walking one submission through all sixteen rungs: twelve changes
+produced twelve events, a repeat produced none, a non-status patch produced none,
+ordering held, and the events cascaded on delete.
 
 **Why first:** three later phases say "the status moves to X". None can be built
 honestly against an enum that can't say X.

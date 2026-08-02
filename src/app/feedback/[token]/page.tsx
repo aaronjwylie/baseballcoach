@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Container, ButtonLink } from "@/shared/ui";
-import { getSubmission, listFeedbackFiles, formatFileSize } from "@/domains/submission";
+import {
+  formatFileSize,
+  getSubmission,
+  isReleased,
+  listFeedbackFiles,
+} from "@/domains/submission";
 import { verifyFeedbackToken } from "@/domains/feedback";
 
 export const metadata: Metadata = {
@@ -27,7 +32,7 @@ export default async function FeedbackPage({
   const submissionId = await verifyFeedbackToken(token);
   const submission = submissionId ? await getSubmission(submissionId) : null;
   const files =
-    submission && submission.status === "complete"
+    submission && isReleased(submission)
       ? (await listFeedbackFiles(submission.id)).filter((f) => !!f.fileUrl)
       : [];
 

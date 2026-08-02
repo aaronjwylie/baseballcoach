@@ -9,6 +9,8 @@ import {
   type Submission,
   type SubmissionFile,
   type SubmissionStatus,
+  hasResponse,
+  isReleased,
 } from "@/domains/submission";
 import {
   listCoaches,
@@ -39,27 +41,77 @@ const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }
   awaiting_payment: { text: "Awaiting payment", className: "bg-amber-50 text-amber-700 border-amber-200" },
   new: { text: "New — needs a coach", className: "bg-blue-50 text-blue-700 border-blue-200" },
   assigned: { text: "Assigned", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  // The two translation pairs read as "out" / "back" rather than naming the
+  // status, because that's the question being asked of the row.
+  intake_translating: { text: "Files out for translation", className: "bg-sky-50 text-sky-700 border-sky-200" },
+  intake_translated: { text: "Files translated", className: "bg-sky-50 text-sky-700 border-sky-200" },
+  // The distinction `sent_to_coach` exists to make: emailed, but not collected.
+  // This is the row Yuta chases.
+  sent_to_coach: { text: "Sent — not picked up", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   in_review: { text: "In review", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
   awaiting_approval: { text: "Coach submitted", className: "bg-purple-50 text-purple-700 border-purple-200" },
-  complete: { text: "Complete", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  response_translating: { text: "Response out for translation", className: "bg-sky-50 text-sky-700 border-sky-200" },
+  response_translated: { text: "Response translated", className: "bg-sky-50 text-sky-700 border-sky-200" },
+  complete: { text: "Sent — not collected", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  collected: { text: "Collected", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  resolved: { text: "Resolved", className: "bg-stone-50 text-stone-600 border-stone-200" },
+  purge_imminent: { text: "Deleting in 7 days", className: "bg-amber-50 text-amber-700 border-amber-200" },
+  purged: { text: "Files purged", className: "bg-stone-50 text-stone-600 border-stone-200" },
 };
 
 /**
  * The filter tabs above the table — "all" plus one per status the queue can
  * actually contain, then "Archived".
  *
- * Archiving is a separate dimension from status: an archived submission is still
- * `complete`, so every non-archived tab (including "All") excludes it, and only
- * "Archived" shows it. There is no "awaiting upload" tab — files arrive before
- * payment, so that state no longer exists and never reaches this queue.
+ * Archiving is a separate dimension from status: an archived submission still
+ * sits somewhere on the ladder, so every non-archived tab (including "All")
+ * excludes it, and only "Archived" shows it. There is no "awaiting upload" tab —
+ * files arrive before payment, so that state no longer exists.
+ *
+ * **Not one tab per rung.** Sixteen tabs would be a worse queue than seven; a
+ * tab earns its place by answering "what needs me?", which is why the translation
+ * rungs are folded into their neighbours and `sent_to_coach` gets its own — it's
+ * the one that means *chase somebody*.
  */
 const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] = [
   { key: "all", label: "All", match: (s) => !s.archivedAt },
   { key: "new", label: "New", match: (s) => s.status === "new" && !s.archivedAt },
-  { key: "assigned", label: "Assigned", match: (s) => s.status === "assigned" && !s.archivedAt },
+  {
+    key: "assigned",
+    label: "Assigned",
+    // Assignment through translation — the coach has it on their desk but
+    // hasn't been handed anything yet.
+    match: (s) =>
+      (s.status === "assigned" ||
+        s.status === "intake_translating" ||
+        s.status === "intake_translated") &&
+      !s.archivedAt,
+  },
+  {
+    key: "sent_to_coach",
+    label: "Not picked up",
+    // The row that means someone is waiting on a person. Its own tab because
+    // that's the whole reason the rung exists.
+    match: (s) => s.status === "sent_to_coach" && !s.archivedAt,
+  },
   { key: "in_review", label: "In review", match: (s) => s.status === "in_review" && !s.archivedAt },
-  { key: "awaiting_approval", label: "Coach submitted", match: (s) => s.status === "awaiting_approval" && !s.archivedAt },
-  { key: "complete", label: "Complete", match: (s) => s.status === "complete" && !s.archivedAt },
+  {
+    key: "awaiting_approval",
+    label: "Coach submitted",
+    // Delivered, plus the response-translation pair — all of it is waiting on
+    // Yuta and none of it has reached the customer.
+    match: (s) =>
+      (s.status === "awaiting_approval" ||
+        s.status === "response_translating" ||
+        s.status === "response_translated") &&
+      !s.archivedAt,
+  },
+  {
+    key: "complete",
+    label: "Sent",
+    // Everything released, whether or not the customer has collected it yet.
+    match: (s) => isReleased(s) && !s.archivedAt,
+  },
   { key: "archived", label: "Archived", match: (s) => !!s.archivedAt },
 ];
 
@@ -83,10 +135,7 @@ export default async function AdminHomePage({
   const feedbackBySubmission = new Map(
     await Promise.all(
       rows
-        .filter(
-          (s) =>
-            s.status === "awaiting_approval" || s.status === "complete",
-        )
+        .filter(hasResponse)
         .map(async (s) => [s.id, await listFeedbackFiles(s.id)] as const),
     ),
   );
@@ -200,9 +249,7 @@ function SubmissionRow({
               className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
             />
           </div>
-        ) : submission.status === "complete" ||
-          submission.status === "awaiting_approval" ||
-          submission.status === "in_review" ? (
+        ) : submission.status === "in_review" || hasResponse(submission) ? (
           // The coach is locked in once the review is under way (in_review) or
           // done — show the name, not a reassign dropdown, so notified work
           // can't be pulled out from under them. Any per-status action is below.
@@ -223,7 +270,7 @@ function SubmissionRow({
               </>
             )}
 
-            {submission.status === "complete" && (
+            {isReleased(submission) && (
               <>
                 <FeedbackFileLinks files={feedbackFiles} />
                 <RowActionForm

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getSubmission, getSubmissionFile } from "@/domains/submission";
+import {
+  getSubmission,
+  getSubmissionFile,
+  isResponse,
+  isReleased,
+} from "@/domains/submission";
 import { storage } from "@/shared/storage";
 import { readSession } from "@/shared/auth";
 
@@ -25,14 +30,14 @@ export async function GET(
 ) {
   const { id } = await ctx.params;
   const file = await getSubmissionFile(id);
-  if (!file || file.kind !== "feedback" || !file.fileUrl) {
+  if (!file || !isResponse(file) || !file.fileUrl) {
     return new Response("Not found", { status: 404 });
   }
 
   const isOperator = !!(await readSession());
   if (!isOperator) {
     const submission = await getSubmission(file.submissionId);
-    if (!submission || submission.status !== "complete") {
+    if (!submission || !isReleased(submission)) {
       return new Response("Not found", { status: 404 });
     }
   }

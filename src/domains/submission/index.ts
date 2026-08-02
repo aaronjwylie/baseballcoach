@@ -12,7 +12,10 @@ export {
   FOCUS_OPTIONS,
   PAID_STATUSES,
   SUBMISSION_STATUSES,
+  hasResponse,
   isPaid,
+  isReleased,
+  isWithCoach,
   type AppWrittenStatus,
   type Focus,
   type NewSubmission,
@@ -22,8 +25,14 @@ export {
 } from "./model/submission";
 
 export {
+  FILE_KINDS,
+  INTAKE_KINDS,
+  RESPONSE_KINDS,
   formatFileSize,
   isAvailable,
+  isIntake,
+  isResponse,
+  type FileKind,
   type NewSubmissionFile,
   type SubmissionFile,
 } from "./model/submissionFile";
@@ -72,8 +81,12 @@ export {
   listFeedbackFiles,
   listFilesForSubmissions,
   listSubmissionFiles,
-  type FileKind,
 } from "./api/submissionFileApi";
+
+export {
+  listSubmissionEvents,
+  type SubmissionEvent,
+} from "./api/submissionEventApi";
 
 export {
   FLOW_MAX_AGE_S,

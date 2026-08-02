@@ -26,30 +26,59 @@ export const FOCUS_OPTIONS = [
 export type Focus = (typeof FOCUS_OPTIONS)[number];
 
 /**
- * Submission lifecycle, in order. Matches the `submission_status` enum.
+ * The submission lifecycle — **the ladder**. Sixteen rungs, in order.
  *
- * The customer flow writes the first three:
+ * Every meaningful transition has a status, and every status is stamped in
+ * `submission_events`. The canonical account of what each one means, who moves
+ * it, and which email fires is
+ * [`_SubmissionDocumentation.md` §2](../_SubmissionDocumentation.md).
  *
- * | status             | reached when                                   |
- * | ------------------ | ---------------------------------------------- |
- * | `draft`            | step 1 — they gave us player details            |
- * | `awaiting_payment` | step 2 — their email is verified; files may land |
- * | `new`              | step 4 — the payment cleared                    |
+ * **It is a path with branches, not a progress bar.** Four rungs are only
+ * touched when a submission needs translating; a coach who reads English takes
+ * `assigned → sent_to_coach` and `awaiting_approval → complete` directly.
+ * Anything rendering this as a linear track will be wrong for most submissions.
  *
- * The admin drives `assigned` / `in_review` from the portal; a coach marking
- * their work done sets `complete`, which fires the feedback email.
+ * The vocabulary is **intake / response** — what the customer sent, what the
+ * coach wrote (`_NomenclatureLaw.md` §3). Statuses are **participles** (what has
+ * happened); the matching file kinds are **nouns** (what a file is), so
+ * `intake_translated` the status never reads as `intake_translation` the kind.
  *
- * There is no "paid but no file yet" state any more — files arrive before
- * payment, so `awaiting_upload` was retired with the flow that needed it.
+ * | rung | reached when |
+ * | --- | --- |
+ * | `draft` | step 1 — player details captured |
+ * | `awaiting_payment` | step 2 — the email is proven; uploads may begin |
+ * | `new` | step 4 — **the payment cleared.** The boundary |
+ * | `assigned` | step 5 — a coach is chosen, and translation need becomes derivable |
+ * | `intake_translating` | step 6 — the customer's files have gone out for translation |
+ * | `intake_translated` | step 7 — the translated set is back and stored |
+ * | `sent_to_coach` | step 8 — emailed with the chosen language set, not yet picked up |
+ * | `in_review` | step 9 — **the coach actually has the files** |
+ * | `awaiting_approval` | step 10 — a response exists; the customer can't see it |
+ * | `response_translating` | step 11 — the response has gone out for translation |
+ * | `response_translated` | step 12 — the translated version is back and stored |
+ * | `complete` | step 13 — released to the customer |
+ * | `collected` | step 14 — **the customer downloaded it.** The retention clock starts |
+ * | `resolved` | step 15 — Yuta closed it; the thank-you has gone |
+ * | `purge_imminent` | step 16 — deletion is a week out; the customer has been warned |
+ * | `purged` | step 17 — the bytes are gone; the record is permanent |
  */
 export const SUBMISSION_STATUSES = [
   "draft",
   "awaiting_payment",
   "new",
   "assigned",
+  "intake_translating",
+  "intake_translated",
+  "sent_to_coach",
   "in_review",
   "awaiting_approval",
+  "response_translating",
+  "response_translated",
   "complete",
+  "collected",
+  "resolved",
+  "purge_imminent",
+  "purged",
 ] as const;
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
@@ -79,11 +108,23 @@ export type AppWrittenStatus = Extract<
 const PAID_AT_STATUS: Record<SubmissionStatus, boolean> = {
   draft: false,
   awaiting_payment: false,
+  // Everything from `new` onward has been paid for. The ladder only branches
+  // after step 4, so every rung added since is trivially true — but the Record
+  // makes answering mandatory rather than assumed.
   new: true,
   assigned: true,
+  intake_translating: true,
+  intake_translated: true,
+  sent_to_coach: true,
   in_review: true,
   awaiting_approval: true,
+  response_translating: true,
+  response_translated: true,
   complete: true,
+  collected: true,
+  resolved: true,
+  purge_imminent: true,
+  purged: true,
 };
 
 export const PAID_STATUSES: readonly SubmissionStatus[] =
@@ -91,6 +132,106 @@ export const PAID_STATUSES: readonly SubmissionStatus[] =
 
 export function isPaid(submission: Pick<Submission, "status">): boolean {
   return PAID_AT_STATUS[submission.status];
+}
+
+/**
+ * Does a coach's response exist yet?
+ *
+ * True from `awaiting_approval` — the coach has delivered — even though the
+ * customer can't see it until Yuta releases it. That gap is the whole point of
+ * the approval gate, so "a response exists" and "the customer may have it" are
+ * two different questions with two different predicates.
+ */
+const HAS_RESPONSE_AT_STATUS: Record<SubmissionStatus, boolean> = {
+  draft: false,
+  awaiting_payment: false,
+  new: false,
+  assigned: false,
+  intake_translating: false,
+  intake_translated: false,
+  sent_to_coach: false,
+  in_review: false,
+  awaiting_approval: true,
+  response_translating: true,
+  response_translated: true,
+  complete: true,
+  collected: true,
+  resolved: true,
+  purge_imminent: true,
+  purged: true,
+};
+
+export function hasResponse(submission: Pick<Submission, "status">): boolean {
+  return HAS_RESPONSE_AT_STATUS[submission.status];
+}
+
+/**
+ * May the customer see the response?
+ *
+ * True from `complete` onward — step 13 is the moment it reaches them, and
+ * nothing later takes that back. **This is what `status === "complete"` used to
+ * mean**, and the reason it can no longer be written that way: a customer who
+ * downloads moves the submission to `collected`, and a literal comparison would
+ * have silently revoked their own access the instant they used it.
+ *
+ * Released is about *permission*, not availability. A `purged` submission is
+ * still released; its files are simply gone, which `/api/files/[id]` answers
+ * with 410 rather than 404 — "you may have this, but it no longer exists" is a
+ * different sentence from "this was never yours".
+ */
+const RELEASED_AT_STATUS: Record<SubmissionStatus, boolean> = {
+  draft: false,
+  awaiting_payment: false,
+  new: false,
+  assigned: false,
+  intake_translating: false,
+  intake_translated: false,
+  sent_to_coach: false,
+  in_review: false,
+  awaiting_approval: false,
+  response_translating: false,
+  response_translated: false,
+  complete: true,
+  collected: true,
+  resolved: true,
+  purge_imminent: true,
+  purged: true,
+};
+
+export function isReleased(submission: Pick<Submission, "status">): boolean {
+  return RELEASED_AT_STATUS[submission.status];
+}
+
+/**
+ * Is this on a coach's desk — theirs to act on?
+ *
+ * `assigned` is included because Yuta may assign before emailing, and the coach
+ * seeing it early is harmless. It stops at `awaiting_approval`: once they've
+ * delivered, the work is Yuta's.
+ */
+const WITH_COACH_AT_STATUS: Record<SubmissionStatus, boolean> = {
+  draft: false,
+  awaiting_payment: false,
+  new: false,
+  assigned: true,
+  // Translation happens between assignment and hand-off; the coach has nothing
+  // to do yet, but the row is legitimately theirs.
+  intake_translating: true,
+  intake_translated: true,
+  sent_to_coach: true,
+  in_review: true,
+  awaiting_approval: false,
+  response_translating: false,
+  response_translated: false,
+  complete: false,
+  collected: false,
+  resolved: false,
+  purge_imminent: false,
+  purged: false,
+};
+
+export function isWithCoach(submission: Pick<Submission, "status">): boolean {
+  return WITH_COACH_AT_STATUS[submission.status];
 }
 
 /**

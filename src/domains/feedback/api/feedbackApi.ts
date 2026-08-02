@@ -40,19 +40,19 @@ export async function saveFeedbackFile(
   const fileUrl = await storage.save(key, bytes, contentType);
   return addSubmissionFile(
     { submissionId, filename, contentType, sizeBytes: bytes.byteLength, fileUrl },
-    "feedback",
+    "response",
   );
 }
 
 /**
  * Record a feedback file the browser uploaded straight to Blob — the prod path.
- * The object already landed; this only writes the `feedback` row.
+ * The object already landed; this only writes the `response` row.
  */
 export async function recordFeedbackFile(
   submissionId: string,
   input: { filename: string; contentType: string; sizeBytes: number; fileUrl: string },
 ): Promise<SubmissionFile> {
-  return addSubmissionFile({ submissionId, ...input }, "feedback");
+  return addSubmissionFile({ submissionId, ...input }, "response");
 }
 
 /**
