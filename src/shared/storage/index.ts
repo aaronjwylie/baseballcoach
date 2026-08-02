@@ -50,6 +50,21 @@ export function feedbackFileKey(submissionId: string, filename: string): string 
 }
 
 /**
+ * Build the storage key for a translation Yuta uploads.
+ *
+ * Its own subfolder per kind, so the four folders are visible in the object
+ * store as well as in the database — which matters the one time someone has to
+ * look at raw storage to work out what a submission actually contains.
+ */
+export function translationFileKey(
+  submissionId: string,
+  kind: "intake_translation" | "response_translation",
+  filename: string,
+): string {
+  return `${submissionFolder(submissionId)}/${kind}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
+}
+
+/**
  * Build the storage key for a coach's profile photo. The random prefix gives a
  * replaced photo a fresh locator (no stale cache), and the old object is removed
  * on replace.

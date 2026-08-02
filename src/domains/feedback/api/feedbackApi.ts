@@ -17,18 +17,23 @@ import { storage, feedbackFileKey } from "@/shared/storage";
 import {
   addSubmissionFile,
   getSubmission,
+  kindsForSet,
   listFeedbackFiles,
+  listFilesByKinds,
   markCustomerCollected,
   updateSubmission,
+  type FileSet,
   type Submission,
   type SubmissionFile,
 } from "@/domains/submission";
 import { getCoach } from "@/domains/coach";
 import { listAdminEmails } from "@/domains/account";
+import { getSettings } from "@/domains/settings";
 import { env } from "@/shared/config/env";
 import {
   sendCustomerCollectedEmail,
   sendFeedbackReady,
+  sendThankYouEmail,
   sendResponseSubmittedEmail,
 } from "./feedbackEmail";
 import { signFeedbackToken } from "./feedbackToken";
@@ -105,6 +110,39 @@ export async function sendFeedbackForApproval(
 }
 
 /**
+ * Step 15 — Yuta closes the job, and thanks the customer.
+ *
+ * **Deliberately manual.** The objection was always "he'll forget, and the
+ * thank-you never goes" — which is answered not by automating it but by step 14
+ * setting a `collected` status he can filter on. The work he has to do is a list
+ * he can pull up, not something he has to remember to look for. Automating it
+ * later stays cheap; guessing that he wanted it automated does not.
+ *
+ * Only a collected submission can be resolved: resolving one the customer never
+ * downloaded would send a thank-you for something they haven't seen.
+ */
+export async function resolveSubmission(
+  submissionId: string,
+  retentionDays: number,
+): Promise<Submission | null> {
+  const submission = await getSubmission(submissionId);
+  if (!submission || submission.status !== "collected") return null;
+
+  const updated = await updateSubmission(submissionId, { status: "resolved" });
+
+  if (updated.customerEmail) {
+    await sendThankYouEmail({
+      to: updated.customerEmail,
+      playerName: updated.playerName,
+      retentionDays,
+      startUrl: `${env.siteUrl}/start`,
+    });
+  }
+
+  return updated;
+}
+
+/**
  * The customer collected their feedback — stamp it, and tell Yuta.
  *
  * Called from every route that hands a response file over. **Idempotent**: only
@@ -135,16 +173,28 @@ export async function noteCustomerCollected(
  */
 export async function approveAndComplete(
   submissionId: string,
+  fileSet: FileSet = "original",
 ): Promise<Submission | null> {
   const submission = await getSubmission(submissionId);
   if (!submission || submission.status !== "awaiting_approval") return null;
 
-  const files = await listFeedbackFiles(submissionId);
+  /*
+    Step 13's curation — the mirror of step 8, and the same fallback logic.
+
+    The chosen set must be non-empty: approving into an empty download would tell
+    a customer their feedback is ready and hand them nothing, which is worse than
+    the click doing nothing at all.
+  */
+  const files = await listFilesByKinds(
+    submissionId,
+    kindsForSet("response", fileSet),
+  );
   if (files.length === 0) return null;
 
   const now = new Date().toISOString();
   const updated = await updateSubmission(submissionId, {
     status: "complete",
+    customerFileSet: fileSet,
     feedbackEmailedAt: now,
     // `completedAt` is what the retention sweep counts from. Setting the status
     // without it would leave the submission complete but immortal — its uploads
@@ -157,10 +207,12 @@ export async function approveAndComplete(
     // anyone who guessed an address could use to collect a stranger's feedback.
     // The link lands on a page that lists every file for this one submission.
     const token = await signFeedbackToken(updated.id);
+    const settings = await getSettings();
     await sendFeedbackReady(
       updated.customerEmail,
       `${env.siteUrl}/feedback/${token}`,
       updated.playerName,
+      settings.retainCollectedDays,
     );
   }
 

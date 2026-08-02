@@ -22,7 +22,9 @@ export async function updateSettingsAction(
     priceCents: Number.isFinite(priceDollars) ? Math.round(priceDollars * 100) : NaN,
     maxFileSizeMb: formData.get("maxFileSizeMb"),
     maxFilesPerSubmission: formData.get("maxFilesPerSubmission"),
-    retainResolvedHours: formData.get("retainResolvedHours"),
+    retainCollectedDays: formData.get("retainCollectedDays"),
+    retainDeliveredDays: formData.get("retainDeliveredDays"),
+    warnBeforeDeletionDays: formData.get("warnBeforeDeletionDays"),
     retainUnpaidHours: formData.get("retainUnpaidHours"),
   });
 

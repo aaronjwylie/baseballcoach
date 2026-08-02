@@ -110,6 +110,90 @@ export async function listFilesForSubmissions(
   return grouped;
 }
 
+/**
+ * The files that make up one language set — the read behind both hand-offs.
+ *
+ * Takes kinds rather than a set + side so the *decision* stays in
+ * `kindsForSet`: this is the query, not the policy. An empty list returns
+ * nothing rather than everything, which is the safer way round for a function
+ * whose output gets emailed to someone.
+ */
+export async function listFilesByKinds(
+  submissionId: string,
+  kinds: readonly FileKind[],
+): Promise<SubmissionFile[]> {
+  if (kinds.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(submissionFiles)
+    .where(
+      and(
+        eq(submissionFiles.submissionId, submissionId),
+        inArray(submissionFiles.kind, kinds),
+      ),
+    )
+    .orderBy(asc(submissionFiles.uploadedAt));
+  return rows.map(fromFileRow);
+}
+
+/**
+ * Every file on a submission, grouped by kind — the admin's four folders.
+ *
+ * One query rather than four, and the map always has all four keys so the UI can
+ * render an empty folder without deciding whether "missing" and "empty" differ.
+ */
+export async function listFilesByFolder(
+  submissionId: string,
+): Promise<Record<FileKind, SubmissionFile[]>> {
+  const rows = await db
+    .select()
+    .from(submissionFiles)
+    .where(eq(submissionFiles.submissionId, submissionId))
+    .orderBy(asc(submissionFiles.uploadedAt));
+
+  const folders = {
+    intake: [],
+    intake_translation: [],
+    response: [],
+    response_translation: [],
+  } as Record<FileKind, SubmissionFile[]>;
+
+  for (const row of rows) {
+    const file = fromFileRow(row);
+    folders[file.kind].push(file);
+  }
+  return folders;
+}
+
+/** Every file on a submission, whatever folder — the purge's read. */
+export async function listAllSubmissionFiles(
+  submissionId: string,
+): Promise<SubmissionFile[]> {
+  const rows = await db
+    .select()
+    .from(submissionFiles)
+    .where(eq(submissionFiles.submissionId, submissionId))
+    .orderBy(asc(submissionFiles.uploadedAt));
+  return rows.map(fromFileRow);
+}
+
+/**
+ * Forget every locator on a submission, keeping every record.
+ *
+ * The settled rule is that **everything is swept together** — the coach's
+ * response included — which is only safe because the clock cannot start until
+ * the customer has collected. The narrower `clearFileLocators` remains for the
+ * abandoned path, where only intake exists anyway.
+ */
+export async function clearAllFileLocators(
+  submissionId: string,
+): Promise<void> {
+  await db
+    .update(submissionFiles)
+    .set({ fileUrl: null })
+    .where(eq(submissionFiles.submissionId, submissionId));
+}
+
 export async function getSubmissionFile(
   id: string,
 ): Promise<SubmissionFile | null> {
@@ -159,6 +243,21 @@ export async function clearFileLocators(submissionId: string): Promise<void> {
         inArray(submissionFiles.kind, INTAKE_KINDS),
       ),
     );
+}
+
+/**
+ * Forget one file's bytes, keeping its record — the operator's manual purge.
+ *
+ * The single-file counterpart to `clearFileLocators`. Same shape deliberately:
+ * a purged file is a row with no locator, whether a person or a schedule did it,
+ * so `/api/files/[id]` answers 410 either way and nothing downstream has to know
+ * which.
+ */
+export async function clearFileLocator(fileId: string): Promise<void> {
+  await db
+    .update(submissionFiles)
+    .set({ fileUrl: null })
+    .where(eq(submissionFiles.id, fileId));
 }
 
 /** Drop a file record outright — used when an upload half-completes. */

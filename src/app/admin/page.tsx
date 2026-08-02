@@ -11,6 +11,10 @@ import {
   type SubmissionStatus,
   hasResponse,
   isReleased,
+  availableSets,
+  listFilesByFolder,
+  type FileKind,
+  isPaid,
 } from "@/domains/submission";
 import {
   listCoaches,
@@ -20,9 +24,17 @@ import {
 } from "@/domains/coach";
 import { requireRole } from "@/domains/account";
 import { RowActionForm } from "./RowActionForm";
+import { SendWithFileSet } from "./SendWithFileSet";
+import { FileFolders } from "./FileFolders";
+import { OperatorOverride } from "./OperatorOverride";
+import { needsTranslation } from "@/domains/coach/model/coach";
 import {
   archiveSubmissionAction,
   completeSubmissionAction,
+  purgeFolderAction,
+  resetStatusAction,
+  resolveSubmissionAction,
+  uploadTranslationAction,
   unarchiveSubmissionAction,
 } from "./adminActions";
 
@@ -130,6 +142,20 @@ export default async function AdminHomePage({
   // One query for the whole page rather than one per row.
   const filesBySubmission = await listFilesForSubmissions(rows.map((s) => s.id));
 
+  /*
+    The four folders, per row.
+
+    One query per submission rather than one for the page: the folder view only
+    renders for rows Yuta has expanded in practice, and a page-wide join would
+    read every translation of every submission to show a handful. Bounded by the
+    page size, which the queue already limits.
+  */
+  const foldersBySubmission = new Map(
+    await Promise.all(
+      rows.map(async (s) => [s.id, await listFilesByFolder(s.id)] as const),
+    ),
+  );
+
   // The coach's feedback files, for the rows where Yuta acts on them — reviewing
   // before approval, and after it's delivered.
   const feedbackBySubmission = new Map(
@@ -195,6 +221,7 @@ export default async function AdminHomePage({
                     submission={s}
                     files={filesBySubmission.get(s.id) ?? []}
                     feedbackFiles={feedbackBySubmission.get(s.id) ?? []}
+                    folders={foldersBySubmission.get(s.id)}
                     coaches={coaches}
                   />
                 ))}
@@ -210,14 +237,45 @@ function SubmissionRow({
   submission,
   files,
   feedbackFiles,
+  folders,
   coaches,
 }: {
   submission: Submission;
   files: SubmissionFile[];
   feedbackFiles: SubmissionFile[];
+  folders?: Record<FileKind, SubmissionFile[]>;
   coaches: Coach[];
 }) {
   const status = STATUS_LABEL[submission.status];
+
+  /*
+    What each hand-off may offer, derived from what actually exists.
+
+    `availableSets` returns a single entry when there's no translation, which is
+    the common case — `SendWithFileSet` then renders the button with no radio at
+    all, rather than a question with one answer.
+  */
+  const present = folders
+    ? (Object.keys(folders) as FileKind[]).filter((k) => folders[k].length > 0)
+    : [];
+  const intakeSets = availableSets(
+    present.filter((k) => k === "intake" || k === "intake_translation"),
+  );
+  const responseSets = availableSets(
+    present.filter((k) => k === "response" || k === "response_translation"),
+  );
+
+  const assignedCoach = coaches.find((c) => c.id === submission.assignedCoachId);
+  const wantsTranslation = assignedCoach
+    ? needsTranslation(assignedCoach)
+    : null;
+  const alreadyTranslated = (folders?.intake_translation.length ?? 0) > 0;
+  const translationHint =
+    wantsTranslation === true && !alreadyTranslated
+      ? `${assignedCoach?.name ?? "This coach"} doesn't read English — translate the client files first.`
+      : assignedCoach && assignedCoach.languages.length === 0
+        ? "No languages recorded for this coach."
+        : null;
 
   return (
     <tr className="border-b border-line last:border-0 align-top">
@@ -234,7 +292,30 @@ function SubmissionRow({
         </span>
       </td>
       <td className="px-4 py-3">
-        <SubmissionFileList files={files} emptyLabel="—" />
+        {/*
+          The four folders replace the flat list once a submission is paid: the
+          same files, plus the two translation folders Yuta uploads into. Before
+          payment there's nothing to curate, so the simpler list stands.
+        */}
+        {folders && isPaid(submission) ? (
+          <>
+            <FileFolders
+              submissionId={submission.id}
+              folders={folders}
+              uploadAction={uploadTranslationAction}
+            />
+            <div className="mt-2">
+              <OperatorOverride
+                submissionId={submission.id}
+                status={submission.status}
+                purgeAction={purgeFolderAction}
+                resetAction={resetStatusAction}
+              />
+            </div>
+          </>
+        ) : (
+          <SubmissionFileList files={files} emptyLabel="—" />
+        )}
       </td>
       <td className="px-4 py-3">
         {submission.archivedAt ? (
@@ -258,12 +339,16 @@ function SubmissionRow({
               {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
             </span>
 
-            {submission.status === "awaiting_approval" && (
+            {(submission.status === "awaiting_approval" ||
+              submission.status === "response_translated") && (
               <>
                 <FeedbackFileLinks files={feedbackFiles} />
-                <RowActionForm
+                {/* Step 13 — and the radio only appears when a translation
+                    exists to choose between. */}
+                <SendWithFileSet
                   action={completeSubmissionAction}
                   submissionId={submission.id}
+                  sets={responseSets}
                   label="Approve & send →"
                   className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                 />
@@ -273,6 +358,18 @@ function SubmissionRow({
             {isReleased(submission) && (
               <>
                 <FeedbackFileLinks files={feedbackFiles} />
+
+                {/* Step 15 — only offered once they've actually collected, so a
+                    thank-you can't go out for something they haven't seen. */}
+                {submission.status === "collected" && (
+                  <RowActionForm
+                    action={resolveSubmissionAction}
+                    submissionId={submission.id}
+                    label="Mark resolved"
+                    className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                  />
+                )}
+
                 <RowActionForm
                   action={archiveSubmissionAction}
                   submissionId={submission.id}
@@ -291,10 +388,26 @@ function SubmissionRow({
               coaches={coaches}
             />
 
-            {submission.status === "assigned" && submission.assignedCoachId && (
-              <RowActionForm
+            {/*
+              Step 5's derivation, surfaced.
+
+              Translation need is a property of the coach — the platform is
+              English, so a submission needs translating exactly when the coach
+              assigned to it doesn't read English. Saying so here is the whole
+              point of assigning before translating: it turns a thing Yuta had to
+              remember into a thing the row tells him.
+            */}
+            {translationHint && (
+              <p className="text-[11px] text-amber-700">{translationHint}</p>
+            )}
+
+            {(submission.status === "assigned" ||
+              submission.status === "intake_translated") &&
+              submission.assignedCoachId && (
+              <SendWithFileSet
                 action={notifyCoachAction}
                 submissionId={submission.id}
+                sets={intakeSets}
                 label="Send email →"
                 className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
               />

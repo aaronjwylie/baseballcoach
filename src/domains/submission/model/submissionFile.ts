@@ -52,6 +52,62 @@ export const RESPONSE_KINDS: readonly FileKind[] = FILE_KINDS.filter(
   (kind) => SIDE_OF[kind] === "response",
 );
 
+/**
+ * Which language set someone receives — the choice Yuta makes at steps 8 and 13.
+ *
+ * Not a property of the files, but of a **send**: it records what we handed to a
+ * particular person on a particular day. Kept as data rather than a UI state
+ * because "what did we actually give them?" is asked later, and re-deriving it
+ * from which files exist now would answer a different question.
+ */
+export const FILE_SETS = ["original", "translation", "both"] as const;
+
+export type FileSet = (typeof FILE_SETS)[number];
+
+/**
+ * Turn a side plus a choice into the kinds that make it up.
+ *
+ * The one place the four folders map onto the two radios. Both sends use it, so
+ * "English only" can't mean one thing for the coach and another for the
+ * customer, and a fifth kind can't be added without this function being the
+ * place that decides where it belongs.
+ */
+export function kindsForSet(
+  side: "intake" | "response",
+  set: FileSet,
+): FileKind[] {
+  const original: FileKind = side === "intake" ? "intake" : "response";
+  const translation: FileKind =
+    side === "intake" ? "intake_translation" : "response_translation";
+
+  if (set === "original") return [original];
+  if (set === "translation") return [translation];
+  return [original, translation];
+}
+
+/**
+ * Which sets are worth offering, given what actually exists.
+ *
+ * A radio listing options that resolve to nothing is a trap, so a submission
+ * with no translation offers no choice at all — the caller hides the control
+ * rather than disabling it. "Both" only appears when there are genuinely two
+ * things to choose between.
+ */
+export function availableSets(kinds: readonly FileKind[]): FileSet[] {
+  const side = kinds.some(isIntakeKind) ? "intake" : "response";
+  const hasOriginal = kinds.includes(kindsForSet(side, "original")[0]);
+  const hasTranslation = kinds.includes(kindsForSet(side, "translation")[0]);
+
+  if (hasOriginal && hasTranslation) return ["original", "translation", "both"];
+  if (hasTranslation) return ["translation"];
+  if (hasOriginal) return ["original"];
+  return [];
+}
+
+function isIntakeKind(kind: FileKind): boolean {
+  return SIDE_OF[kind] === "intake";
+}
+
 /** True for a file the customer sent us, translated or not. */
 export function isIntake(file: Pick<SubmissionFile, "kind">): boolean {
   return SIDE_OF[file.kind] === "intake";

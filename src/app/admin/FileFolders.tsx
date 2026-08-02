@@ -1,0 +1,172 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  formatFileSize,
+  type FileKind,
+  type SubmissionFile,
+} from "@/domains/submission/model/submissionFile";
+
+/**
+ * The four folders, as Yuta sees them.
+ *
+ * `intake` and `response` are read-only — they're the customer's and the coach's
+ * own uploads, and the record of what was actually submitted. The two
+ * translation folders take uploads, which is steps 6–7 and 11–12: download the
+ * originals, translate off-platform, put the result back.
+ *
+ * Empty folders are rendered rather than hidden. "No Japanese version yet" is
+ * information Yuta acts on; a folder that vanishes when empty makes its absence
+ * look like a bug in the page instead of a state of the work.
+ *
+ * Imports the *model* directly rather than the domain barrel: this is a
+ * `"use client"` file, and the barrel re-exports database code (CLAUDE.md §12).
+ */
+
+const FOLDERS: {
+  kind: FileKind;
+  label: string;
+  hint: string;
+  writable: boolean;
+}[] = [
+  {
+    kind: "intake",
+    label: "Client",
+    hint: "What the customer sent",
+    writable: false,
+  },
+  {
+    kind: "intake_translation",
+    label: "Client — translated",
+    hint: "Upload the Japanese version for the coach",
+    writable: true,
+  },
+  {
+    kind: "response",
+    label: "Coach",
+    hint: "What the coach wrote back",
+    writable: false,
+  },
+  {
+    kind: "response_translation",
+    label: "Coach — translated",
+    hint: "Upload the English version for the customer",
+    writable: true,
+  },
+];
+
+export function FileFolders({
+  submissionId,
+  folders,
+  uploadAction,
+}: {
+  submissionId: string;
+  folders: Record<FileKind, SubmissionFile[]>;
+  uploadAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {FOLDERS.map((folder) => (
+        <Folder
+          key={folder.kind}
+          submissionId={submissionId}
+          files={folders[folder.kind] ?? []}
+          uploadAction={uploadAction}
+          {...folder}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Folder({
+  submissionId,
+  kind,
+  label,
+  hint,
+  writable,
+  files,
+  uploadAction,
+}: {
+  submissionId: string;
+  kind: FileKind;
+  label: string;
+  hint: string;
+  writable: boolean;
+  files: SubmissionFile[];
+  uploadAction: (formData: FormData) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <section className="rounded-lg border border-line p-3">
+      <header className="flex items-baseline justify-between gap-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          {label}
+        </h4>
+        <span className="text-[11px] text-ink-muted">
+          {files.length || "empty"}
+        </span>
+      </header>
+
+      {files.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {files.map((file) => (
+            <li key={file.id} className="text-xs">
+              {file.fileUrl ? (
+                <a
+                  href={`/api/files/${file.id}`}
+                  className="text-accent underline underline-offset-2"
+                >
+                  {file.filename}
+                </a>
+              ) : (
+                // The record outliving the bytes is deliberate — the portal can
+                // still say what was sent after the retention sweep.
+                <span className="text-ink-muted line-through">
+                  {file.filename}
+                </span>
+              )}
+              <span className="ml-1.5 text-ink-muted">
+                {formatFileSize(file.sizeBytes)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-ink-muted">{hint}</p>
+      )}
+
+      {writable && (
+        <form
+          className="mt-3"
+          action={async (formData) => {
+            setBusy(true);
+            await uploadAction(formData);
+            setBusy(false);
+            router.refresh();
+          }}
+        >
+          <input type="hidden" name="submissionId" value={submissionId} />
+          <input type="hidden" name="kind" value={kind} />
+          <input
+            type="file"
+            name="files"
+            multiple
+            disabled={busy}
+            className="block w-full text-[11px] text-ink-muted file:mr-2 file:rounded file:border file:border-line file:bg-white file:px-2 file:py-1 file:text-[11px] file:font-semibold"
+          />
+          <button
+            type="submit"
+            disabled={busy}
+            className="mt-2 rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink disabled:opacity-50"
+          >
+            {busy ? "Uploading…" : "Upload"}
+          </button>
+        </form>
+      )}
+    </section>
+  );
+}

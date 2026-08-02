@@ -5,8 +5,15 @@
  * `submission_files`), then `sendFeedbackForApproval` parks the submission at
  * `awaiting_approval` for Yuta; `approveAndComplete` marks it complete and emails
  * the customer that their feedback is ready.
+ *
+ * It also owns the messages about a response's *life after delivery* — collected
+ * (⑦), resolved (⑧) and about to be deleted (⑨) — because all three are about the
+ * thing this domain produced.
  */
-export { sendFeedbackReady } from "./api/feedbackEmail";
+export {
+  sendDeletionWarning,
+  sendFeedbackReady,
+} from "./api/feedbackEmail";
 export { signFeedbackToken, verifyFeedbackToken } from "./api/feedbackToken";
 export {
   FEEDBACK_CODE_COOKIE,
@@ -22,5 +29,6 @@ export {
   sendFeedbackForApproval,
   approveAndComplete,
   noteCustomerCollected,
+  resolveSubmission,
 } from "./api/feedbackApi";
 export { FeedbackUpload } from "./ui/FeedbackUpload";

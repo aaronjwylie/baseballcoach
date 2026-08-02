@@ -1,0 +1,89 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import type { FileSet } from "@/domains/submission/model/submissionFile";
+
+const LABELS: Record<FileSet, string> = {
+  original: "English",
+  translation: "Japanese",
+  both: "Both",
+};
+
+/**
+ * A send button that first asks *which language set* to send.
+ *
+ * Used at both hand-offs — step 8 to the coach, step 13 to the customer —
+ * because they're the same decision pointed at different people. One component
+ * rather than two, so the two can't drift into different wordings or different
+ * defaults for the same question.
+ *
+ * **The control disappears when there's nothing to choose.** Most submissions
+ * have no translation, and a radio with one option is a question that wastes the
+ * reader's attention on a decision they don't have. `sets` comes from
+ * `availableSets`, which only returns more than one entry when both an original
+ * and a translation actually exist.
+ *
+ * Client-side so it can `router.refresh()` after the action: `revalidatePath`
+ * alone left the page serving its cached RSC, so the row wouldn't move until a
+ * manual reload.
+ */
+export function SendWithFileSet({
+  action,
+  submissionId,
+  sets,
+  label,
+  className,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  submissionId: string;
+  sets: FileSet[];
+  label: string;
+  className?: string;
+}) {
+  const router = useRouter();
+  // Default to the first offered set — `availableSets` returns them in the
+  // order original · translation · both, so the originals win when both exist.
+  const [fileSet, setFileSet] = useState<FileSet>(sets[0] ?? "original");
+
+  if (sets.length === 0) return null;
+
+  return (
+    <form
+      className="flex flex-col items-start gap-2"
+      action={async (formData) => {
+        await action(formData);
+        router.refresh();
+      }}
+    >
+      <input type="hidden" name="submissionId" value={submissionId} />
+      <input type="hidden" name="fileSet" value={fileSet} />
+
+      {sets.length > 1 && (
+        <fieldset className="flex flex-wrap items-center gap-3">
+          <legend className="sr-only">Which files to send</legend>
+          {sets.map((option) => (
+            <label
+              key={option}
+              className="flex items-center gap-1.5 text-xs text-ink-muted"
+            >
+              <input
+                type="radio"
+                name="fileSetChoice"
+                value={option}
+                checked={fileSet === option}
+                onChange={() => setFileSet(option)}
+                className="h-3.5 w-3.5"
+              />
+              {LABELS[option]}
+            </label>
+          ))}
+        </fieldset>
+      )}
+
+      <button type="submit" className={className}>
+        {label}
+      </button>
+    </form>
+  );
+}

@@ -13,6 +13,7 @@ export {
   submissionEvents,
   settings,
   fileKind,
+  fileSet,
   focus,
   submissionStatus,
   userRole,

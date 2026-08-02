@@ -83,6 +83,16 @@ export const fileKind = pgEnum("file_kind", [
   "response_translation",
 ]);
 
+/**
+ * Which language set someone was sent.
+ *
+ * Recorded at the moment of sending, on both hand-offs — to the coach at step 8
+ * and to the customer at step 13. A property of the *send*, not of the files: it
+ * answers "what did we actually give them", which can't be re-derived later from
+ * whatever happens to exist by then.
+ */
+export const fileSet = pgEnum("file_set", ["original", "translation", "both"]);
+
 // Operator roles. Customers never get a user row.
 export const userRole = pgEnum("user_role", ["admin", "coach"]);
 
@@ -141,9 +151,34 @@ export const submissions = pgTable(
     feedbackUrl: text(),
     feedbackEmailedAt: timestamp({ withTimezone: true }),
 
-    // When the retention sweep removed the customer's uploaded files. The rows
-    // in `submissionFiles` stay, so the receipt and the portal still show what
-    // was sent; only the bytes are gone.
+    // What each side was actually sent — null until that hand-off happens.
+    coachFileSet: fileSet(),
+    customerFileSet: fileSet(),
+
+    /*
+      When the customer first collected their feedback — **the retention clock's
+      anchor**, and the reason it can only be set once.
+
+      Duplicated from `submission_events`, deliberately. The trail is the
+      history; this is the working value, the same relationship `status` has to
+      its own events. The nightly sweep scans for everything due, and a scan
+      against a join is a scan we'd have to justify at every row.
+    */
+    collectedAt: timestamp({ withTimezone: true }),
+
+    /*
+      When the "your files will be deleted" warning was sent.
+
+      Its own stamp because the warning is the one genuinely *scheduled* effect
+      in the system: unlike "delete what's due", "warn a week out" isn't
+      derivable from a state, so nothing but this column stops it sending again
+      every night for seven nights.
+    */
+    deletionWarnedAt: timestamp({ withTimezone: true }),
+
+    // When the retention sweep removed the submission's files. The rows in
+    // `submissionFiles` stay, so the portal still shows what was sent; only the
+    // bytes are gone.
     filesPurgedAt: timestamp({ withTimezone: true }),
 
     submittedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
@@ -237,7 +272,9 @@ export const settings = pgTable("settings", {
   maxFileSizeMb: integer().notNull().default(50),
   maxFilesPerSubmission: integer().notNull().default(5),
   /** Hours after a submission completes before its uploads are deleted. */
-  retainResolvedHours: integer().notNull().default(24),
+  retainCollectedDays: integer().notNull().default(30),
+  retainDeliveredDays: integer().notNull().default(90),
+  warnBeforeDeletionDays: integer().notNull().default(7),
   /** Hours after an unpaid submission is created before its uploads go. */
   retainUnpaidHours: integer().notNull().default(24),
   updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),

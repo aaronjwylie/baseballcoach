@@ -29,3 +29,24 @@ export interface NewCoach {
   languages: string[];
   bio?: string;
 }
+
+/**
+ * Does this coach need the files translated?
+ *
+ * The platform is English — there is no multilingual UI and none is planned
+ * (CLAUDE.md §2) — so a customer's files are English by construction, and the
+ * question reduces to whether *this* coach reads it. That's what makes the
+ * answer derivable at assignment instead of something Yuta has to remember.
+ *
+ * **Unknown is not the same as no.** A coach with no languages recorded returns
+ * null rather than true: prompting for a translation on the strength of a blank
+ * field would nag on every submission until someone filled it in, and a prompt
+ * that's usually wrong is one people learn to dismiss. The admin surfaces the
+ * gap instead.
+ */
+export function needsTranslation(
+  coach: Pick<Coach, "languages">,
+): boolean | null {
+  if (coach.languages.length === 0) return null;
+  return !coach.languages.some((language) => /english/i.test(language));
+}

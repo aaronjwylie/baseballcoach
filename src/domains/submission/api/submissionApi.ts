@@ -5,12 +5,14 @@
  * mapper) sees a Drizzle row or a column name. The customer's uploaded files
  * are a separate table with its own module, `submissionFileApi.ts`.
  */
-import { and, desc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
-import type {
-  NewSubmission,
-  Submission,
-  SubmissionPatch,
+import {
+  SUBMISSION_STATUSES,
+  isReleased,
+  type NewSubmission,
+  type Submission,
+  type SubmissionPatch,
 } from "../model/submission";
 import {
   toPublicSubmission,
@@ -40,6 +42,8 @@ function toUpdateValues(
   if (patch.stripePaymentId !== undefined) v.stripePaymentId = patch.stripePaymentId;
   if (patch.stripeAmount !== undefined) v.stripeAmount = patch.stripeAmount;
   if (patch.feedbackUrl !== undefined) v.feedbackUrl = patch.feedbackUrl;
+  if (patch.coachFileSet !== undefined) v.coachFileSet = patch.coachFileSet;
+  if (patch.customerFileSet !== undefined) v.customerFileSet = patch.customerFileSet;
   if (patch.assignedCoachId !== undefined) v.assignedCoachId = patch.assignedCoachId;
   if (patch.emailVerifiedAt !== undefined) v.emailVerifiedAt = new Date(patch.emailVerifiedAt);
   if (patch.paidAt !== undefined) v.paidAt = new Date(patch.paidAt);
@@ -47,6 +51,10 @@ function toUpdateValues(
   if (patch.filesPurgedAt !== undefined) v.filesPurgedAt = new Date(patch.filesPurgedAt);
   if (patch.feedbackEmailedAt !== undefined) {
     v.feedbackEmailedAt = new Date(patch.feedbackEmailedAt);
+  }
+  if (patch.collectedAt !== undefined) v.collectedAt = new Date(patch.collectedAt);
+  if (patch.deletionWarnedAt !== undefined) {
+    v.deletionWarnedAt = new Date(patch.deletionWarnedAt);
   }
   return v;
 }
@@ -76,7 +84,7 @@ export async function createSubmission(
       })
       .returning();
 
-    await recordSubmissionEvent(tx, row.id, row.status);
+    await recordSubmissionEvent(row.id, row.status, undefined, tx);
     return fromRow(row);
   });
 }
@@ -123,7 +131,7 @@ export async function updateSubmission(
       .returning();
 
     if (patch.status !== undefined && patch.status !== previous) {
-      await recordSubmissionEvent(tx, id, patch.status, note);
+      await recordSubmissionEvent(id, patch.status, note, tx);
     }
 
     return fromRow(row);
@@ -197,7 +205,12 @@ export async function markCustomerCollected(
 ): Promise<Submission | null> {
   const submission = await getSubmission(id);
   if (!submission || submission.status !== "complete") return null;
-  return updateSubmission(id, { status: "collected" });
+  return updateSubmission(id, {
+    status: "collected",
+    // The clock's anchor. Set with the status so the two can never disagree
+    // about when the countdown began.
+    collectedAt: new Date().toISOString(),
+  });
 }
 
 /**
@@ -313,20 +326,88 @@ export async function lookupPublicSubmissions(
  * sent. `filesPurgedAt` excludes rows already handled, so the sweep is
  * idempotent and a second run in the same window is a no-op.
  */
-export async function findResolvedDue(before: Date): Promise<Submission[]> {
+export async function findResolvedDue(
+  collectedBefore: Date,
+  deliveredBefore: Date,
+): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissions)
     .where(
       and(
         isNull(submissions.filesPurgedAt),
-        eq(submissions.status, "complete"),
-        isNotNull(submissions.completedAt),
-        lt(submissions.completedAt, before),
+        inArray(submissions.status, RELEASED_STATUSES),
+        /*
+          Two clocks, and the later one wins.
+
+          A submission that was collected is due `retainCollectedDays` after
+          *that* — never before, so nothing is deleted out from under a customer
+          who hasn't fetched it. One that was never collected has no such anchor
+          and would otherwise live forever, so it falls back to
+          `retainDeliveredDays` from delivery.
+
+          Expressed as "collected and old enough, OR never collected and
+          delivered long enough ago" — which is the same thing as whichever-is-
+          later, without needing a computed column to sort on.
+        */
+        or(
+          and(
+            isNotNull(submissions.collectedAt),
+            lt(submissions.collectedAt, collectedBefore),
+          ),
+          and(
+            isNull(submissions.collectedAt),
+            isNotNull(submissions.completedAt),
+            lt(submissions.completedAt, deliveredBefore),
+          ),
+        ),
       ),
     );
   return rows.map(fromRow);
 }
+
+/**
+ * Released submissions approaching deletion that haven't been warned yet.
+ *
+ * The one genuinely *scheduled* effect in the system. Everything else the sweep
+ * does is derivable from state — "delete what's due" needs no memory — but "warn
+ * a week out" is a one-off that must fire exactly once, which is what
+ * `deletionWarnedAt` is for. Without it this would send every night for seven
+ * nights.
+ *
+ * Only submissions with a collection clock are warned. One that was never
+ * collected is running on the backstop, and warning someone about files they
+ * never came for would be the first they'd heard of any of it.
+ */
+export async function findWarningDue(
+  collectedBefore: Date,
+): Promise<Submission[]> {
+  const rows = await db
+    .select()
+    .from(submissions)
+    .where(
+      and(
+        isNull(submissions.filesPurgedAt),
+        isNull(submissions.deletionWarnedAt),
+        inArray(submissions.status, RELEASED_STATUSES),
+        isNotNull(submissions.collectedAt),
+        lt(submissions.collectedAt, collectedBefore),
+      ),
+    );
+  return rows.map(fromRow);
+}
+
+/**
+ * The rungs a submission can be sitting on once it has reached the customer.
+ *
+ * Derived from the same `isReleased` predicate the rest of the app uses, rather
+ * than listed here — a literal list is exactly what went stale when `collected`
+ * was added, and a sweep that quietly stops matching is a sweep nobody notices
+ * has stopped.
+ */
+const RELEASED_STATUSES = SUBMISSION_STATUSES.filter((status) =>
+  isReleased({ status }),
+);
 
 /**
  * Submissions that were never paid for and have gone quiet.

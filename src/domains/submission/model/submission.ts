@@ -15,6 +15,8 @@
  */
 
 /** What the player wants coached. Matches the `focus` enum in the DB. */
+import type { FileSet } from "./submissionFile";
+
 export const FOCUS_OPTIONS = [
   "Hitting",
   "Pitching",
@@ -271,6 +273,9 @@ export interface Submission {
   // The coach's response — a storage locator, served via /api/feedback/[id].
   // The customer's own uploads are rows in `submissionFiles`, not a field here.
   feedbackUrl?: string;
+  /** What the coach was sent at step 8, and the customer at step 13. */
+  coachFileSet?: FileSet;
+  customerFileSet?: FileSet;
 
   // When the retention sweep deleted the customer's uploaded bytes
   filesPurgedAt?: string;
@@ -278,6 +283,9 @@ export interface Submission {
   // Coaching
   assignedCoachId?: string;
   feedbackEmailedAt?: string;
+  /** First collection — the retention clock's anchor. */
+  collectedAt?: string;
+  deletionWarnedAt?: string;
 }
 
 /** Everything required to open a submission at step 1. */

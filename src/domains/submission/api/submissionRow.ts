@@ -27,9 +27,13 @@ export function fromRow(row: SubmissionRow): Submission {
     stripeAmount: row.stripeAmount ?? undefined,
     paidAt: row.paidAt?.toISOString(),
     feedbackUrl: row.feedbackUrl ?? undefined,
+    coachFileSet: row.coachFileSet ?? undefined,
+    customerFileSet: row.customerFileSet ?? undefined,
     filesPurgedAt: row.filesPurgedAt?.toISOString(),
     assignedCoachId: row.assignedCoachId ?? undefined,
     feedbackEmailedAt: row.feedbackEmailedAt?.toISOString(),
+    collectedAt: row.collectedAt?.toISOString(),
+    deletionWarnedAt: row.deletionWarnedAt?.toISOString(),
   };
 }
 

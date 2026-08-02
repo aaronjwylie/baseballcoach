@@ -35,6 +35,10 @@ export {
   type FileKind,
   type NewSubmissionFile,
   type SubmissionFile,
+  FILE_SETS,
+  availableSets,
+  kindsForSet,
+  type FileSet,
 } from "./model/submissionFile";
 
 export {
@@ -72,6 +76,7 @@ export {
   markSubmissionSentToCoach,
   unarchiveSubmission,
   updateSubmission,
+  findWarningDue,
 } from "./api/submissionApi";
 
 export {
@@ -83,10 +88,16 @@ export {
   listFeedbackFiles,
   listFilesForSubmissions,
   listSubmissionFiles,
+  listFilesByFolder,
+  listFilesByKinds,
+  clearFileLocator,
+  clearAllFileLocators,
+  listAllSubmissionFiles,
 } from "./api/submissionFileApi";
 
 export {
   listSubmissionEvents,
+  recordSubmissionEvent,
   type SubmissionEvent,
 } from "./api/submissionEventApi";
 

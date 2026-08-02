@@ -62,10 +62,10 @@ async function currentActorId(): Promise<string | null> {
  * without an explanation is worse than one that didn't move.
  */
 export async function recordSubmissionEvent(
-  tx: Db,
   submissionId: string,
   status: SubmissionStatus,
   note?: string,
+  tx: Db = db,
 ): Promise<void> {
   await tx.insert(submissionEvents).values({
     submissionId,

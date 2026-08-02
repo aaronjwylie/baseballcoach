@@ -281,143 +281,97 @@ collection moves the status, the second is a no-op, and the trail reads
 
 ---
 
-## Phase 4 · Language
+## Phase 4 · Language — ✅ **shipped 2026-08-01**
 
-**The four folders and the two curation gates. Depends on Phase 1.4.**
-
-| | Ships | Size |
+| | Ships | |
 | --- | --- | --- |
-| 4.1 | Admin file view shows four sets by `kind` | M |
-| 4.2 | Step 5 derives translation need from the coach's languages | S |
-| 4.3 | **Steps 6–7** — download originals, upload translations, two statuses | M |
-| 4.4 | **Steps 11–12** — the same, for the response | S — *4.3's shape, reused* |
-| 4.5 | Step 8's radio: English · Japanese · both; records the choice; sends only that | M |
-| 4.6 | Step 13's radio: the same, for the customer | S — *4.5's shape, reused* |
+| 4.1 | Admin file view shows four sets by `kind` | ✅ `FileFolders` |
+| 4.2 | Step 5 derives translation need from the coach's languages | ✅ surfaced on the row |
+| 4.3 | **Steps 6–7** — download originals, upload translations, two statuses | ✅ |
+| 4.4 | **Steps 11–12** — the same, for the response | ✅ *one action, both directions* |
+| 4.5 | Step 8's radio; records the choice; sends only that | ✅ `SendWithFileSet` |
+| 4.6 | Step 13's radio | ✅ *the same component* |
 
-**Why after Phase 3:** it's the largest block of new UI and the least urgent — the
-platform functions without it, in English, today. Everything in Phase 3 is a
-failure the product already has.
+**Unknown is not the same as no.** A coach with no languages recorded returns
+`null` rather than "needs translation" — prompting on the strength of a blank
+field would nag on every submission until someone filled it in, and a prompt
+that's usually wrong is one people learn to dismiss. The row says "no languages
+recorded" instead.
 
-**Why assignment precedes translation:** translation need is derived from the
-coach, so the coach must be known first — and translating for a coach who then
-isn't assigned is money spent for nothing. This is why the path doc renumbered.
+**One upload action serves both directions.** Steps 6–7 and 11–12 are the same
+act with a different destination, so they're one function taking a `kind` rather
+than two that could drift on the guard or the retention. Only the two
+*translation* folders are writable — an admin overwriting an original would
+destroy the record of what was actually submitted.
 
-**Both radios sit on a *send*, never on an earlier step**, because at assignment
-the translation doesn't exist yet to choose. 4.5 and 4.6 are one component used
-twice.
+## Phase 5 · Operator control — ✅ **shipped 2026-08-01**
 
----
-
-## Phase 5 · Operator control
-
-**The handle, before the automation that needs it. Depends on Phase 1.**
-
-| | Ships | Size |
+| | Ships | |
 | --- | --- | --- |
-| 5.1 | Purge any of the four folders now, without waiting for a clock | S |
-| 5.2 | Reset a status to any earlier rung | S |
-| 5.3 | Both write to `internalNotes` and `submission_events` with the actor | S |
-| 5.4 | Step 15 — "Mark resolved" + the ⑧ thank-you | S |
+| 5.1 | Purge any of the four folders now | ✅ |
+| 5.2 | Reset a status to any earlier rung | ✅ |
+| 5.3 | Both write to the event trail with the actor | ✅ |
+| 5.4 | Step 15 — "Mark resolved" + the ⑧ thank-you | ✅ |
 
-**Why before Phase 6, not after.** Phase 6 makes the system delete more, later,
-with a warning nobody has seen fire. Yuta should be able to purge on demand and
-walk a status backwards **before** that ships, not after the first thing goes wrong.
+**Two rungs refuse to be undone**, and the reasoning is the same both times: a
+status must never claim something the world can't back up. Nothing comes out of
+`purged`, because the bytes are gone. Nothing goes back before payment, because
+that puts a paid submission somewhere the discard path is willing to delete
+outright.
 
-5.4 rides along because it's the same admin surface and the same event-writing
-shape.
+**Resolving stayed manual**, as decided — and `collected` is what makes that safe.
+The objection was always "he'll forget"; the answer isn't automation, it's a queue
+he can filter. Only a *collected* submission can be resolved, so a thank-you can't
+go out for something the customer hasn't seen.
 
----
+## Phase 6 · The ending — ✅ **shipped 2026-08-01**
 
-## Phase 6 · The ending
-
-**Retention and deletion. Depends on Phase 3's `collected` stamp — without it the
-clock never starts and nothing is ever purged.**
-
-| | Ships | Size |
+| | Ships | |
 | --- | --- | --- |
-| 6.1 | Clock moves from `completedAt` +24h to **collection +30d, or delivery +90d, whichever is later** | M |
-| 6.2 | Step 13's ⑥ states the retention window at delivery | XS |
-| 6.3 | **Step 16** — the ⑨ warning, its own stamp, `purge_imminent` | M |
-| 6.4 | **Step 17** — purge *all four sets*, keep every record forever | M |
-| 6.5 | Resolve the "feedback is never swept" contradiction in code and comments | S |
+| 6.1 | Collection +30d, or delivery +90d, whichever is later | ✅ |
+| 6.2 | ⑥ states the retention window at delivery | ✅ |
+| 6.3 | **Step 16** — the ⑨ warning, its own stamp, `purge_imminent` | ✅ |
+| 6.4 | **Step 17** — purge all four sets, keep every record forever | ✅ |
+| 6.5 | The "feedback is never swept" contradiction | ✅ resolved |
 
-**This is the only destructive change in the plan, and it fails safe.** If 6.1
-ships before the `collected` stamp exists, nothing has a clock and nothing is
-deleted. That's an outage of cleanup, not of data.
+### What the build surfaced that the plan didn't
 
-**6.3 is unlike anything else in the system.** Every other effect is derivable from
-state — "delete what's due" needs no memory. "Warn them at day 23" is a one-off
-that must fire exactly once, so it needs its own stamp as an idempotency guard, and
-the cron grows from *delete what's due* to *notice what's approaching*.
+**The warning has to run *before* the purge in the same sweep, and against a
+nearer cutoff.** Run the other way round, a single night could both warn and
+delete — a warning in name only. Ordering the two passes is the whole guarantee.
 
-⚠️ **Vercel Hobby permits one cron run a day**, so "23 days" means 23–24. Fine
-here. It also means an hourly sweep isn't available without Pro — a constraint that
-has already broken a deploy once.
+**The warning is stamped whether or not the send succeeded.** Retrying nightly
+would turn one undelivered email into seven, which is worse than the miss. This is
+the opposite call from step 1's verification code, and for the opposite reason:
+nobody is *blocked* on a warning.
 
----
+**The clock needed columns, not just the trail.** `collectedAt` and
+`deletionWarnedAt` duplicate facts `submission_events` already holds — deliberately.
+The trail is history; these are the working values a nightly scan reads, and a scan
+against a join is one we'd have to justify at every row. Same relationship
+`submissions.status` has to its own events.
 
-## Phase 7 · The status capability
+**`RELEASED_STATUSES` is derived from `isReleased`, not listed.** A literal list is
+exactly what went stale when `collected` arrived, and a sweep that quietly stops
+matching is a sweep nobody notices has stopped.
 
-**The last piece of side-path C. Depends on nothing; deliberately last.**
+**Verified** against four submissions at once: collected-long-ago purged,
+collected-recently warned and left alone, never-collected-but-old purged on the
+backstop, just-delivered untouched. All four folders' bytes went; all four rows'
+records stayed.
 
-| | Ships | Size |
-| --- | --- | --- |
-| 7.1 | A `status` purpose on the existing token, carried in the ② receipt | S |
-| 7.2 | Email + a fresh PIN as the other way in | M |
-| 7.3 | The status page requires one or the other | S |
+## Phase 7 · The status capability — ✅ **effectively complete**
 
-**Why last:** Aaron's 2026-08-01 change already closed the security hole this was
-protecting against — feedback no longer rides on an unverified email. What remains
-is *convenience*, not exposure: a customer who lost the email having a second way
-back in.
+Aaron's `853edf9` shipped the email + 6-digit code path on `/status`, which was
+7.2 and the bulk of the value. Combined with the capability link in ⑥, a customer
+has two independent ways back to their feedback and both enforce inbox control.
 
-**Why it's cheap when it comes:** `signFeedbackToken` / `verifyFeedbackToken` are
-already purpose-bound. 7.1 is a second purpose string and a second route, not a new
-mechanism.
-
----
-
-## 3 · The shape of it
-
-```
-Phase 0  take money  ──────────────────────────────► independent, blocks revenue
-Phase 1  schema     ──┬──────────────────────────►
-Phase 2  trust fixes  ┘  (parallel — no shared files)
-                        │
-Phase 3  visibility ────┤ needs 1
-Phase 4  language   ────┤ needs 1.4
-Phase 5  control    ────┤ needs 1
-                        │
-Phase 6  the ending ────┘ needs 3 (the collected stamp) and 5 (the handle)
-
-Phase 7  status link ─────────────────────────────► independent, deliberately last
-```
-
-**Three genuine dependencies, everything else is judgement:** Phase 1 before 3/4/5;
-Phase 3 before 6; Phase 5 before 6.
-
-**The order optimises for:** a product that can be trusted with a live customer
-(2), then an operator who can see his own workflow (3), then the feature that makes
-Japanese coaches possible (4), then the controls (5) before the deletion (6).
-
-**If time runs short, the honest cut is Phase 4.** The platform works in English
-today. Nothing else on this list is optional in the same way — 2 fixes silent
-failures, 3 fixes blindness, 5 and 6 are storage cost and a promise about deletion.
-
----
-
-## 4 · What to settle before starting
-
-All three settled on 2026-08-01:
-
-1. ✅ **The naming collision** — `intake` / `response` everywhere. Phase 1.4 carries
-   the rename.
-2. ✅ **The token stays a year.**
-3. ✅ **Backfill or cut over?** **Start empty** — there are no real customers, so
-   there is no history worth reconstructing.
-
-**All settled.** The red flags below record the reasoning, including the one answer
-that changes when Phase 1 should land.
+**7.1 — a `status` purpose on the token, carried in the ② receipt — is deliberately
+not built.** It would be a third door to the same room. The receipt already links
+to `/status`, where the code path takes over; adding a bearer link to a page that
+lists *every* submission for an address is strictly more exposure than the
+per-submission link ⑥ already carries. Worth revisiting only if customers report
+trouble getting back in.
 
 ---
 

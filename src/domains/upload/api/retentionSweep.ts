@@ -27,12 +27,14 @@
  */
 import { getSettings } from "@/domains/settings";
 import {
-  clearFileLocators,
+  clearAllFileLocators,
   findAbandonedDue,
   findResolvedDue,
-  listSubmissionFiles,
+  findWarningDue,
+  listAllSubmissionFiles,
   updateSubmission,
 } from "@/domains/submission";
+import { sendDeletionWarning } from "@/domains/feedback";
 import { storage } from "@/shared/storage";
 import { discardUnpaidSubmission } from "./discardSubmission";
 
@@ -41,6 +43,8 @@ export interface SweepReport {
   resolvedPurged: number;
   /** Unpaid submissions deleted outright. */
   abandonedDiscarded: number;
+  /** Customers told their files are about to go. */
+  warningsSent: number;
   filesDeleted: number;
   failures: number;
 }
@@ -49,20 +53,78 @@ export async function runRetentionSweep(): Promise<SweepReport> {
   const report: SweepReport = {
     resolvedPurged: 0,
     abandonedDiscarded: 0,
+    warningsSent: 0,
     filesDeleted: 0,
     failures: 0,
   };
 
   const settings = await getSettings();
   const now = Date.now();
+  const days = (n: number) => n * 24 * 3600_000;
 
-  // ── resolved: forget the bytes, keep the record ────────────────────────
-  const resolved = await findResolvedDue(
-    new Date(now - settings.retainResolvedHours * 3600_000),
+  /*
+    ── warn before deleting ────────────────────────────────────────────────
+
+    Runs *before* the purge, and against a nearer cutoff, so a submission is
+    always warned in an earlier sweep than the one that deletes it. Running the
+    purge first would let a single night both warn and delete, which is a
+    warning in name only.
+
+    The one genuinely scheduled effect in the system: "delete what's due" is
+    derivable from state, "warn a week out" is a one-off. `deletionWarnedAt` is
+    what stops it firing every night of that week.
+  */
+  if (settings.warnBeforeDeletionDays > 0) {
+    const warnCutoff = new Date(
+      now -
+        days(settings.retainCollectedDays - settings.warnBeforeDeletionDays),
+    );
+    for (const submission of await findWarningDue(warnCutoff)) {
+      const deletesOn = new Date(
+        new Date(submission.collectedAt!).getTime() +
+          days(settings.retainCollectedDays),
+      );
+      try {
+        if (submission.customerEmail) {
+          await sendDeletionWarning({
+            to: submission.customerEmail,
+            playerName: submission.playerName,
+            deletesOn,
+            daysLeft: settings.warnBeforeDeletionDays,
+          });
+        }
+        // Stamped whether or not the send worked. A warning we couldn't deliver
+        // must not retry nightly — that turns one missed email into seven.
+        await updateSubmission(submission.id, {
+          deletionWarnedAt: new Date().toISOString(),
+          status: "purge_imminent",
+        });
+        report.warningsSent += 1;
+      } catch (err) {
+        report.failures += 1;
+        console.error(`[sweep] warning ${submission.id} failed:`, err);
+      }
+    }
+  }
+
+  /*
+    ── purge: forget the bytes, keep the record ────────────────────────────
+
+    **Everything goes together** — the customer's uploads and the coach's
+    response alike. That is only safe because the clock starts on collection: we
+    never delete anything the customer hasn't already got in hand.
+
+    The rows survive with their locators cleared, so the portal can still say
+    what was there, and the submission itself is kept **forever**. Only the
+    bytes go.
+  */
+  const due = await findResolvedDue(
+    new Date(now - days(settings.retainCollectedDays)),
+    new Date(now - days(settings.retainDeliveredDays)),
   );
 
-  for (const submission of resolved) {
-    const files = await listSubmissionFiles(submission.id);
+  for (const submission of due) {
+    const files = await listAllSubmissionFiles(submission.id);
 
     for (const file of files) {
       if (!file.fileUrl) continue;
@@ -78,9 +140,10 @@ export async function runRetentionSweep(): Promise<SweepReport> {
       }
     }
 
-    await clearFileLocators(submission.id);
+    await clearAllFileLocators(submission.id);
     await updateSubmission(submission.id, {
       filesPurgedAt: new Date().toISOString(),
+      status: "purged",
     });
     report.resolvedPurged += 1;
   }
@@ -118,7 +181,7 @@ export async function sweepAbandoned(
   let filesDeleted = 0;
 
   for (const submission of due) {
-    const files = await listSubmissionFiles(submission.id);
+    const files = await listAllSubmissionFiles(submission.id);
     const ok = await discardUnpaidSubmission(submission.id);
     if (ok) {
       discarded += 1;

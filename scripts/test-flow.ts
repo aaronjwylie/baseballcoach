@@ -51,7 +51,7 @@ async function main() {
   const settings = await getSettings();
   console.log(
     `settings: ${settings.maxFilesPerSubmission} files × ${settings.maxFileSizeMb} MB · ` +
-      `retain ${settings.retainResolvedHours}h resolved / ${settings.retainUnpaidHours}h unpaid`,
+      `retain ${settings.retainCollectedDays}d collected / ${settings.retainDeliveredDays}d delivered / ${settings.retainUnpaidHours}h unpaid`,
   );
 
   // ── 1 · step one: the draft ─────────────────────────────────────────────
@@ -154,9 +154,10 @@ async function main() {
     "completing via the coach + approval path stamps completedAt",
   );
 
-  // Backdate it past the retention window and sweep again.
+  // Backdate it past the *delivered* backstop — this submission was never
+  // collected, so that's the clock it runs on.
   const longAgo = new Date(
-    Date.now() - (settings.retainResolvedHours + 1) * 3600_000,
+    Date.now() - (settings.retainDeliveredDays + 1) * 24 * 3600_000,
   ).toISOString();
   await updateSubmission(submission.id, { completedAt: longAgo });
 

@@ -13,7 +13,9 @@ Four numbers, one row, one admin form:
 | `priceCents` | 8000 | what one submission costs |
 | `maxFileSizeMb` | 50 | the largest single upload |
 | `maxFilesPerSubmission` | 5 | how many files one submission carries |
-| `retainResolvedHours` | 24 | when a completed review's uploads are deleted |
+| `retainCollectedDays` | 30 | how long files survive **after the customer downloads** |
+| `retainDeliveredDays` | 90 | the backstop, for a customer who never downloads |
+| `warnBeforeDeletionDays` | 7 | how much notice they get before deletion |
 | `retainUnpaidHours` | 24 | when an abandoned submission's uploads are deleted |
 
 ### The timers, and why they aren't one mechanism
@@ -24,7 +26,8 @@ Worth knowing before anyone asks for "a timer in admin":
 | Clock | Value | How it's enforced |
 | --- | --- | --- |
 | **The flow window** — one clock for the whole unfinished attempt | **30 min**, sliding *(today: correct, but a second 10-min clock still runs on the verification code — see below)* | the flow cookie's own TTL. No scheduler: an expired token simply fails to verify |
-| **Deferred cleanup** — a completed review's uploads | `retainResolvedHours` | the nightly sweep, against that submission's own `completedAt`. Files go, **record stays** |
+| **Deferred cleanup** — a released submission's files | `retainCollectedDays` from `collectedAt`, or `retainDeliveredDays` from `completedAt` — **whichever is later** | the nightly sweep. **All four folders go**, records stay |
+| **A scheduled one-off** — the deletion warning | `warnBeforeDeletionDays` before the above | the same sweep, running *first* and against a nearer cutoff, so a single night can't both warn and delete |
 | **Deferred cleanup** — an abandoned submission | `retainUnpaidHours` | the sweep *and* every new submission. **Deleted outright** — files and record |
 
 **One window covers the whole attempt.** The verification code does *not* get an
@@ -66,13 +69,17 @@ unpaid submissions as well, so the flow cleans up after itself whenever anyone
 starts one. With no traffic nothing is running anyway, and with traffic the cron
 is only a backstop.
 
-⚠️ **The agreed retention rework changes all of this** (settled 2026-08-01). The
-northstar keys the clock off the *customer's download* — **30 days from
-collection, or 90 days from delivery, whichever expires later** — rather than 24
-hours from completion, and adds a **one-week warning email** before deletion. Two
-consequences for these knobs: `retainResolvedHours` becomes two windows measured
-in days, and **the coach's response is swept with everything else**, which is only
-safe because the clock cannot start until the customer has the files in hand. That
+✅ **The retention rework shipped 2026-08-01.** The clock keys off the *customer's
+download* — 30 days from collection, or 90 from delivery, whichever expires later
+— and a one-week warning precedes deletion. **The coach's response is swept with
+everything else**, which is only safe because the clock cannot start until the
+customer has the files in hand.
+
+**The fourth kind of clock now exists.** The warning is the first genuinely
+*scheduled* effect in the system: "delete what's due" is derivable from state,
+"warn a week out" is a one-off that must fire exactly once. `deletionWarnedAt` is
+its guard, and it is stamped whether or not the send succeeded — retrying nightly
+would turn one undelivered email into seven. That
 warning is the "fourth kind" below — the first genuinely scheduled effect in the
 system — so it can't be folded into the existing derivable sweeps. See
 [`submission/_SubmissionDocumentation.md` §2](../submission/_SubmissionDocumentation.md).

@@ -64,6 +64,20 @@
       "when": 1785632252366,
       "tag": "0008_naive_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785637863336,
+      "tag": "0009_next_umar",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785637864336,
+      "tag": "0010_retention_anchors",
+      "breakpoints": true
     }
   ]
 }

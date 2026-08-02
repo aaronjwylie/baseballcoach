@@ -11,7 +11,24 @@ emails exist and which don't" is a question no single domain can answer.
 
 ---
 
-## Where we are now — 2026-08-01
+## Where we are now — 2026-08-01 (evening)
+
+**All nine built**, plus two off-spine messages. The set grew from six this
+morning when the northstar path added two download confirmations and a deletion
+warning; all three landed the same day, along with the four that tell Yuta
+something.
+
+**The pattern worth keeping:** five of the nine tell Yuta something, and the
+reason they exist is that a queue which doesn't announce its own arrivals has to
+be *watched* instead of used.
+
+**Two sends are not best-effort in the way the others are.** The verification
+code (①) blocks the customer, so a failure stops the flow rather than being
+logged. The deletion warning (⑨) is the opposite: it is stamped whether or not
+it sent, because retrying nightly would turn one missed email into seven. Both
+are departures from ADR 004's default, and both are deliberate.
+
+### Superseded — the state this morning
 
 **Four of nine built.** The set grew from six on 2026-08-01, when the northstar
 path added two download confirmations and a deletion warning. The transport is
@@ -56,14 +73,14 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 | # | Step | Trigger | To | Status |
 |---|---|---|---|---|
 | ① | 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
-| ② | 4 | Payment succeeded, submission accepted | customer **+ Yuta** | 🔶 **half** — the customer receipt is built; Yuta is not told |
+| ② | 4 | Payment succeeded, submission accepted | customer **+ Yuta** | ✅ **built** — receipt to the customer, arrival notice to Yuta |
 | ③ | 8 | Handed to the coach | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
-| ④ | 9 | **Coach picked the work up** | Yuta | ❌ **not built** — needs the download stamp first |
-| ⑤ | 10 | Coach submitted their response | Yuta **+ coach** | ❌ **not built** — the status moves to `awaiting_approval`, but nobody is told, so Yuta has to notice |
-| ⑥ | 13 | Yuta approved the response → released | customer | 🔶 **half** — built, but must also **state the retention window** (settled 2026-08-01): the customer is told at delivery how long the files are kept, not warned a week before they go |
-| ⑦ | 14 | **Customer collected their feedback** | Yuta | ❌ **not built** — needs the download stamp first |
-| ⑧ | 15 | Yuta marks the submission resolved | customer | ❌ **not built** — trigger decided, see below |
-| ⑨ | 16 | **Uploads will be deleted in a week** | customer | ❌ **not built** — the only *scheduled* message in the set |
+| ④ | 9 | **Coach picked the work up** | Yuta | ✅ **built** — fires on the coach's first download |
+| ⑤ | 10 | Coach submitted their response | Yuta **+ coach** | ✅ **built** — `domains/feedback`, to Yuta and the coach |
+| ⑥ | 13 | Yuta approved the response → released | customer | ✅ **built** — and it **states the retention window** at delivery |
+| ⑦ | 14 | **Customer collected their feedback** | Yuta | ✅ **built** — fires on the customer's first download |
+| ⑧ | 15 | Yuta marks the submission resolved | customer | ✅ **built** — on “Mark resolved”, carrying the retention deadline |
+| ⑨ | 16 | **Uploads will be deleted in a week** | customer | ✅ **built** — the only *scheduled* message in the set, stamped so it can't send twice |
 
 Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
 

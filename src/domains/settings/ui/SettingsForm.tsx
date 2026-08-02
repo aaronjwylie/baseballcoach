@@ -98,16 +98,46 @@ export function SettingsForm({ settings }: { settings: PlatformSettings }) {
         </legend>
 
         <Field
-          label="Delete uploads this long after a review completes (hours)"
-          hint="Only the customer's uploads. The coach's feedback file is never swept — the customer's download link depends on it."
+          label="Delete files this long after the customer downloads (days)"
+          hint="The clock starts when they collect, not when we send — so nothing is ever deleted before they have it. Everything goes together, their uploads and the coach's response alike."
         >
           <input
-            name="retainResolvedHours"
+            name="retainCollectedDays"
             type="number"
             min={1}
-            max={8760}
+            max={3650}
             required
-            defaultValue={settings.retainResolvedHours}
+            defaultValue={settings.retainCollectedDays}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field
+          label="…or this long after we send it, if they never download (days)"
+          hint="The backstop. Without it, a customer who never collects would keep their files forever. Whichever window ends later wins."
+        >
+          <input
+            name="retainDeliveredDays"
+            type="number"
+            min={1}
+            max={3650}
+            required
+            defaultValue={settings.retainDeliveredDays}
+            className={inputClass}
+          />
+        </Field>
+
+        <Field
+          label="Warn the customer this many days before deleting"
+          hint="One email, sent once. Set to 0 to delete without warning — not recommended, since it's their only chance to grab another copy."
+        >
+          <input
+            name="warnBeforeDeletionDays"
+            type="number"
+            min={0}
+            max={365}
+            required
+            defaultValue={settings.warnBeforeDeletionDays}
             className={inputClass}
           />
         </Field>

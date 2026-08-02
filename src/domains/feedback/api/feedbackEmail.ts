@@ -13,13 +13,26 @@ export function sendFeedbackReady(
   to: string,
   feedbackUrl: string,
   playerName?: string,
+  retentionDays?: number,
 ) {
+  /*
+    The retention line is not a nicety.
+
+    Everything is swept together — the customer's uploads *and* the coach's
+    response — so this message and the ⑨ warning are the only protection against
+    a parent losing a review they cannot recreate. A deadline disclosed at
+    delivery is a term of the service; disclosed a week out, it's a surprise.
+  */
+  const retention = retentionDays
+    ? `<p><strong>Download and keep it.</strong> We delete everything ${retentionDays} days after you first download it, so save a copy of anything you want to hold on to.</p>`
+    : "";
+
   return sendEmail({
     to,
     subject: `${site.name} — your coaching feedback is ready`,
     html: emailShell(
       "Your feedback is ready 🎬",
-      `<p>Your coach has finished reviewing${playerName ? ` ${playerName}'s` : " your"} video. Tap below to download the full breakdown — this link is private to you.</p>`,
+      `<p>Your coach has finished reviewing${playerName ? ` ${playerName}'s` : " your"} submission. Tap below to download the full breakdown — this link is private to you.</p>${retention}`,
       { label: "See your feedback", url: feedbackUrl },
     ),
   });
@@ -111,4 +124,67 @@ function escapeFeedbackHtml(value: string): string {
     (c) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
+}
+
+/**
+ * ⑧ — thank you, and come back. To the customer.
+ *
+ * Sent when Yuta marks a submission resolved, which is deliberately **before**
+ * the purge rather than after: the invitation should land while they still have
+ * their files, not once we've deleted them.
+ *
+ * It also carries the retention deadline, which is the last time anyone tells
+ * them in a message they're likely to keep.
+ */
+export function sendThankYouEmail(opts: {
+  to: string;
+  playerName: string;
+  retentionDays: number;
+  startUrl: string;
+}) {
+  const player = escapeFeedbackHtml(opts.playerName);
+  return sendEmail({
+    to: opts.to,
+    subject: `${site.name} — thanks, and see you next time`,
+    html: emailShell(
+      "Thanks for training with us",
+      `<p>We hope the feedback on <strong>${player}</strong> was useful.</p>
+       <p>A reminder: the files stay on our servers for <strong>${opts.retentionDays} days</strong> after you download them, so keep a copy of anything you want to hold on to.</p>
+       <p>Whenever there's new footage, we'd love to see it.</p>`,
+      { label: "Send another submission", url: opts.startUrl },
+    ),
+  });
+}
+
+/**
+ * ⑨ — the deletion warning. To the customer.
+ *
+ * The last chance to grab another copy, and the only protection against a parent
+ * losing a review they can't recreate: everything is swept together, the coach's
+ * response included. Sent once, guarded by `deletionWarnedAt`.
+ *
+ * It should never be the *first* they hear of the deadline — ⑥ states it at
+ * delivery, which is what makes this a reminder rather than a surprise.
+ */
+export function sendDeletionWarning(opts: {
+  to: string;
+  playerName: string;
+  deletesOn: Date;
+  daysLeft: number;
+}) {
+  const player = escapeFeedbackHtml(opts.playerName);
+  const when = opts.deletesOn.toLocaleDateString("en-CA", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return sendEmail({
+    to: opts.to,
+    subject: `${site.name} — your files are deleted in ${opts.daysLeft} days`,
+    html: emailShell(
+      "Save anything you still want",
+      `<p>The files from <strong>${player}</strong>'s review — everything you sent us, and the coach's response — are deleted from our servers on <strong>${when}</strong>.</p>
+       <p>If you've already saved your copy, there's nothing to do. If not, this is the last reminder: download it now and keep it somewhere safe.</p>`,
+    ),
+  });
 }

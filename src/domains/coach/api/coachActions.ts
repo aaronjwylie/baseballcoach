@@ -6,11 +6,15 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/domains/account";
 import {
+  FILE_SETS,
   FOCUS_OPTIONS,
   assignSubmissionCoach,
   getSubmission,
-  listSubmissionFiles,
+  kindsForSet,
+  listFilesByKinds,
   markSubmissionSentToCoach,
+  updateSubmission,
+  type FileSet,
   type Focus,
 } from "@/domains/submission";
 import { storage, coachImageKey } from "@/shared/storage";
@@ -186,7 +190,24 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   const coach = await getCoach(submission.assignedCoachId);
   if (!coach) return;
 
-  const files = await listSubmissionFiles(submissionId);
+  /*
+    Step 8's curation, and the reason the radio can't live on assignment: at
+    assignment the translation doesn't exist yet to choose.
+
+    Falls back to the originals rather than to nothing. A missing or unparseable
+    choice must not hand a coach an empty download — the originals are the set
+    that always exists, so they're the safe default.
+  */
+  const requested = String(formData.get("fileSet") ?? "original");
+  const fileSet: FileSet = FILE_SETS.includes(requested as FileSet)
+    ? (requested as FileSet)
+    : "original";
+
+  const files = await listFilesByKinds(
+    submissionId,
+    kindsForSet("intake", fileSet),
+  );
+  if (files.length === 0) return;
 
   // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails.
   await sendAssignmentEmail({
@@ -196,6 +217,9 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
     files,
   });
 
+  // Record what they were actually sent. "What did we give them?" is asked
+  // later, and by then the folders may hold more than they did today.
+  await updateSubmission(submissionId, { coachFileSet: fileSet });
   await markSubmissionSentToCoach(submissionId);
   revalidatePath("/admin");
 }

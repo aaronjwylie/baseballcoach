@@ -18,9 +18,24 @@ export interface PlatformSettings {
   maxFileSizeMb: number;
   /** How many files one submission may carry. */
   maxFilesPerSubmission: number;
-  /** Hours after a submission completes before its uploads are deleted. */
-  retainResolvedHours: number;
-  /** Hours after an unpaid submission is created before its uploads go. */
+  /**
+   * Days after the **customer collects** before their files are deleted.
+   *
+   * The clock starts on collection, not on delivery, so nothing is ever purged
+   * before the customer has it in hand.
+   */
+  retainCollectedDays: number;
+  /**
+   * The backstop, in days from delivery.
+   *
+   * A customer who never downloads has no collection clock, so without this
+   * their files live forever. Whichever window expires **later** wins, so
+   * someone who collects on day 80 still gets their full retention.
+   */
+  retainDeliveredDays: number;
+  /** Days of warning before deletion. The ⑨ email fires this far out. */
+  warnBeforeDeletionDays: number;
+  /** Hours after an unpaid submission goes quiet before its uploads go. */
   retainUnpaidHours: number;
 }
 
@@ -34,7 +49,9 @@ export const DEFAULT_SETTINGS: PlatformSettings = {
   priceCents: 8000,
   maxFileSizeMb: 50,
   maxFilesPerSubmission: 5,
-  retainResolvedHours: 24,
+  retainCollectedDays: 30,
+  retainDeliveredDays: 90,
+  warnBeforeDeletionDays: 7,
   retainUnpaidHours: 24,
 };
 
@@ -53,7 +70,12 @@ export const settingsSchema = z.object({
   priceCents: z.coerce.number().int().min(100).max(1_000_000),
   maxFileSizeMb: z.coerce.number().int().min(1).max(2000),
   maxFilesPerSubmission: z.coerce.number().int().min(1).max(20),
-  retainResolvedHours: z.coerce.number().int().min(1).max(8760),
+  // Floor of 1 day on the collected clock, so a purge can never land on the
+  // same day the customer downloaded. The warning must fit inside it, which the
+  // sweep re-checks rather than trusting the form.
+  retainCollectedDays: z.coerce.number().int().min(1).max(3650),
+  retainDeliveredDays: z.coerce.number().int().min(1).max(3650),
+  warnBeforeDeletionDays: z.coerce.number().int().min(0).max(365),
   retainUnpaidHours: z.coerce.number().int().min(1).max(8760),
 });
 

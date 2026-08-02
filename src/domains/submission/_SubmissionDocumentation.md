@@ -861,7 +861,25 @@ rollout plan and resolved in its Phase 6:
   has been told, not that the coach has started". The coach's first download is that
   missing event.
 
-## 3 · Where we are now — 2026-08-01
+## 3 · Where we are now — 2026-08-01 (evening)
+
+**The whole pipeline is built.** Phases 1–6 of
+[the rollout](../../../docs/design/rollout.md) landed today; every stage in §2 has
+code behind it, and the `(not built)` markers in the table are being cleared as
+each is verified. What remains is Phase 0 — live Stripe keys, clearing the Basic
+Auth gate, and real coach content — which is operations rather than code.
+
+Verified end to end in probes rather than by inspection: all sixteen rungs walk,
+both collection stamps refuse to fire early and refuse to fire twice, and the
+retention sweep purges collected-and-old and never-collected-but-past-the-backstop
+while leaving collected-recently (warned) and just-delivered alone.
+
+**Two departures from ADR 004 worth remembering**, because both look like bugs
+until you know why: the verification code fails the flow when it can't be sent
+(the customer is blocked on it), and the deletion warning is stamped even when the
+send fails (retrying nightly would turn one missed email into seven).
+
+### Phase 1 — the ladder and the trail
 
 **Phase 1 of the rollout landed today** — the ladder, the trail, and the four
 folders' foundation. What that means in this slice:

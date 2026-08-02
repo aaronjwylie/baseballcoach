@@ -20,7 +20,9 @@ function fromRow(row: SettingsRow): PlatformSettings {
     priceCents: row.priceCents,
     maxFileSizeMb: row.maxFileSizeMb,
     maxFilesPerSubmission: row.maxFilesPerSubmission,
-    retainResolvedHours: row.retainResolvedHours,
+    retainCollectedDays: row.retainCollectedDays,
+    retainDeliveredDays: row.retainDeliveredDays,
+    warnBeforeDeletionDays: row.warnBeforeDeletionDays,
     retainUnpaidHours: row.retainUnpaidHours,
   };
 }
