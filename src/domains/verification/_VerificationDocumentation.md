@@ -36,7 +36,19 @@ used to mean a bounced receipt and a support thread.
 
 ---
 
-## 2 · Where we are now — 2026-08-01
+## 2 · Where we are now — 2026-08-02
+
+- ✅ **A bounce is surfaced, not waited out.** The code's delivery is now tracked
+  (`⑨`'s webhook records every outcome), and a bounce lands about **two seconds**
+  after the send. The panel asks **once, five seconds in** — not a poll, because a
+  two-second failure doesn't need one — and the verify and resend paths check as
+  well, so the customer is never told *"that code doesn't match"* about a code
+  that was never delivered.
+- ✅ **The check can only move someone backwards**, so it is silent unless it is
+  certain. A slow inbox is not a failure, and an absent session is not news — the
+  flow already handles that wherever the customer acts.
+
+## 2b · Where we were — 2026-08-01
 
 - ✅ **One clock.** `CODE_TTL_MINUTES` is now the flow window, read from
   `shared/lib/flowWindow` rather than declared here. A shorter TTL was a *second*

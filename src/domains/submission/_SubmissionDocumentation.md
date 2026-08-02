@@ -220,9 +220,9 @@ What each column holds:
 | 16 | Deletion warning | the system | • Collected 23 days ago; deletion is a week away | the countdown is 7 days from expiry and no warning has been sent | the scheduled sweep, extended to notice what's *approaching* | the customer is told their files will be deleted in a week | the status says deletion is imminent, so it's visible in the queue rather than only in a mailbox | the warning is stamped so it can never send twice | | | | they have a week to collect again if they want to | ⑨ deletion warning → customer | unchanged — nothing is deleted yet | **`resolved`** → **`purge_imminent`** |
 | 17 | Files purged | the system | • 30 days since collection; the warning has been sent | the countdown has expired and the submission hasn't already been swept<br>**A submission never collected** falls back to 90 days from step 13 | the scheduled sweep | **every file goes — all four sets**, the customer's originals and the coach's response alike *(one failure is logged; the rest continue)* | the file **records survive** with their locations cleared, so the portal can still say what was sent | **the submission itself is kept forever** — the history is the point; only the bytes go | the sweep is stamped, making a re-run a no-op | | | download links answer **410 Gone**; the row remains, permanently | | nothing stored; everything remembered | **`purge_imminent`** → **`purged`** |
 
-### Four paths that aren't stages
+### Five paths that aren't stages
 
-The spine runs 1 → 17. Four things happen *off* it and can't be numbered, because
+The spine runs 1 → 17. Five things happen *off* it and can't be numbered, because
 they're branches rather than steps.
 
 **A declined card (branches from step 4).** A decline is a customer *trying*, not
@@ -247,6 +247,27 @@ the submission, as often as the customer likes. Two ways in:
 Both land on the same page, and both grant the same thing: see the status, and —
 once step 13 has run — download the response. **This is the surface step 14
 measures**, so it has to exist before the retention clock can key off a download.
+
+**The address bounces (branches from step 2).** Measured at **~2 seconds** after
+the send, and the customer is by then looking at a code input for a message that
+will never arrive. Nothing can push it to them, so two things surface it:
+
+| | |
+| --- | --- |
+| **A single delayed check** | step 2 asks once, five seconds in — while they're still switching to their mail app. Not a poll: a bounce that takes two seconds doesn't need one |
+| **Their next action** | typing a code or asking for a new one both check first, so the answer is never *"that code doesn't match"* about a code that was never sent |
+
+Either returns them to step 1 with *"that email address didn't accept our
+message — check it for a typo and try again."*
+
+**It scrubs nothing, and it can't need to.** A bounce of ① can only happen before
+verification, and uploading *requires* verification — so there are never any files.
+The row is unverifiable, therefore unpayable, and the abandonment sweep collects it
+like any other dead attempt.
+
+⚠️ **After payment, a bounce does nothing automatic.** A receipt or a feedback link
+failing is real and it is *Yuta's* — it shows in the trail and the row, and nothing
+acts destructively on a submission somebody paid for.
 
 **The window lapses, or the guesses run out (branches from steps 2, 3 or 4).**
 Two triggers, one outcome — **exactly the outcome of refreshing the page.** The

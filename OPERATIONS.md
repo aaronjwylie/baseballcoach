@@ -17,11 +17,29 @@
 > whose migration hadn't been applied. Nothing has to be run by hand on deploy
 > any more; `npm run db:migrate` remains for local work.*
 >
-> **Migrations run to `0011`.** `0008` grows the status enum to sixteen and adds
+> **Delivery tracking is live** (2026-08-02). A Svix-signed webhook at
+> `/api/webhooks/resend` records what became of every email — `delivered`,
+> `bounced`, `complained`, `failed` — into the submission's trail. Two pieces of
+> config, both already done:
+>
+> - **Resend → Webhooks**: endpoint `https://www.baseball-sensei.com/api/webhooks/resend`,
+>   the four events above. Created via Resend's API; it can be listed, edited or
+>   deleted the same way.
+> - **Vercel**: `RESEND_WEBHOOK_SECRET`, Production scope.
+>
+> **An unset secret makes the route answer 503 and record nothing** — it refuses
+> unsigned deliveries rather than trusting them. If outcomes stop appearing, check
+> that variable first.
+>
+> `/api` is deliberately outside the Basic Auth matcher, so the gate never blocks
+> a webhook. That's why Stripe's will work too.
+>
+> **Migrations run to `0012`.** `0008` grows the status enum to sixteen and adds
 > `submission_events`; `0009` adds the two file-set columns; `0010` adds the
 > retention anchors and replaces `retain_resolved_hours` with three settings;
 > `0011` widens the trail to record sends as well as status moves.
-> `0008`, `0010` and `0011` are **hand-corrected** — `drizzle-kit generate`
+> `0012` adds the delivery outcome and the message id.
+> `0008`, `0010`, `0011` and `0012` are **hand-corrected** — `drizzle-kit generate`
 > emits a cast that fails on existing rows, and can't tell a rename from a
 > drop-plus-add (or a NOT NULL being relaxed) without a TTY. Apply them; don't
 > regenerate them.

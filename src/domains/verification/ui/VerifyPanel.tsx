@@ -16,15 +16,26 @@ import { CODE_LENGTH, CODE_TTL_MINUTES } from "../model/verification";
  *
  * The parent owns the verbs; this owns the input.
  */
+/**
+ * How long to wait before asking whether the code bounced.
+ *
+ * Bounces observed at ~2s. Five gives the webhook room without leaving someone
+ * staring at a dead form, and lands while they're still opening their mail app.
+ */
+const DELIVERY_CHECK_MS = 5000;
+
 export function VerifyPanel({
   email,
   onVerify,
   onResend,
+  onCheckDelivery,
   onBack,
 }: {
   email: string;
   onVerify: (code: string) => Promise<string | null>;
   onResend: () => Promise<string | null>;
+  /** Asked once, a few seconds in, in case the address bounced. */
+  onCheckDelivery?: () => Promise<void>;
   onBack: () => void;
 }) {
   const [code, setCode] = useState("");
@@ -32,6 +43,22 @@ export function VerifyPanel({
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
+
+  /*
+    A single delayed look for a bounce.
+
+    Not a poll: a bounce arrives about two seconds after the send, so one check
+    a few seconds in catches it while the customer is still switching to their
+    mail app. Cleared on unmount so a customer who moves on isn't yanked back by
+    a timer that outlived the step.
+  */
+  useEffect(() => {
+    if (!onCheckDelivery) return;
+    const timer = setTimeout(() => {
+      void onCheckDelivery();
+    }, DELIVERY_CHECK_MS);
+    return () => clearTimeout(timer);
+  }, [onCheckDelivery]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

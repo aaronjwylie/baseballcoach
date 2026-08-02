@@ -609,6 +609,14 @@ The trail. One row per status transition.
 | `at` | timestamptz, default `now()` | |
 | `actorId` | uuid, FK → `users.id`, null | **null is meaningful** — the customer and the cron have no session |
 | `note` | text, null | why, for the operator overrides that owe an explanation |
+| `kind` | enum | `status` · `email` — the trail records sends too, not only moves |
+| `label` | text, null | which message, on an email event: the ①–⑨ handle |
+| `outcome` | enum, null | `sent` · `delivered` · `bounced` · `complained` · `failed` |
+| `messageId` | text, null, indexed | Resend's id — the delivery webhook's only handle on a submission |
+
+**Outcomes append, they never update.** Overwriting "we sent it" with "it
+bounced" loses that both were true and when — and a delivery three seconds later
+reads very differently from one three minutes later.
 
 **Chosen over sixteen nullable `*At` columns**, and it answers strictly more: a
 column remembers one moment, and a submission can reach the same rung twice once
@@ -724,7 +732,7 @@ each paired with a `coaches` row.
 
 ## 9. Webhook Contracts
 
-One inbound webhook: **Stripe**. Mux is gone — the upload route stores the file
+Two inbound webhooks: **Stripe** and **Resend**. Mux is gone — the upload route stores the file
 directly, so there's no async video webhook. The feedback-ready notification is a
 coach action in the portal, not a webhook.
 
@@ -753,6 +761,29 @@ intent was created. The id is looked up, never trusted to describe anything.
 
 **Response:** return `200` quickly; a handler error returns `500` so Stripe
 retries — safe, because the work is idempotent.
+
+### Resend webhook
+
+**Endpoint:** `POST /api/webhooks/resend`
+
+**Events:** `email.delivered` · `email.bounced` · `email.complained` ·
+`email.failed` → appended to the submission's trail.
+
+**Signature:** Svix. HMAC-SHA256 over `${id}.${timestamp}.${rawBody}` with the
+base64 half of `RESEND_WEBHOOK_SECRET`, verified by hand rather than adding the
+`svix` package — a dependency that exists to do one `createHmac` is one to keep
+patched forever. **Timestamps older than five minutes are rejected**, or a
+captured delivery could be replayed indefinitely to keep writing to a trail.
+
+**Unset secret refuses everything (503).** Losing delivery tracking is a degraded
+trail; an open endpoint that writes to it is a forgeable one.
+
+**Why this exists:** `sendEmail` can only ever claim *Resend accepted it*. The gap
+between that and *the customer has it* is where a mistyped address lives — and for
+① , the one message a customer is blocked on, it looked identical to someone being
+slow to check their inbox. **Opens are deliberately not tracked**: Apple Mail
+Privacy Protection pre-fetches images by default, so "opened" is wrong in both
+directions.
 
 ### Raw body handling (critical)
 

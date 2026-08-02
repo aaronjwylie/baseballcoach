@@ -16,6 +16,7 @@ import type {
 import { PaymentPanel } from "@/domains/payment/ui/PaymentPanel";
 import type { CreatedIntent } from "@/domains/payment/api/paymentApi";
 import {
+  checkDeliveryAction,
   confirmPaymentAction,
   createIntentAction,
   listFlowFilesAction,
@@ -175,6 +176,21 @@ export function CheckoutFlow({
     return null;
   }
 
+  /*
+    One look, a few seconds in, for a bounce.
+
+    The customer is on step 2 staring at a code input; a bounce arrives about two
+    seconds after the send and nothing can push it to them. Without this they sit
+    there until they give up and click something, and only then learn the address
+    was wrong.
+
+    It can only ever move them backwards, so it says nothing unless it's certain.
+  */
+  async function checkDelivery(): Promise<void> {
+    const result = await checkDeliveryAction();
+    if (!result.ok) handledGone(result);
+  }
+
   async function resend(): Promise<string | null> {
     const result = await resendCodeAction();
     if (result.ok) return null;
@@ -253,6 +269,7 @@ export function CheckoutFlow({
           email={email}
           onVerify={submitCode}
           onResend={resend}
+          onCheckDelivery={checkDelivery}
           onBack={() => setStep("details")}
         />
       )}

@@ -241,6 +241,31 @@ async function undeliverable(submissionId: string): Promise<boolean> {
   return hasBounced(submissionId, "①");
 }
 
+/**
+ * Has the code we just sent bounced? Asked once, shortly after step 2 loads.
+ *
+ * A bounce lands about two seconds after the send — measured, not guessed — and
+ * nothing pushes it to the customer, who by then is looking at a code input for
+ * a message that will never arrive. Waiting for them to act meant sitting there
+ * until their patience ran out and only then being told.
+ *
+ * **One check, not a poll.** It fires while they're still switching to their
+ * mail app, which is long enough to catch a bounce that takes two seconds and
+ * short enough not to be a loop. If nothing has bounced by then they're in the
+ * ordinary case and nothing more happens.
+ *
+ * Silent on every other outcome, deliberately: this can only ever move someone
+ * *backwards*, so it must be certain. A slow inbox is not a failure, and no
+ * session is not news — the flow already handles that wherever the customer
+ * acts, and answering `gone` from a background check would yank them out of a
+ * step they were happily on.
+ */
+export async function checkDeliveryAction(): Promise<ActionResult> {
+  const submissionId = await readFlowSession();
+  if (!submissionId) return DONE;
+  return (await undeliverable(submissionId)) ? bouncedBack() : DONE;
+}
+
 export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
   const limit = rateLimit(`verify:${await identify()}`, {
     limit: 20,
