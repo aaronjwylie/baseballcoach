@@ -33,6 +33,22 @@ NIGHTLY
   The coach's feedback file is never swept.
 ```
 
+## The documents, and which one answers what
+
+| Reading for | Go to |
+| --- | --- |
+| What a submission's whole life looks like | [`_SubmissionDocumentation.md` §2](src/domains/submission/_SubmissionDocumentation.md) — seventeen stages, the sixteen-rung ladder, and what each stage keeps when it fails partway |
+| Why the code is shaped this way | [PRINCIPLES.md](PRINCIPLES.md) |
+| How things are spelled | [`_NomenclatureLaw.md`](_NomenclatureLaw.md) — the settled *intake / response* vocabulary, and the retired words |
+| Where files go | [`docs/design/structure.md`](docs/design/structure.md) |
+| What still has to happen to go live | [`docs/design/rollout.md`](docs/design/rollout.md) |
+| Why a decision was made | [`docs/decisions/`](docs/decisions/) |
+| What to click in production | [OPERATIONS.md](OPERATIONS.md) |
+
+**Read the slice's `_XxxDocumentation.md` before changing the slice.** They're
+kept true in the same commit as the code — a doc updated later is a doc that was
+wrong in between.
+
 ## Local development
 
 Everything runs locally against a **dockerized Postgres** and **local-disk
@@ -51,6 +67,9 @@ cp .env.example .env.local
 #                   `npm run flow` exercises that path without it.
 
 # 3. Install, migrate, seed
+#   Migrations run to 0010. Two are hand-corrected (0008, 0010) — apply them,
+#   don't regenerate: drizzle emits a cast that fails on existing rows, and it
+#   can't tell a rename from a drop-plus-add without a TTY.
 npm install
 npm run db:migrate                 # apply the schema
 npm run db:seed                    # first admin (+ sample coach & submissions if SEED_SAMPLES=1)

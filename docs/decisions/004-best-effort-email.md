@@ -41,3 +41,35 @@ No such flow exists in v1 (email-as-identity, no accounts) and none is planned.
 **The feedback-ready path needs its own guard.** It's driven by an Airtable
 automation that can be re-fired manually, so best-effort sending alone wouldn't
 prevent a duplicate. Hence the `Feedback Emailed` checkbox, ticked after send.
+
+---
+
+## Amended 2026-08-01 — two exceptions, in opposite directions
+
+The rule holds as the default and now has two named exceptions. Both were found
+by building; neither was anticipated here.
+
+**`sendEmail` reports.** It returns a boolean and still never throws. "Best-effort"
+was always about not failing a webhook or a portal action because a mail server
+hiccuped — it was never meant to make delivery *unknowable*. Most callers rightly
+ignore the result.
+
+**① the verification code fails the flow when it can't be sent.** The line above
+about magic-link login turned out to be prophetic: the 6-digit code is exactly
+that shape. The customer is *blocked* on the message, so swallowing a failure
+strands them on step 2 waiting for a code that was never sent, with nothing on
+screen to suggest otherwise. Honest degradation everywhere else; a dead end here.
+
+**⑨ the deletion warning is stamped even when the send fails** — the opposite
+call, for the opposite reason. Retrying nightly would turn one missed email into
+seven, and nobody is blocked on a warning.
+
+**The test that separates them:** *is someone waiting on this message to
+continue?* If yes, a failure must surface. If no, a failure must not repeat.
+
+**A third instance now exists** — the operator password reset (2026-08-01) is
+also a message its recipient is blocked on. Two is a pattern; three is a rule
+waiting to be written down.
+
+*(The Airtable note above is historical — that automation is gone. The
+idempotency guard survives it as `feedbackEmailedAt`.)*
