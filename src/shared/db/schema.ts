@@ -106,6 +106,22 @@ export const submissionEventKind = pgEnum("submission_event_kind", [
   "email",
 ]);
 
+/**
+ * How far an email got.
+ *
+ * `sent` is all the send path can honestly claim — Resend accepted it. The rest
+ * arrives later, by webhook, and is the difference between "we tried" and "it
+ * reached them". A `bounced` on the verification code is the failure that used
+ * to look exactly like a customer being slow.
+ */
+export const emailOutcome = pgEnum("email_outcome", [
+  "sent",
+  "delivered",
+  "bounced",
+  "complained",
+  "failed",
+]);
+
 // Operator roles. Customers never get a user row.
 export const userRole = pgEnum("user_role", ["admin", "coach"]);
 
@@ -275,6 +291,22 @@ export const submissionEvents = pgTable(
     /** Which message, on an email event: the ①–⑨ handle plus its recipient. */
     label: text(),
     /**
+     * How far it got. Null on a status event.
+     *
+     * A send writes `sent` or `failed`; the delivery webhook appends a second
+     * event carrying `delivered` or `bounced`. Two rows rather than an update,
+     * because the trail is a history and overwriting "we sent it" with "it
+     * bounced" loses when each was true.
+     */
+    outcome: emailOutcome(),
+    /**
+     * Resend's message id — the only thing tying a webhook back to a submission.
+     *
+     * Indexed, because that lookup happens on every delivery notification and is
+     * the webhook's whole job.
+     */
+    messageId: text(),
+    /**
      * Did it work?
      *
      * Only meaningful on an email event, and the reason this column exists:
@@ -292,6 +324,8 @@ export const submissionEvents = pgTable(
   (table) => [
     // Read as "this submission's history, oldest first".
     index("submission_events_submission_id_idx").on(table.submissionId),
+    // The delivery webhook's only handle on a submission.
+    index("submission_events_message_id_idx").on(table.messageId),
   ],
 );
 

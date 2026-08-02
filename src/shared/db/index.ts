@@ -17,6 +17,7 @@ export {
   focus,
   submissionStatus,
   submissionEventKind,
+  emailOutcome,
   userRole,
 } from "./schema";
 export type {

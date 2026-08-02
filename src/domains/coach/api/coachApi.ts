@@ -158,13 +158,13 @@ export async function noteCoachCollected(
     const collected = await markCoachCollected(submissionId);
     if (!collected) return;
 
-    const ok = await sendCoachCollectedEmail({
+    const result = await sendCoachCollectedEmail({
       to: await listAdminEmails(),
       coachName: coach.name,
       playerName: collected.playerName,
       submissionUrl: `${env.siteUrl}/admin`,
     });
-    void noteEmailSent(submissionId, "④ picked up → Yuta", ok);
+    void noteEmailSent(submissionId, "④ picked up → Yuta", result);
   } catch (err) {
     console.error("[coach] recording a collection failed:", err);
   }

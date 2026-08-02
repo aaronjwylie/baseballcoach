@@ -28,21 +28,37 @@ export interface EmailMessage {
  * *unknowable*: most callers should ignore the result, and the one whose
  * customer is **blocked** on the message must be able to say so.
  *
- * Returns false when the key is unset, the API refused, or the network failed —
- * i.e. "this did not reach Resend". A true means accepted for delivery, which is
- * the strongest thing any sender can honestly claim.
+ * Returns `ok: false` when the key is unset, the API refused, or the network
+ * failed — i.e. "this did not reach Resend". `ok: true` means **accepted for
+ * delivery**, which is the strongest thing a sender can claim at this moment.
+ *
+ * `id` is Resend's message id, and it's what makes the rest knowable: the
+ * delivery webhook arrives seconds later carrying the same id, so without
+ * keeping it here there is no way to tie "this bounced" back to a submission.
  */
+/**
+ * What a send reports back.
+ *
+ * `ok` is "Resend accepted it", not "the customer has it" — those are different
+ * claims and the gap between them is where a mistyped address lives. `id` is how
+ * the second claim becomes knowable later.
+ */
+export interface SendResult {
+  ok: boolean;
+  id?: string;
+}
+
 export async function sendEmail({
   to,
   subject,
   html,
-}: EmailMessage): Promise<boolean> {
+}: EmailMessage): Promise<SendResult> {
   const apiKey = env.resendApiKey;
   if (!apiKey) {
     console.warn(
       `[email] RESEND_API_KEY unset — skipping email to ${to}: ${subject}`,
     );
-    return false;
+    return { ok: false };
   }
 
   try {
@@ -56,11 +72,12 @@ export async function sendEmail({
     });
     if (!res.ok) {
       console.error(`[email] Resend ${res.status}: ${await res.text()}`);
-      return false;
+      return { ok: false };
     }
-    return true;
+    const body = (await res.json().catch(() => null)) as { id?: string } | null;
+    return { ok: true, id: body?.id };
   } catch (err) {
     console.error("[email] send failed:", err);
-    return false;
+    return { ok: false };
   }
 }

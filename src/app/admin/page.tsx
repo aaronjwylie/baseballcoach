@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container, pillClass } from "@/shared/ui";
+import { Container, LocalTime, pillClass } from "@/shared/ui";
 import { FLOW_WINDOW_MINUTES } from "@/shared/lib";
 import {
   listFeedbackFiles,
@@ -237,23 +237,6 @@ export default async function AdminHomePage({
         </div>
     </Container>
   );
-}
-
-/**
- * Local time, to the minute — enough to follow a test run without noise.
- *
- * The seconds are dropped on purpose: nothing here is timed finely enough for
- * them to mean anything, and they make two adjacent stamps harder to compare.
- */
-function formatStamp(iso?: string): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-CA", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }
 
 /**
@@ -495,7 +478,7 @@ function SubmissionRow({
           </dd>
           <dt className="text-ink-muted">Started</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
-            {formatStamp(submission.submittedAt)}
+            <LocalTime iso={submission.submittedAt} />
           </dd>
           {/*
             Only while it can still lapse. After payment the flow cookie is
@@ -512,7 +495,7 @@ function SubmissionRow({
             <>
               <dt className="text-ink-muted">Session expires</dt>
               <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
-                {formatStamp(sessionExpiry)}
+                <LocalTime iso={sessionExpiry} />
                 <span className="ml-1.5 font-sans text-ink-muted">at the earliest</span>
               </dd>
             </>
@@ -530,7 +513,7 @@ function SubmissionRow({
           <dt className="text-ink-muted">Sent to customer</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerFileSet ?? "—"}</dd>
           <dt className="text-ink-muted">Collected</dt>
-          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.collectedAt ?? "—"}</dd>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft"><LocalTime iso={submission.collectedAt} /></dd>
         </dl>
       }
       events={events}

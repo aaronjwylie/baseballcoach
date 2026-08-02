@@ -84,7 +84,9 @@ export function sendPaymentReceivedEmail(opts: {
   fileCount: number;
   queueUrl: string;
 }) {
-  if (opts.to.length === 0) return Promise.resolve(false);
+  // Nobody to tell — an install with no admin row. Reported as a
+  // non-send rather than thrown, so a webhook never fails over it.
+  if (opts.to.length === 0) return Promise.resolve({ ok: false });
   const player = escapeHtml(opts.playerName);
   const focus = opts.focus ? ` · ${escapeHtml(opts.focus)}` : "";
   const files = `${opts.fileCount} file${opts.fileCount === 1 ? "" : "s"}`;

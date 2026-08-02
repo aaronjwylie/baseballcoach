@@ -87,7 +87,7 @@ export async function runRetentionSweep(): Promise<SweepReport> {
       );
       try {
         if (submission.customerEmail) {
-          const ok = await sendDeletionWarning({
+          const result = await sendDeletionWarning({
             to: submission.customerEmail,
             playerName: submission.playerName,
             deletesOn,
@@ -96,10 +96,10 @@ export async function runRetentionSweep(): Promise<SweepReport> {
           void noteEmailSent(
             submission.id,
             "⑨ deletion warning → customer",
-            ok,
+            result,
             // Worth saying out loud in the trail: the stamp lands either way, so
             // a failure here is a customer who will never be warned again.
-            ok ? undefined : "stamped regardless — this will not retry",
+            result.ok ? undefined : "stamped regardless — this will not retry",
           );
         }
         // Stamped whether or not the send worked. A warning we couldn't deliver

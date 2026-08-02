@@ -99,14 +99,14 @@ export async function sendFeedbackForApproval(
     ? await getCoach(updated.assignedCoachId)
     : null;
   const admins = await listAdminEmails();
-  const submittedOk = await sendResponseSubmittedEmail({
+  const submitted = await sendResponseSubmittedEmail({
     to: [...admins, ...(coach?.email ? [coach.email] : [])],
     coachName: coach?.name ?? "The coach",
     playerName: updated.playerName,
     fileCount: files.length,
     reviewUrl: `${env.siteUrl}/admin`,
   });
-  void noteEmailSent(submissionId, "⑤ response submitted → Yuta + coach", submittedOk);
+  void noteEmailSent(submissionId, "⑤ response submitted → Yuta + coach", submitted);
 
   return updated;
 }
@@ -133,13 +133,13 @@ export async function resolveSubmission(
   const updated = await updateSubmission(submissionId, { status: "resolved" });
 
   if (updated.customerEmail) {
-    const ok = await sendThankYouEmail({
+    const result = await sendThankYouEmail({
       to: updated.customerEmail,
       playerName: updated.playerName,
       retentionDays,
       startUrl: `${env.siteUrl}/start`,
     });
-    void noteEmailSent(submissionId, "⑧ thank you → customer", ok);
+    void noteEmailSent(submissionId, "⑧ thank you → customer", result);
   }
 
   return updated;
@@ -161,12 +161,12 @@ export async function noteCustomerCollected(
   const collected = await markCustomerCollected(submissionId);
   if (!collected) return;
 
-  const ok = await sendCustomerCollectedEmail({
+  const result = await sendCustomerCollectedEmail({
     to: await listAdminEmails(),
     playerName: collected.playerName,
     submissionUrl: `${env.siteUrl}/admin`,
   });
-  void noteEmailSent(submissionId, "⑦ collected → Yuta", ok);
+  void noteEmailSent(submissionId, "⑦ collected → Yuta", result);
 }
 
 /**
@@ -212,13 +212,13 @@ export async function approveAndComplete(
     // The link lands on a page that lists every file for this one submission.
     const token = await signFeedbackToken(updated.id);
     const settings = await getSettings();
-    const readyOk = await sendFeedbackReady(
+    const ready = await sendFeedbackReady(
       updated.customerEmail,
       `${env.siteUrl}/feedback/${token}`,
       updated.playerName,
       settings.retainCollectedDays,
     );
-    void noteEmailSent(submissionId, "⑥ feedback ready → customer", readyOk);
+    void noteEmailSent(submissionId, "⑥ feedback ready → customer", ready);
   }
 
   return updated;

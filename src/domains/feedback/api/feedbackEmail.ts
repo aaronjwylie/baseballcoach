@@ -74,7 +74,9 @@ export function sendResponseSubmittedEmail(opts: {
   fileCount: number;
   reviewUrl: string;
 }) {
-  if (opts.to.length === 0) return Promise.resolve(false);
+  // Nobody to tell — an install with no admin row. Reported as a
+  // non-send rather than thrown, so a webhook never fails over it.
+  if (opts.to.length === 0) return Promise.resolve({ ok: false });
   const coach = escapeFeedbackHtml(opts.coachName);
   const player = escapeFeedbackHtml(opts.playerName);
   const files = `${opts.fileCount} file${opts.fileCount === 1 ? "" : "s"}`;
@@ -103,7 +105,9 @@ export function sendCustomerCollectedEmail(opts: {
   playerName: string;
   submissionUrl: string;
 }) {
-  if (opts.to.length === 0) return Promise.resolve(false);
+  // Nobody to tell — an install with no admin row. Reported as a
+  // non-send rather than thrown, so a webhook never fails over it.
+  if (opts.to.length === 0) return Promise.resolve({ ok: false });
   const player = escapeFeedbackHtml(opts.playerName);
   return sendEmail({
     to: opts.to.join(", "),

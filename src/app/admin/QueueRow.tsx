@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { LocalTime } from "@/shared/ui";
 import { StatusRail } from "@/domains/submission/ui/StatusRail";
 import { StageChain } from "@/domains/submission/ui/StageChain";
 import type { ChainState } from "@/domains/submission/model/stageChain";
@@ -146,26 +147,41 @@ function Trail({ events }: { events: SubmissionEvent[] }) {
             {e.kind === "status" ? (
               <span className="font-mono text-ink">{e.status}</span>
             ) : (
-              <span className={e.ok ? "text-ink-soft" : "font-semibold text-rose-700"}>
-                {e.ok ? "✓" : "✗"} {e.label}
+              <span
+                className={
+                  e.outcome === "bounced" || e.outcome === "failed"
+                    ? "font-semibold text-rose-700"
+                    : e.outcome === "delivered"
+                      ? "text-emerald-700"
+                      : "text-ink-soft"
+                }
+              >
+                {e.outcome === "delivered"
+                  ? "✓✓"
+                  : e.outcome === "bounced"
+                    ? "↩"
+                    : e.ok
+                      ? "✓"
+                      : "✗"}{" "}
+                {e.label}
+                {/* The outcome only earns a word when it isn't the plain
+                    "we sent it" the previous row already said. */}
+                {e.outcome && e.outcome !== "sent" ? (
+                  <span className="ml-1 font-normal text-ink-muted">
+                    {e.outcome}
+                  </span>
+                ) : null}
               </span>
             )}
             {e.note ? <span className="text-ink-muted"> — {e.note}</span> : null}
           </span>
-          <span className="tabular-nums text-ink-muted">{formatWhen(e.at)}</span>
+          <span className="tabular-nums text-ink-muted">
+            <LocalTime iso={e.at} />
+          </span>
         </li>
       ))}
     </ol>
   );
 }
 
-function formatWhen(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("en-CA", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
+

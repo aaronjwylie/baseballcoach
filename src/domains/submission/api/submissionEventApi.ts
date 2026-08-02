@@ -20,7 +20,7 @@
  * disagree with `submissions.status`. If the insert fails, the transition fails
  * with it — a status change nobody can account for is worse than no change.
  */
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, submissionEvents } from "@/shared/db";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
@@ -29,6 +29,14 @@ import type { SubmissionStatus } from "../model/submission";
 type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type SubmissionEventKind = "status" | "email";
+
+/** How far an email got. See the `email_outcome` enum. */
+export type EmailOutcome =
+  | "sent"
+  | "delivered"
+  | "bounced"
+  | "complained"
+  | "failed";
 
 export interface SubmissionEvent {
   id: string;
@@ -40,6 +48,10 @@ export interface SubmissionEvent {
   label?: string;
   /** Did the send work? Only meaningful on an email event. */
   ok?: boolean;
+  /** How far it got — `sent` at first, then whatever the webhook reports. */
+  outcome?: EmailOutcome;
+  /** Resend's message id, on an email event. */
+  messageId?: string;
   at: string;
   /** The operator who caused it, or null for the customer and the cron. */
   actorId?: string;
@@ -105,7 +117,7 @@ export async function recordSubmissionEvent(
 export async function noteEmailSent(
   submissionId: string,
   label: string,
-  ok: boolean,
+  result: { ok: boolean; id?: string },
   note?: string,
 ): Promise<void> {
   try {
@@ -116,13 +128,86 @@ export async function noteEmailSent(
       // corrupt every read that uses the trail to work out where a submission is.
       status: null,
       label,
-      ok,
+      ok: result.ok,
+      outcome: result.ok ? "sent" : "failed",
+      // Without the id, a bounce arriving thirty seconds from now belongs to
+      // nobody. This is the whole reason the send path returns it.
+      messageId: result.id ?? null,
       actorId: await currentActorId(),
       note: note ?? null,
     });
   } catch (err) {
     console.error(`[trail] recording "${label}" failed:`, err);
   }
+}
+
+/**
+ * A delivery notice from Resend — what actually became of a message.
+ *
+ * **Appends rather than updates.** The trail is a history: overwriting "we sent
+ * it" with "it bounced" loses the fact that both were true, and when. Two rows
+ * also make the gap visible — a delivery three seconds later reads differently
+ * from one three minutes later.
+ *
+ * Returns the submission it belonged to, so the caller can act on a bounce.
+ * Null when the id is unknown, which is the ordinary case for anything sent
+ * before this existed, and for Resend's own test deliveries.
+ */
+export async function noteEmailOutcome(
+  messageId: string,
+  outcome: EmailOutcome,
+  note?: string,
+): Promise<{ submissionId: string; label: string } | null> {
+  const [origin] = await db
+    .select({
+      submissionId: submissionEvents.submissionId,
+      label: submissionEvents.label,
+    })
+    .from(submissionEvents)
+    .where(eq(submissionEvents.messageId, messageId))
+    .orderBy(asc(submissionEvents.at))
+    .limit(1);
+
+  if (!origin) return null;
+
+  await db.insert(submissionEvents).values({
+    submissionId: origin.submissionId,
+    kind: "email",
+    status: null,
+    label: origin.label,
+    // `ok` narrows to "did it reach the customer", which is the question the
+    // progress view asks. A bounce is not ok however cleanly it was accepted.
+    ok: outcome === "delivered" || outcome === "sent",
+    outcome,
+    messageId,
+    actorId: null,
+    note: note ?? null,
+  });
+
+  return { submissionId: origin.submissionId, label: origin.label ?? "" };
+}
+
+/**
+ * Did a given message bounce for this submission?
+ *
+ * Asked by the flow when a customer acts, because a bounce arrives *after* they
+ * have been moved on to "enter your code" and nothing can push it to them. The
+ * next thing they do is what surfaces it.
+ */
+export async function hasBounced(
+  submissionId: string,
+  labelPrefix: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ label: submissionEvents.label })
+    .from(submissionEvents)
+    .where(
+      and(
+        eq(submissionEvents.submissionId, submissionId),
+        eq(submissionEvents.outcome, "bounced"),
+      ),
+    );
+  return rows.some((row) => row.label?.startsWith(labelPrefix));
 }
 
 /**
@@ -193,6 +278,8 @@ export async function listSubmissionEvents(
     status: row.status ?? undefined,
     label: row.label ?? undefined,
     ok: row.ok ?? undefined,
+    outcome: row.outcome ?? undefined,
+    messageId: row.messageId ?? undefined,
     at: row.at.toISOString(),
     actorId: row.actorId ?? undefined,
     note: row.note ?? undefined,

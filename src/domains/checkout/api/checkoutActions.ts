@@ -25,6 +25,7 @@ import {
   clearFlowSession,
   touchFlowSession,
   type SubmissionFile,
+  hasBounced,
 } from "@/domains/submission";
 import { submissionFolder } from "@/shared/storage";
 import { discardUnpaidSubmission, sweepAbandoned } from "@/domains/upload";
@@ -76,6 +77,21 @@ function gone(
   error = "Your session timed out. We've started you fresh — sorry about that.",
 ): { ok: false; error: string; gone: true } {
   return { ok: false, error, gone: true };
+}
+
+/**
+ * The address doesn't work — take them back to fix it.
+ *
+ * Reuses `gone`, so the flow resets to step 1 exactly as it does for a lapsed
+ * window. The submission isn't deleted here: it can't be verified, so it can
+ * never be paid for, and the abandonment sweep will collect it like any other
+ * dead attempt. Deleting it immediately would buy nothing — there are no files
+ * yet, because uploading requires the verification this never got.
+ */
+function bouncedBack(): { ok: false; error: string; gone: true } {
+  return gone(
+    "That email address didn't accept our message — check it for a typo and try again.",
+  );
 }
 
 const DONE: ActionResult<void> = { ok: true, data: undefined };
@@ -175,10 +191,10 @@ export async function startSubmissionAction(
 async function sendCode(submissionId: string, email: string): Promise<boolean> {
   const code = await issueCode(submissionId);
   if (!code) return false;
-  const ok = await sendVerificationCode(email, code);
+  const result = await sendVerificationCode(email, code);
   // Not awaited: recording the send must never be why the send appears to fail.
-  void noteEmailSent(submissionId, "① code → customer", ok);
-  return ok;
+  void noteEmailSent(submissionId, "① code → customer", result);
+  return result.ok;
 }
 
 export async function resendCodeAction(): Promise<ActionResult> {
@@ -197,11 +213,32 @@ export async function resendCodeAction(): Promise<ActionResult> {
   if (!submission) return gone();
   if (isPaid(submission)) return fail("This submission is already complete.");
 
+  // Resending to an address that already bounced sends a second message
+  // nowhere. Send them back to fix it instead.
+  if (await undeliverable(submission.id)) return bouncedBack();
+
   await touchFlowSession();
   const sent = await sendCode(submission.id, submission.customerEmail);
   return sent
     ? DONE
     : fail("We couldn't send your code — please try again in a moment.");
+}
+
+/**
+ * Did the code we sent bounce?
+ *
+ * A bounce arrives by webhook *after* the customer has been moved on to "enter
+ * your code", and nothing can push it to them — the page doesn't poll and
+ * shouldn't. So the next thing they do is what surfaces it, which is why both
+ * the verify and the resend path ask.
+ *
+ * Scoped to ① and to unpaid submissions on purpose. A receipt or a feedback
+ * link bouncing is a real problem, but it is **Yuta's** problem: those arrive
+ * after money has changed hands, and nothing here may act destructively on a
+ * paid submission.
+ */
+async function undeliverable(submissionId: string): Promise<boolean> {
+  return hasBounced(submissionId, "①");
 }
 
 export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
@@ -218,6 +255,16 @@ export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
 
   const submissionId = await readFlowSession();
   if (!submissionId) return gone();
+
+  /*
+    Say the true thing first.
+
+    Without this the customer types a code that was never delivered and is told
+    "that code doesn't match" — which is accurate about the code and a lie about
+    what happened. They'd retype it, ask for another, and conclude the site is
+    broken rather than that they mistyped their address.
+  */
+  if (await undeliverable(submissionId)) return bouncedBack();
 
   const result = await verifyCode(submissionId, parsed.data);
   if (result.ok) await touchFlowSession();

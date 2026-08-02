@@ -212,13 +212,13 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
 
   // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails, but
   // the trail records whether it actually landed.
-  const ok = await sendAssignmentEmail({
+  const result = await sendAssignmentEmail({
     to: coach.email,
     coachName: coach.name,
     submission,
     files,
   });
-  void noteEmailSent(submissionId, "③ hand-off → coach", ok);
+  void noteEmailSent(submissionId, "③ hand-off → coach", result);
 
   // Record what they were actually sent. "What did we give them?" is asked
   // later, and by then the folders may hold more than they did today.

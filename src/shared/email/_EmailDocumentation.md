@@ -84,6 +84,54 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 
 Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
 
+### What actually happened to a message — 2026-08-02
+
+`sendEmail` returns `{ ok, id }`, and `ok` means one specific thing: **Resend
+accepted it**. Not that it arrived. The gap between those two is where a mistyped
+address lives, and for ① — the one message a customer is *blocked* on — that gap
+was indistinguishable from someone being slow to check their inbox.
+
+`POST /api/webhooks/resend` closes it. Svix-signed, verified by hand rather than
+adding a dependency to do one `createHmac`, and it **refuses every delivery when
+`RESEND_WEBHOOK_SECRET` is unset** — losing delivery tracking is a degraded
+trail, but an open endpoint that writes to it is a forgeable one.
+
+| Outcome | Means |
+| --- | --- |
+| `sent` | Resend accepted it. All the send path can claim |
+| `delivered` | the receiving server took it |
+| `bounced` | it will never arrive |
+| `complained` | marked as spam |
+| `failed` | Resend gave up |
+
+**Outcomes append, they don't update.** Overwriting "we sent it" with "it
+bounced" loses that both were true and when — and a delivery three seconds later
+reads very differently from one three minutes later.
+
+**Opens are deliberately not tracked.** They work by embedding a pixel, and Apple
+Mail Privacy Protection has pre-fetched images by default since iOS 15 — so a
+large share of "opened" events fire when nobody looked, while a reader with
+images off registers nothing when they did. Wrong in both directions, on the row
+that matters most.
+
+#### What a bounce does, and doesn't
+
+**On ①, before payment:** the next thing the customer does tells them. A bounce
+arrives *after* they've been moved to "enter your code" and nothing can push it
+to them, so the verify and resend paths both check, and either returns them to
+step 1 with *"that email address didn't accept our message — check it for a
+typo"*. Without that they'd type a code that was never delivered and be told
+"that code doesn't match" — true about the code, and a lie about what happened.
+
+**It does not delete anything, and that's the point.** A bounce can only occur
+before verification, and uploading *requires* verification — so there are never
+any files to scrub. The row is simply unverifiable, therefore unpayable, and the
+abandonment sweep collects it like any other dead attempt.
+
+**On anything after payment, it does nothing automatic.** A receipt or a feedback
+link bouncing is a real problem and it is **Yuta's** — it shows in the trail and
+in the row, and nothing here acts destructively on a submission somebody paid for.
+
 ### Off the spine
 
 Two messages belong to side-paths rather than to a stage, so they carry no number

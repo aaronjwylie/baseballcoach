@@ -103,7 +103,9 @@ export function sendCoachCollectedEmail(opts: {
   playerName: string;
   submissionUrl: string;
 }) {
-  if (opts.to.length === 0) return Promise.resolve(false);
+  // Nobody to tell — an install with no admin row. Reported as a
+  // non-send rather than thrown, so a webhook never fails over it.
+  if (opts.to.length === 0) return Promise.resolve({ ok: false });
   const coach = esc(opts.coachName);
   const player = esc(opts.playerName);
   return sendEmail({

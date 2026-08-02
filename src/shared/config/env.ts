@@ -116,4 +116,14 @@ export const env = {
   get emailFrom() {
     return process.env.EMAIL_FROM || "Baseball Sensei <onboarding@resend.dev>";
   },
+  /**
+   * Signing secret for Resend's delivery webhooks.
+   *
+   * Optional: without it the webhook route refuses every delivery rather than
+   * trusting an unsigned one. Losing delivery tracking is a degraded trail; an
+   * open endpoint that writes to it is a forgeable one.
+   */
+  get resendWebhookSecret() {
+    return optional("RESEND_WEBHOOK_SECRET");
+  },
 } as const;

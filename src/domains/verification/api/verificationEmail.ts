@@ -19,10 +19,7 @@ import { CODE_TTL_MINUTES } from "../model/verification";
  * code is coming is a dead end they cannot get out of, and it looks identical to
  * a slow inbox.
  */
-export function sendVerificationCode(
-  to: string,
-  code: string,
-): Promise<boolean> {
+export function sendVerificationCode(to: string, code: string) {
   return sendEmail({
     to,
     subject: `${code} is your ${site.name} verification code`,
