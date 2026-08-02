@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, pillClass } from "@/shared/ui";
+import { FLOW_WINDOW_MINUTES } from "@/shared/lib";
 import {
   listFeedbackFiles,
   listFilesForSubmissions,
@@ -239,6 +240,23 @@ export default async function AdminHomePage({
 }
 
 /**
+ * Local time, to the minute — enough to follow a test run without noise.
+ *
+ * The seconds are dropped on purpose: nothing here is timed finely enough for
+ * them to mean anything, and they make two adjacent stamps harder to compare.
+ */
+function formatStamp(iso?: string): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-CA", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+/**
  * One submission, as the queue shows it.
  *
  * A server component that assembles everything and hands it to `QueueRow`,
@@ -378,6 +396,11 @@ function SubmissionRow({
 
   const outstanding = stage.find((line) => line.now);
 
+  const lastActivity = submission.updatedAt ?? submission.submittedAt;
+  const sessionExpiry = lastActivity
+    ? new Date(new Date(lastActivity).getTime() + FLOW_WINDOW_MINUTES * 60_000).toISOString()
+    : undefined;
+
   /*
     The coach gets their name; everyone else gets their role.
 
@@ -470,6 +493,30 @@ function SubmissionRow({
           <dd className="m-0 font-mono text-[11.5px] break-all text-ink-soft">
             {submission.id}
           </dd>
+          <dt className="text-ink-muted">Started</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
+            {formatStamp(submission.submittedAt)}
+          </dd>
+          {/*
+            Only while it can still lapse. After payment the flow cookie is
+            released deliberately, so an expiry here would describe a session
+            nobody is holding.
+
+            Derived, not stored: the cookie is re-issued on every action and the
+            server never records when. Measuring from the last write is the
+            earliest it can die, never the latest — hence the qualifier, which is
+            the honest thing to show rather than a precise-looking time that can
+            be wrong.
+          */}
+          {!isPaid(submission) && (
+            <>
+              <dt className="text-ink-muted">Session expires</dt>
+              <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
+                {formatStamp(sessionExpiry)}
+                <span className="ml-1.5 font-sans text-ink-muted">at the earliest</span>
+              </dd>
+            </>
+          )}
           <dt className="text-ink-muted">Customer</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerEmail}</dd>
           <dt className="text-ink-muted">Coach</dt>

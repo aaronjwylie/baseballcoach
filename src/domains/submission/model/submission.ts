@@ -336,6 +336,16 @@ export interface Submission {
   // Coaching
   assignedCoachId?: string;
   feedbackEmailedAt?: string;
+  /**
+   * Last write of any kind — **what the abandonment sweep measures from.**
+   *
+   * Surfaced because an operator looking at an unpaid row wants to know how long
+   * it has been quiet, and because "gone quiet" is the actual retention rule for
+   * anything before payment. It is not the same as `submittedAt`: verifying an
+   * email or having a card declined both move it, which is how a customer still
+   * working avoids being reaped.
+   */
+  updatedAt?: string;
   /** First collection — the retention clock's anchor. */
   collectedAt?: string;
   deletionWarnedAt?: string;

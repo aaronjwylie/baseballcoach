@@ -32,6 +32,7 @@ export function fromRow(row: SubmissionRow): Submission {
     filesPurgedAt: row.filesPurgedAt?.toISOString(),
     assignedCoachId: row.assignedCoachId ?? undefined,
     feedbackEmailedAt: row.feedbackEmailedAt?.toISOString(),
+    updatedAt: row.updatedAt?.toISOString(),
     collectedAt: row.collectedAt?.toISOString(),
     deletionWarnedAt: row.deletionWarnedAt?.toISOString(),
   };
