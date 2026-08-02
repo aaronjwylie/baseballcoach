@@ -120,6 +120,28 @@ worth less. Three things follow from using the real ones:
 That's rule 2 applied to words: the name *is* the fact, and every doc that mentions it is a
 surface deriving from that one home.
 
+### 11b · The point of no return
+
+A multi-step operation that dies partway is not a question of "transactional or
+not" — it resolves per step, and the line is sharp:
+
+**A step must survive a failure if its effect already exists outside our database.
+It must be undone if the only place it is true is inside.**
+
+Undoing what the world already did makes the record lie; keeping what only we
+believe makes it lie the other way. So every sequence has a **point of no return** —
+the first step whose effect escapes us. Before it, scrub and let the caller retry
+clean. From it on, keep, and **repair forward**: the world has moved and the
+database's job is to catch up.
+
+Two rules follow. **Put the point of no return as late in the sequence as the
+ordering allows** — everything before it is cheaply reversible. **When both failure
+states are wrong, fail toward the one someone will notice**; a silent wrong state
+is discovered by a complaint, a loud one by the person who can fix it.
+
+The exception is abuse counters, which ratchet: a spent attempt is never handed
+back, even though nothing outside changed.
+
 ### 12 · Tense marks the world
 
 **Present tense = the northstar** (the model as it *is* in the destination we're building).

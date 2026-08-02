@@ -185,7 +185,13 @@ rather than a convenience.)*
 
 ## 6 · Naming
 
-Adopted from `wrld-sandbox/Nomenclature.md` so the two codebases read alike.
+**Superseded by [`_NomenclatureLaw.md`](../../_NomenclatureLaw.md) on 2026-08-01** — the one
+home for how things are spelled, including the settled `intake` / `response` vocabulary, the
+retired words, and the grammar rule that lets one stem serve two axes. What follows is the
+casing table it opens with, kept here because this doc is read on its own; **the law is the
+source of truth** if the two ever disagree.
+
+Adopted from `wrld-sandbox/_NomenclatureLaw.md` so the two codebases read alike.
 
 | Kind | Convention | Example |
 |---|---|---|

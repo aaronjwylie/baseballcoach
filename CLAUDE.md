@@ -621,7 +621,9 @@ list once, and `awaiting_approval` slipped through it.
 **The canonical end-to-end path — inception to completion, with who drives each
 stage, what changes, which email fires, and what is retained — lives in
 [`domains/submission/_SubmissionDocumentation.md` §2](src/domains/submission/_SubmissionDocumentation.md).** It's the one place the whole arc is written down; refine it there
-before changing any stage.
+before changing any stage. **The route from what's deployed to that path is
+[`docs/design/rollout.md`](docs/design/rollout.md)** — phases, dependencies, and
+what must be settled before each one starts.
 
 There is no "paid but no file yet" state any more: files arrive before payment,
 so `awaiting_upload` was retired with the flow that needed it. The status lookup
@@ -834,16 +836,23 @@ behind an HTTP Basic Auth gate while it's being finished.
 
 ### Naming
 
-**Specified in [`docs/design/structure.md` §6](docs/design/structure.md).** Adopted from the
-WRLD sandbox's `Nomenclature.md` on 2026-07-28 so the two codebases read alike — this
-superseded the kebab-case convention previously specified here.
+**Specified in [`_NomenclatureLaw.md`](_NomenclatureLaw.md)** — the one home for how things
+are spelled, superseding `structure.md` §6 on 2026-08-01. Adopted from the WRLD sandbox and
+rebuilt around this product's own nouns.
 
 The short version: `PascalCase` types and components, `camelCase` modules and folders, no
 hyphens in folder names, `xApi` for API clients, `_<Slice>Documentation.md` for slice docs.
 `src/app/` follows Next.js instead, because the router reserves those filenames.
 
 **One stem per concept** — a domain folder and everything in it use one word, never two forms
-of the same idea.
+of the same idea. It applies across axes too: the same concept spelled one way in the schema
+and another in the status enum is the same violation one level up. The settled vocabulary is
+**intake / response** — what the customer sent, what the coach wrote — and where a stem serves
+two axes, the grammar carries the difference: a file kind is a **noun**
+(`intake_translation`), a status is a **participle** (`intake_translated`).
+
+**The law behind the law:** *nomenclature should carry meaning, not require it.* A term that
+needs a gloss every time it appears is a term that's wrong in the code.
 
 ### Comments
 
@@ -971,6 +980,8 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 
 - **[OPERATIONS.md](OPERATIONS.md)** — Account setup, database + storage provisioning, admin seeding, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and the operator workflow _(being swept to match the pivot as each piece is built)_
 - **[PRINCIPLES.md](PRINCIPLES.md)** — how this codebase is built: the rules the structure rests on
+- **[_NomenclatureLaw.md](_NomenclatureLaw.md)** — how things are spelled: casing, the type family, the settled words, the retired ones
+- **[docs/design/rollout.md](docs/design/rollout.md)** — the route from what's deployed to the northstar pipeline, with phases, dependencies, and red flags
 - **[docs/design/structure.md](docs/design/structure.md)** — the layout, segments, dependency rules, and naming
 - **`src/domains/*/_XxxDocumentation.md`** — per-slice: northstar, honest current state, and the dated decision trail. Read the slice's doc before changing the slice
 - **[docs/decisions/](docs/decisions/)** — ADRs recording where and why the implementation departs from this document

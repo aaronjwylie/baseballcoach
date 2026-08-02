@@ -60,7 +60,7 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 | ③ | 8 | Handed to the coach | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
 | ④ | 9 | **Coach picked the work up** | Yuta | ❌ **not built** — needs the download stamp first |
 | ⑤ | 10 | Coach submitted their response | Yuta **+ coach** | ❌ **not built** — the status moves to `awaiting_approval`, but nobody is told, so Yuta has to notice |
-| ⑥ | 13 | Yuta approved the response → released | customer | ✅ **built** — `approveAndComplete` → `feedback/api/feedbackEmail.ts` |
+| ⑥ | 13 | Yuta approved the response → released | customer | 🔶 **half** — built, but must also **state the retention window** (settled 2026-08-01): the customer is told at delivery how long the files are kept, not warned a week before they go |
 | ⑦ | 14 | **Customer collected their feedback** | Yuta | ❌ **not built** — needs the download stamp first |
 | ⑧ | 15 | Yuta marks the submission resolved | customer | ❌ **not built** — trigger decided, see below |
 | ⑨ | 16 | **Uploads will be deleted in a week** | customer | ❌ **not built** — the only *scheduled* message in the set |
@@ -86,6 +86,16 @@ should report their failure rather than swallow it.
 **④ and ⑦ are the same message twice**, pointed at the same recipient — "a
 download happened, the pipeline moved". Worth building as one mechanism with two
 subjects rather than two templates that drift.
+
+**⑥ carries a deadline now, and it is not optional.** Everything is swept together
+at step 17 — including the coach's response, the thing the customer actually bought
+— so ⑥'s retention line and ⑨'s warning are the *only* protection against a parent
+losing a review they can't recreate. Telling someone at delivery is a term of the
+service; telling them seven days before deletion is a surprise. Wording should be
+explicit: *download and keep this; we delete it 30 days after you do.*
+
+⚠️ **If the deletion ships without these two, the first customer to lose a review
+will be right to be annoyed.** They are part of Phase 6, not a follow-up to it.
 
 **⑨ is unlike every other message here.** The other eight fire from an action
 someone took. This one fires because *time passed* — it must be found by a sweep,

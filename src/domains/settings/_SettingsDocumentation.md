@@ -66,9 +66,13 @@ unpaid submissions as well, so the flow cleans up after itself whenever anyone
 starts one. With no traffic nothing is running anyway, and with traffic the cron
 is only a backstop.
 
-⚠️ **The proposed retention rework changes all of this.** The northstar path now
-keys the resolved clock off the *customer's download* (30 days) rather than off
-completion (24h), and adds a **one-week warning email** before deletion. That
+⚠️ **The agreed retention rework changes all of this** (settled 2026-08-01). The
+northstar keys the clock off the *customer's download* — **30 days from
+collection, or 90 days from delivery, whichever expires later** — rather than 24
+hours from completion, and adds a **one-week warning email** before deletion. Two
+consequences for these knobs: `retainResolvedHours` becomes two windows measured
+in days, and **the coach's response is swept with everything else**, which is only
+safe because the clock cannot start until the customer has the files in hand. That
 warning is the "fourth kind" below — the first genuinely scheduled effect in the
 system — so it can't be folded into the existing derivable sweeps. See
 [`submission/_SubmissionDocumentation.md` §2](../submission/_SubmissionDocumentation.md).
