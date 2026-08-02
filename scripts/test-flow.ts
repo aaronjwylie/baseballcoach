@@ -25,6 +25,8 @@ import {
   listFeedbackFiles,
   listSubmissionFiles,
   updateSubmission,
+  markCoachCollected,
+  markCustomerCollected,
 } from "@/domains/submission";
 import { issueCode, verifyCode } from "@/domains/verification";
 import { getSettings } from "@/domains/settings";
@@ -146,6 +148,23 @@ async function main() {
     new TextEncoder().encode("probe feedback bytes"),
     "video/mp4",
   );
+  /*
+    Walk the real rungs to get there.
+
+    A coach can only deliver a submission that is actually `in_review`, and
+    `in_review` is now earned by the coach collecting the files — so jumping
+    straight from `new` to delivering is exactly what the step-10 guard exists to
+    refuse. Driving the statuses here rather than calling the portal actions
+    keeps this a *pipeline* test rather than an auth one.
+  */
+  await updateSubmission(submission.id, { status: "assigned" });
+  await updateSubmission(submission.id, { status: "sent_to_coach" });
+  const collectedByCoach = await markCoachCollected(submission.id);
+  check(
+    collectedByCoach?.status === "in_review",
+    "the coach collecting the files earns `in_review`",
+  );
+
   await sendFeedbackForApproval(submission.id);
   await approveAndComplete(submission.id);
   const completed = await getSubmission(submission.id);
@@ -154,12 +173,29 @@ async function main() {
     "completing via the coach + approval path stamps completedAt",
   );
 
-  // Backdate it past the *delivered* backstop — this submission was never
-  // collected, so that's the clock it runs on.
-  const longAgo = new Date(
-    Date.now() - (settings.retainDeliveredDays + 1) * 24 * 3600_000,
-  ).toISOString();
-  await updateSubmission(submission.id, { completedAt: longAgo });
+  // Nothing is due before the customer has it: the collection clock hasn't
+  // started, and the delivery backstop is 90 days out.
+  const uncollectedSweep = await runRetentionSweep();
+  check(
+    uncollectedSweep.resolvedPurged === 0,
+    "a just-delivered submission is not swept — the clock starts on collection",
+  );
+
+  const collected = await markCustomerCollected(submission.id);
+  check(
+    collected?.status === "collected" && !!collected.collectedAt,
+    "the customer collecting starts the retention clock",
+  );
+
+  // Backdate the collection past the retention window.
+  await db
+    .update(submissionsTable)
+    .set({
+      collectedAt: new Date(
+        Date.now() - (settings.retainCollectedDays + 1) * 24 * 3600_000,
+      ),
+    })
+    .where(eqFn(submissionsTable.id, submission.id));
 
   const afterSweep = await runRetentionSweep();
   check(
@@ -175,10 +211,18 @@ async function main() {
   );
   const sweptSubmission = await getSubmission(submission.id);
   check(!!sweptSubmission?.filesPurgedAt, "filesPurgedAt is stamped");
+  /*
+    Everything is swept together now — the coach's response included.
+
+    This assertion used to be the opposite, and the inversion is the point: the
+    response is only safe to delete because the clock cannot start until the
+    customer has collected it. If retention ever moves back to keying off
+    delivery, this test should start failing.
+  */
   const sweptFeedback = await listFeedbackFiles(submission.id);
   check(
-    sweptFeedback.length === 1 && sweptFeedback.every((f) => !!f.fileUrl),
-    "the coach's feedback file survives the sweep",
+    sweptFeedback.length === 1 && sweptFeedback.every((f) => !f.fileUrl),
+    "the coach's response is swept with everything else",
   );
 
   // ── 6 · abandoned: nothing unpaid is retained ──────────────────────────
@@ -202,7 +246,10 @@ async function main() {
   await db
     .update(submissionsTable)
     .set({
-      submittedAt: new Date(
+      // `updatedAt`, not `submittedAt`: "gone quiet" is about the last sign of
+      // life, so a customer still working — or one whose card just failed —
+      // isn't reaped mid-flow.
+      updatedAt: new Date(
         Date.now() - (settings.retainUnpaidHours + 1) * 3600_000,
       ),
     })

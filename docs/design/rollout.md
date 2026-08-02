@@ -13,7 +13,25 @@ _Written 2026-08-01, against `main` @ `126c8a4`._
 
 ---
 
-## 1 · Where we actually are
+## 0 · Status — 2026-08-01, evening
+
+**Phases 1–6 are shipped and verified.** Every stage of the seventeen has code
+behind it; the path doc's table carries no `(not built)` markers for the first
+time. Phase 7 is effectively complete via Aaron's status-code work.
+
+**What's left is Phase 0**, which is operations rather than code: live Stripe
+keys and webhook, clearing the Basic Auth gate, real coach content, and one human
+test of a card. Until those land, none of this can take an order.
+
+**The window that mattered closed on the right side of the line.** There were no
+real customers when the sixteen-value enum, the events table, the four file kinds,
+the two file-set columns and the two retention anchors all went in — five
+migrations that would each have needed a careful, reversible, data-preserving plan
+a week later.
+
+---
+
+## 1 · Where we actually are (as of the morning)
 
 Seven stages of seventeen run end to end in production. The customer funnel is
 complete through payment; the operator loop works but is blind in places; nothing
