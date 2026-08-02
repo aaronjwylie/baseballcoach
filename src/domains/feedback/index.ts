@@ -9,6 +9,14 @@
 export { sendFeedbackReady } from "./api/feedbackEmail";
 export { signFeedbackToken, verifyFeedbackToken } from "./api/feedbackToken";
 export {
+  FEEDBACK_CODE_COOKIE,
+  FEEDBACK_CODE_TTL_S,
+  issueFeedbackViewCode,
+  verifyFeedbackViewCode,
+  type FeedbackGroup,
+  type PendingFeedbackCode,
+} from "./api/feedbackViewCode";
+export {
   saveFeedbackFile,
   recordFeedbackFile,
   sendFeedbackForApproval,

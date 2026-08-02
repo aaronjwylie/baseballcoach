@@ -9,6 +9,9 @@ import { Button, ButtonLink, Field, inputClass } from "@/shared/ui";
 // bundled for the browser.
 import { lookupSchema, type LookupInput } from "../model/submissionInput";
 import type { PublicSubmission } from "../model/publicSubmission";
+// Direct path, not the feedback barrel: the barrel re-exports Postgres code, and
+// this is a client component. FeedbackAccess is client-only.
+import { FeedbackAccess } from "@/domains/feedback/ui/FeedbackAccess";
 
 type Result =
   | { state: "idle" }
@@ -115,11 +118,18 @@ export function StatusLookup() {
         )}
 
         {result.state === "loaded" && result.submissions.length > 0 && (
-          <ul className="space-y-3">
-            {result.submissions.map((submission, index) => (
-              <StatusRow key={index} submission={submission} />
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-3">
+              {result.submissions.map((submission, index) => (
+                <StatusRow key={index} submission={submission} />
+              ))}
+            </ul>
+            {result.submissions.some((s) => s.hasFeedback) && (
+              <div className="mt-6">
+                <FeedbackAccess email={result.email} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -176,29 +186,19 @@ const STATUS_META: Record<
 function StatusRow({ submission }: { submission: PublicSubmission }) {
   const meta = STATUS_META[submission.status];
   return (
-    <li className="rounded-2xl border border-line bg-white p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="font-semibold text-ink">{submission.playerName}</div>
-          <div className="mt-0.5 text-sm text-ink-muted">
-            {submission.focus ? `${submission.focus} · ` : ""}
-            {formatDate(submission.submittedAt)}
-          </div>
+    <li className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-white p-5">
+      <div>
+        <div className="font-semibold text-ink">{submission.playerName}</div>
+        <div className="mt-0.5 text-sm text-ink-muted">
+          {submission.focus ? `${submission.focus} · ` : ""}
+          {formatDate(submission.submittedAt)}
         </div>
-        <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}
-        >
-          {meta.label}
-        </span>
       </div>
-
-      {submission.hasFeedback && (
-        // The download itself lives behind the unguessable link in the customer's
-        // email — never here, where anyone who typed the address would reach it.
-        <p className="mt-4 border-t border-line pt-4 text-sm text-ink-muted">
-          Your feedback is ready — we&apos;ve emailed you a private download link.
-        </p>
-      )}
+      <span
+        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}
+      >
+        {meta.label}
+      </span>
     </li>
   );
 }

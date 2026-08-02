@@ -70,10 +70,20 @@ flowchart LR
 > ready" email carries a **signed token** (`signFeedbackToken`, one-year expiry, bound to
 > `purpose: "feedback"`) and points at `/feedback/<token>` — a public page that lists this one
 > submission's files. The status lookup (`/status`, email-as-identity) **no longer exposes the
-> feedback files at all**: it only reports that a review is ready and tells the customer to
-> check their email. That closes a real hole — before, anyone who guessed an email got the
-> download links straight from the lookup. `PublicSubmission` carries a `hasFeedback` flag now,
-> never the file ids.
+> feedback files at all**: it only reports that a review is ready. That closes a real hole —
+> before, anyone who guessed an email got the download links straight from the lookup.
+> `PublicSubmission` carries a `hasFeedback` flag now, never the file ids.
+>
+> **Two doors, one guarantee — you must control the inbox.** Beyond the emailed link, the
+> `/status` page keeps its email entry: when a lookup shows a completed review, the customer
+> can request a **6-digit access code** (`issueFeedbackViewCode` → `sendFeedbackViewCode`),
+> read it back, and see their download links inline (`verifyFeedbackViewCode`). It's stateless
+> — the code's bcrypt hash rides in a short-lived signed httpOnly cookie (`bs_fbcode`), no
+> schema change — and it is **not an account** (CLAUDE.md §2): no password, nothing to sign
+> into, expires in ten minutes. Both routes (`/api/status/feedback/{code,verify}`) are
+> rate-limited, and the code request always answers `ok` so it never confirms which addresses
+> exist. This is the sibling of the flow's upload-gating verification, for a different purpose:
+> proving inbox control to *release* feedback rather than to *accept* an upload.
 
 ## 2 · Where we are now — 2026-07-29
 

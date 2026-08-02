@@ -11,7 +11,7 @@ import { site } from "@/shared/config/site";
 
 export function sendFeedbackReady(
   to: string,
-  statusUrl: string,
+  feedbackUrl: string,
   playerName?: string,
 ) {
   return sendEmail({
@@ -19,8 +19,26 @@ export function sendFeedbackReady(
     subject: `${site.name} — your coaching feedback is ready`,
     html: emailShell(
       "Your feedback is ready 🎬",
-      `<p>Your coach has finished reviewing${playerName ? ` ${playerName}'s` : " your"} video. Look up your email below to download the full breakdown.</p>`,
-      { label: "See your feedback", url: statusUrl },
+      `<p>Your coach has finished reviewing${playerName ? ` ${playerName}'s` : " your"} video. Tap below to download the full breakdown — this link is private to you.</p>`,
+      { label: "See your feedback", url: feedbackUrl },
+    ),
+  });
+}
+
+/**
+ * The access code for the status-page path: a customer who lost the link above
+ * can prove they own the inbox by entering their email on `/status` and reading
+ * back this code. Same guarantee as the link — you must control the inbox.
+ */
+export function sendFeedbackViewCode(to: string, code: string) {
+  return sendEmail({
+    to,
+    subject: `${code} is your ${site.name} feedback access code`,
+    html: emailShell(
+      "Your feedback access code",
+      `<p>Enter this code on the status page to view your coaching feedback:</p>
+       <p style="margin:24px 0;font-size:34px;font-weight:700;letter-spacing:0.18em;color:#161616;">${code}</p>
+       <p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>`,
     ),
   });
 }
