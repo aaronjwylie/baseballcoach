@@ -1,5 +1,6 @@
 "use client";
 
+import { pillClass } from "@/shared/ui";
 import {
   SUBMISSION_STATUSES,
   type SubmissionStatus,
@@ -68,7 +69,7 @@ export function StatusRail({
   return (
     <div className="relative h-11" aria-label={`Step ${at + 1} of 16: ${RUNG_LABEL[status]}`}>
       <span
-        className={`absolute top-0 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+        className={`${pillClass} absolute top-0 -translate-x-1/2 ${
           warn
             ? "border-amber-600 bg-white text-amber-700"
             : "border-ink bg-ink text-white"

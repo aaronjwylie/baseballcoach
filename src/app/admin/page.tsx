@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container } from "@/shared/ui";
+import { Container, pillClass } from "@/shared/ui";
 import {
   listFeedbackFiles,
   listFilesForSubmissions,
@@ -403,9 +403,26 @@ function SubmissionRow({
       */
       facts={
         submission.archivedAt ? (
-          <span className="text-ink-muted">archived</span>
+          <span className={`${pillClass} border-line text-ink-muted`}>archived</span>
         ) : (
-          <span className="font-semibold text-ink-soft">{courtName}</span>
+          /*
+            Filled ink when it's ours, outlined when it isn't.
+
+            The design system carries emphasis by weight and contrast rather than
+            hue (globals.css), so "primary" here means the same solid ink the
+            active status pill uses. Scanning the column, the filled pills are
+            the work waiting on us — which is the one thing an operator opening
+            this page is actually looking for.
+          */
+          <span
+            className={`${pillClass} ${
+              court === "admin"
+                ? "border-ink bg-ink text-white"
+                : "border-line bg-white text-ink-soft"
+            }`}
+          >
+            {courtName}
+          </span>
         )
       }
       /* The flag names what's outstanding rather than restating the status —
