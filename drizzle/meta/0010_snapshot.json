@@ -1,6 +1,6 @@
 {
-  "id": "654869cc-eb3d-4dd4-bee9-f8e5a0a45b9a",
-  "prevId": "e327f0b7-7c82-4c81-9ba3-0f473a5a64a0",
+  "id": "07ff9648-9e32-481e-a7ac-59568532a680",
+  "prevId": "654869cc-eb3d-4dd4-bee9-f8e5a0a45b9a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -123,12 +123,26 @@
           "notNull": true,
           "default": 5
         },
-        "retain_resolved_hours": {
-          "name": "retain_resolved_hours",
+        "retain_collected_days": {
+          "name": "retain_collected_days",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": 24
+          "default": 30
+        },
+        "retain_delivered_days": {
+          "name": "retain_delivered_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 90
+        },
+        "warn_before_deletion_days": {
+          "name": "warn_before_deletion_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 7
         },
         "retain_unpaid_hours": {
           "name": "retain_unpaid_hours",
@@ -471,6 +485,18 @@
           "name": "customer_file_set",
           "type": "file_set",
           "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "collected_at": {
+          "name": "collected_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deletion_warned_at": {
+          "name": "deletion_warned_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },

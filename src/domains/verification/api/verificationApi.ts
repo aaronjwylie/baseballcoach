@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
+import { recordSubmissionEvent } from "@/domains/submission";
 import {
   CODE_LENGTH,
   CODE_TTL_MINUTES,
@@ -99,19 +100,34 @@ export async function verifyCode(
   const matches = await bcrypt.compare(code, row.hash);
   if (!matches) return { ok: false, reason: "mismatch" };
 
-  await db
-    .update(submissions)
-    .set({
-      emailVerifiedAt: new Date(),
-      // Clearing the hash makes the code single-use.
-      verificationCodeHash: null,
-      verificationExpiresAt: null,
-      // Only a draft advances. A submission already paid for must not be walked
-      // backwards into `awaiting_payment` by a replayed verification.
-      status: row.status === "draft" ? "awaiting_payment" : row.status,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(submissions.id, submissionId), eq(submissions.status, row.status)));
+  // Only a draft advances. A submission already paid for must not be walked
+  // backwards into `awaiting_payment` by a replayed verification.
+  const nextStatus = row.status === "draft" ? "awaiting_payment" : row.status;
+
+  // This slice owns the verification columns and writes them directly rather
+  // than through `updateSubmission`, so the status change here has to stamp the
+  // trail itself — otherwise a customer's verification is the one transition
+  // missing from the history. Both writes share a transaction so the row and its
+  // event cannot disagree, and the event is recorded only when the guarded
+  // update actually moved the status.
+  await db.transaction(async (tx) => {
+    const updated = await tx
+      .update(submissions)
+      .set({
+        emailVerifiedAt: new Date(),
+        // Clearing the hash makes the code single-use.
+        verificationCodeHash: null,
+        verificationExpiresAt: null,
+        status: nextStatus,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(submissions.id, submissionId), eq(submissions.status, row.status)))
+      .returning({ id: submissions.id });
+
+    if (updated.length > 0 && nextStatus !== row.status) {
+      await recordSubmissionEvent(submissionId, nextStatus, undefined, tx);
+    }
+  });
 
   return { ok: true };
 }
