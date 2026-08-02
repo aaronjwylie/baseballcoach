@@ -84,3 +84,36 @@ export function sendAssignmentEmail(opts: AssignmentEmailInput) {
   const { subject, html } = buildAssignmentEmail(opts);
   return sendEmail({ to: opts.to, subject, html });
 }
+
+/**
+ * ④ — the coach has collected the files. To Yuta.
+ *
+ * The hand-off is the one step in the pipeline that waits on a person outside
+ * the building, and until this exists the only way to know whether it landed is
+ * to ask. A submission sitting in `sent_to_coach` for three days is the single
+ * most useful thing the queue can surface; this is the message that says it
+ * stopped sitting there.
+ *
+ * Best-effort — the status already moved, and a missed notification is a smaller
+ * problem than a failed download.
+ */
+export function sendCoachCollectedEmail(opts: {
+  to: string[];
+  coachName: string;
+  playerName: string;
+  submissionUrl: string;
+}) {
+  if (opts.to.length === 0) return Promise.resolve(false);
+  const coach = esc(opts.coachName);
+  const player = esc(opts.playerName);
+  return sendEmail({
+    to: opts.to.join(", "),
+    subject: `${site.name} — ${opts.coachName} picked up ${opts.playerName}`,
+    html: emailShell(
+      "The coach has the files",
+      `<p><strong>${coach}</strong> has downloaded the files for <strong>${player}</strong>, so the review is under way.</p>
+       <p>Nothing to do — this is just the hand-off closing.</p>`,
+      { label: "Open the queue", url: opts.submissionUrl },
+    ),
+  });
+}

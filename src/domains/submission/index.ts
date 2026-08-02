@@ -67,7 +67,9 @@ export {
   getSubmission,
   listSubmissions,
   lookupPublicSubmissions,
-  markSubmissionInReview,
+  markCoachCollected,
+  markCustomerCollected,
+  markSubmissionSentToCoach,
   unarchiveSubmission,
   updateSubmission,
 } from "./api/submissionApi";

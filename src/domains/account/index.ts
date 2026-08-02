@@ -19,6 +19,7 @@ export {
   createOperator,
   changePassword,
   setUserPassword,
+  listAdminEmails,
 } from "./api/userApi";
 export type {
   Role,

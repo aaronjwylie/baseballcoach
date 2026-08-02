@@ -239,34 +239,45 @@ submission due for sweeping stops being due the moment a failed payment touches 
 
 ---
 
-## Phase 3 · Make the queue tell the truth
+## Phase 3 · Make the queue tell the truth — ✅ **shipped 2026-08-01**
 
-**Yuta's visibility. Depends on Phase 1.**
+**Yuta's visibility.** Five of the nine emails tell him something and four didn't
+exist, so he learned that a payment landed, that a coach picked work up, that a
+response was waiting, and that a customer collected — **by looking.**
 
-Five of the nine emails tell Yuta something, and four of those don't exist. Today
-he learns that a payment landed, that a coach picked work up, that a response is
-waiting, and that a customer collected — **by looking.**
-
-| | Ships | Size |
+| | Ships | |
 | --- | --- | --- |
-| 3.1 | Step 8 sets `sent_to_coach`, not `in_review` | S |
-| 3.2 | **Step 9** — the coach's first download stamps, moves to `in_review`, emails ④ | M |
-| 3.3 | Step 10 emails ⑤ — Yuta *and* the coach | S |
-| 3.4 | **Step 14** — the customer's first download stamps, moves to `collected`, emails ⑦ | M |
-| 3.5 | Step 4's ② also goes to Yuta | S |
-| 3.6 | Server-side status guards on steps 5 and 10 — today UI-only | S |
+| 3.1 | Step 8 sets `sent_to_coach`, not `in_review` | ✅ |
+| 3.2 | **Step 9** — the coach's first download stamps, moves to `in_review`, emails ④ | ✅ |
+| 3.3 | Step 10 emails ⑤ — Yuta *and* the coach | ✅ |
+| 3.4 | **Step 14** — the customer's first download stamps, moves to `collected`, emails ⑦ | ✅ |
+| 3.5 | Step 4's ② also goes to Yuta | ✅ |
+| 3.6 | Server-side status guards on steps 5 and 10 | ✅ |
 
-**Build 3.2 and 3.4 together.** They are the same mechanism at opposite ends: a
-download is confirmed, a status or clock moves, Yuta is told. Written twice they
-will drift.
+### What the build surfaced that the plan didn't
 
-**The asymmetry to respect:** a coach who never downloads leaves a **visible stuck
-row** — that's the feature. A customer who never downloads leaves silence, which is
-why Phase 6 needs a backstop and this phase doesn't.
+**A download says who, and that turned out to matter twice.** The plan treated
+"observe a download" as one problem; it's really "observe *the right person's*
+download". An admin opening an intake file is checking on the work, not starting
+it — counting it would make `in_review` meaningless again. Yuta opening a response
+to check it is not the customer collecting it — counting it would delete their
+feedback thirty days after *he* looked. Both stamps are gated on the actor, and
+step 9's additionally on it being **that coach's** submission, since the route can
+only see that *a* coach is logged in.
 
-**Verifiable when:** a submission walks assign → hand-off → coach download →
-deliver → approve → customer download, and Yuta's inbox has four new messages he
-previously had to go looking for.
+**Neither stamp is awaited.** They hang off routes whose actual job is delivering
+bytes, so a notification must never be the reason a download fails. Both swallow
+their own errors for the same reason — a rejected promise from a fire-and-forget
+call is an unhandled one.
+
+**Operator notifications read the `users` table**, not an env var. The people who
+should hear about a stalled hand-off are exactly the people who can log in and fix
+it; a config value lets those two drift the moment an operator changes. Empty is
+survivable — the send is skipped rather than crashing a webhook.
+
+**Verified:** collecting is refused before hand-off and before release, the first
+collection moves the status, the second is a no-op, and the trail reads
+`draft → assigned → sent_to_coach → in_review → awaiting_approval → complete → collected`.
 
 ---
 

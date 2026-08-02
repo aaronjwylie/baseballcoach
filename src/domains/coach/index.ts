@@ -8,6 +8,7 @@ export {
   getCoach,
   createCoach,
   updateCoach,
+  noteCoachCollected,
 } from "./api/coachApi";
 export {
   createCoachAction,

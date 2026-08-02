@@ -10,7 +10,7 @@ import {
   assignSubmissionCoach,
   getSubmission,
   listSubmissionFiles,
-  markSubmissionInReview,
+  markSubmissionSentToCoach,
   type Focus,
 } from "@/domains/submission";
 import { storage, coachImageKey } from "@/shared/storage";
@@ -148,14 +148,30 @@ export async function assignCoachAction(formData: FormData): Promise<void> {
   const submissionId = String(formData.get("submissionId") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
   if (!submissionId || !coachId) return;
+
+  /*
+    Reassignment stops once the work has been handed over.
+
+    The UI already hides the dropdown from that point, but the guard was UI-only:
+    a stale tab could pull a submission out from under a coach who had already
+    been emailed it — or reassign one the customer has since received. The role
+    was checked here and the status wasn't, which is the weaker half of the pair.
+  */
+  const submission = await getSubmission(submissionId);
+  if (!submission) return;
+  if (submission.status !== "new" && submission.status !== "assigned") return;
+
   await assignSubmissionCoach(submissionId, coachId);
   revalidatePath("/admin");
 }
 
 /**
  * Hand a submission to its assigned coach: email them the customer's details and
- * a download link per file, then move `assigned` → `in_review`. Only acts on an
- * `assigned` row, so a double-click can't re-notify or skip a step.
+ * a download link per file, then move `assigned` → `sent_to_coach`. Only acts on
+ * an `assigned` row, so a double-click can't re-notify or skip a step.
+ *
+ * It stops at "sent". `in_review` is earned when the coach actually downloads
+ * something — see `noteCoachCollected`.
  */
 export async function notifyCoachAction(formData: FormData): Promise<void> {
   await requireRole("admin");
@@ -180,6 +196,6 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
     files,
   });
 
-  await markSubmissionInReview(submissionId);
+  await markSubmissionSentToCoach(submissionId);
   revalidatePath("/admin");
 }

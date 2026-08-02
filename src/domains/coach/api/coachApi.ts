@@ -7,9 +7,19 @@
  */
 import { asc, eq } from "drizzle-orm";
 import { db, coaches, users } from "@/shared/db";
-import { createOperator, setUserPassword } from "@/domains/account";
-import type { Focus } from "@/domains/submission";
+import {
+  createOperator,
+  listAdminEmails,
+  setUserPassword,
+} from "@/domains/account";
+import {
+  getSubmission,
+  markCoachCollected,
+  type Focus,
+} from "@/domains/submission";
+import { env } from "@/shared/config/env";
 import type { Coach, NewCoach } from "../model/coach";
+import { sendCoachCollectedEmail } from "./coachEmail";
 
 // The email is the coach's login, so it lives on the joined `users` row, not
 // on `coaches` — one home per fact.
@@ -117,4 +127,43 @@ export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach>
   if (password) await setUserPassword(row.userId, password);
 
   return toCoach(row, currentEmail);
+}
+
+/**
+ * Step 9 — the coach has collected the intake. Stamp it and tell Yuta.
+ *
+ * **The submission must be this coach's**, not merely any coach's: the download
+ * route can only see that *a* coach is logged in, and someone opening a
+ * colleague's work must not close a hand-off they aren't part of.
+ *
+ * Idempotent via `markCoachCollected`, which only moves a submission we actually
+ * sent — so a re-download does nothing and the email fires exactly once.
+ *
+ * Swallows its own failures. It is called without awaiting, from a route whose
+ * real job is delivering bytes; a rejected promise there would be an unhandled
+ * one, and a notification is never worth a failed download.
+ */
+export async function noteCoachCollected(
+  submissionId: string,
+  userId: string,
+): Promise<void> {
+  try {
+    const submission = await getSubmission(submissionId);
+    if (!submission?.assignedCoachId) return;
+
+    const coach = await getCoachByUserId(userId);
+    if (!coach || coach.id !== submission.assignedCoachId) return;
+
+    const collected = await markCoachCollected(submissionId);
+    if (!collected) return;
+
+    await sendCoachCollectedEmail({
+      to: await listAdminEmails(),
+      coachName: coach.name,
+      playerName: collected.playerName,
+      submissionUrl: `${env.siteUrl}/admin`,
+    });
+  } catch (err) {
+    console.error("[coach] recording a collection failed:", err);
+  }
 }

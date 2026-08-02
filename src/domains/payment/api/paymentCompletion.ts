@@ -20,7 +20,12 @@ import {
 } from "@/domains/submission";
 import { site } from "@/shared/config/site";
 import type { PaidResult } from "../model/fulfillment";
-import { sendPaymentFailed, sendSubmissionReceipt } from "./paymentEmail";
+import { listAdminEmails } from "@/domains/account";
+import {
+  sendPaymentFailed,
+  sendPaymentReceivedEmail,
+  sendSubmissionReceipt,
+} from "./paymentEmail";
 
 export async function completePayment({
   submission,
@@ -37,6 +42,16 @@ export async function completePayment({
     currency: site.price.currency,
     files,
     statusUrl: `${env.siteUrl}/status`,
+  });
+
+  // The other half of ②. Gated on `justPaid` above, so a redelivered webhook
+  // announces the same sale twice to nobody.
+  await sendPaymentReceivedEmail({
+    to: await listAdminEmails(),
+    playerName: submission.playerName,
+    focus: submission.focus,
+    fileCount: files.length,
+    queueUrl: `${env.siteUrl}/admin`,
   });
 }
 

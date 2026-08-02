@@ -151,9 +151,53 @@ export async function assignSubmissionCoach(
   });
 }
 
-/** Hand the work to the coach: move `assigned` → `in_review`. Admin action. */
-export async function markSubmissionInReview(id: string): Promise<Submission> {
+/**
+ * Hand the work to the coach: `assigned` → `sent_to_coach`. Admin action.
+ *
+ * **Not `in_review`.** The coach has been emailed, not started — and the gap
+ * between those two is the one Yuta needs to see, because it's the only place a
+ * submission stalls on a person rather than on the system. `in_review` is now
+ * earned by the coach actually collecting the files.
+ */
+export async function markSubmissionSentToCoach(
+  id: string,
+): Promise<Submission> {
+  return updateSubmission(id, { status: "sent_to_coach" });
+}
+
+/**
+ * The coach has the files — `sent_to_coach` → `in_review`.
+ *
+ * **Idempotent, and deliberately narrow.** Only a submission we actually sent
+ * can be picked up; a re-download changes nothing, and an admin opening the same
+ * file doesn't count as the coach starting work. Returns the submission when
+ * this was the *first* collection, null otherwise, so the caller knows whether
+ * to notify — the same `justPaid` shape the payment path uses, and for the same
+ * reason: two callers race, one of them should send the email.
+ */
+export async function markCoachCollected(
+  id: string,
+): Promise<Submission | null> {
+  const submission = await getSubmission(id);
+  if (!submission || submission.status !== "sent_to_coach") return null;
   return updateSubmission(id, { status: "in_review" });
+}
+
+/**
+ * The customer has their feedback — `complete` → `collected`.
+ *
+ * **This is what starts the retention clock**, which is why it can only happen
+ * once and only from `complete`. A customer who downloads again a week later
+ * must not push the deletion date out, or nothing is ever swept.
+ *
+ * Returns the submission on the first collection, null afterwards.
+ */
+export async function markCustomerCollected(
+  id: string,
+): Promise<Submission | null> {
+  const submission = await getSubmission(id);
+  if (!submission || submission.status !== "complete") return null;
+  return updateSubmission(id, { status: "collected" });
 }
 
 /**

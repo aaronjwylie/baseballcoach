@@ -42,3 +42,73 @@ export function sendFeedbackViewCode(to: string, code: string) {
     ),
   });
 }
+
+/**
+ * ⑤ — the coach has delivered; it's waiting on Yuta. To Yuta and the coach.
+ *
+ * The approval gate exists so nothing reaches a customer unchecked, which means
+ * a delivered review sits still until a person looks at it. Every other handover
+ * in the pipeline notifies; this one didn't, so the coach pressed "send" and the
+ * only person who could release it had no idea.
+ *
+ * The coach is copied so they can see their work arrived — the same reason a
+ * "message sent" confirmation exists at all.
+ */
+export function sendResponseSubmittedEmail(opts: {
+  to: string[];
+  coachName: string;
+  playerName: string;
+  fileCount: number;
+  reviewUrl: string;
+}) {
+  if (opts.to.length === 0) return Promise.resolve(false);
+  const coach = escapeFeedbackHtml(opts.coachName);
+  const player = escapeFeedbackHtml(opts.playerName);
+  const files = `${opts.fileCount} file${opts.fileCount === 1 ? "" : "s"}`;
+  return sendEmail({
+    to: opts.to.join(", "),
+    subject: `${site.name} — review ready to approve: ${opts.playerName}`,
+    html: emailShell(
+      "A review is waiting for approval",
+      `<p><strong>${coach}</strong> has submitted ${files} for <strong>${player}</strong>.</p>
+       <p><strong>The customer hasn't been told.</strong> Nothing reaches them until it's approved and sent.</p>`,
+      { label: "Review and approve", url: opts.reviewUrl },
+    ),
+  });
+}
+
+/**
+ * ⑦ — the customer has collected their feedback. To Yuta.
+ *
+ * Closes the loop: the job is visibly finished, the row can be resolved, and the
+ * retention clock has started. Without it, "did they ever pick it up?" is a
+ * question the queue can't answer, and marking something resolved becomes a
+ * guess.
+ */
+export function sendCustomerCollectedEmail(opts: {
+  to: string[];
+  playerName: string;
+  submissionUrl: string;
+}) {
+  if (opts.to.length === 0) return Promise.resolve(false);
+  const player = escapeFeedbackHtml(opts.playerName);
+  return sendEmail({
+    to: opts.to.join(", "),
+    subject: `${site.name} — ${opts.playerName}'s feedback was collected`,
+    html: emailShell(
+      "The customer has their feedback",
+      `<p>The review for <strong>${player}</strong> has been downloaded.</p>
+       <p>The job is done — it can be marked resolved whenever you like. Their uploads are now on the retention clock.</p>`,
+      { label: "Open the queue", url: opts.submissionUrl },
+    ),
+  });
+}
+
+/** Customer-supplied names land in HTML; escaping is not optional. */
+function escapeFeedbackHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
+}

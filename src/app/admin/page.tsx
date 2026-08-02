@@ -295,7 +295,7 @@ function SubmissionRow({
               <RowActionForm
                 action={notifyCoachAction}
                 submissionId={submission.id}
-                label="Send email → In review"
+                label="Send email →"
                 className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
               />
             )}

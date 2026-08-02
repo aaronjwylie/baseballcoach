@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/domains/account";
-import { getSubmissionFile } from "@/domains/submission";
+import { getSubmissionFile, isIntake } from "@/domains/submission";
+import { noteCoachCollected } from "@/domains/coach";
 import { storage } from "@/shared/storage";
 
 // Private blobs stream through this route rather than redirecting, so a large
@@ -18,6 +19,12 @@ export const maxDuration = 60;
  * Streams from local disk in dev, redirects to the Blob URL in prod. A file the
  * retention sweep has already cleared has no locator left, which reads as 410
  * rather than 404: it existed, and it's gone on purpose.
+ *
+ * **It is also where step 9 is observed.** A download is the only evidence we
+ * ever get that the coach actually has the work — there is no "I've started"
+ * button, and asking for one would be a button nobody presses. So the first time
+ * the assigned coach collects an intake file, the submission moves to
+ * `in_review` and Yuta is told the hand-off closed.
  */
 export async function GET(
   _request: Request,
@@ -33,6 +40,21 @@ export async function GET(
     return new Response("This file has been deleted under the retention policy.", {
       status: 410,
     });
+  }
+
+  /*
+    Step 9, observed rather than declared.
+
+    Gated on it being *the assigned coach*: an admin opening the same file is
+    checking on the work, not starting it, and letting that count would make
+    `in_review` mean nothing again. Intake only — a coach re-reading their own
+    response isn't a pick-up.
+
+    Not awaited. The stamp and its email must never be the reason a download
+    fails, and the customer of this route is a coach waiting on bytes.
+  */
+  if (session.role === "coach" && isIntake(file)) {
+    void noteCoachCollected(file.submissionId, session.userId);
   }
 
   const opened = await storage.open(file.fileUrl);

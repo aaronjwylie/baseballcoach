@@ -18,12 +18,19 @@ import {
   addSubmissionFile,
   getSubmission,
   listFeedbackFiles,
+  markCustomerCollected,
   updateSubmission,
   type Submission,
   type SubmissionFile,
 } from "@/domains/submission";
+import { getCoach } from "@/domains/coach";
+import { listAdminEmails } from "@/domains/account";
 import { env } from "@/shared/config/env";
-import { sendFeedbackReady } from "./feedbackEmail";
+import {
+  sendCustomerCollectedEmail,
+  sendFeedbackReady,
+  sendResponseSubmittedEmail,
+} from "./feedbackEmail";
 import { signFeedbackToken } from "./feedbackToken";
 
 /**
@@ -64,7 +71,60 @@ export async function sendFeedbackForApproval(
 ): Promise<Submission | null> {
   const files = await listFeedbackFiles(submissionId);
   if (files.length === 0) return null;
-  return updateSubmission(submissionId, { status: "awaiting_approval" });
+
+  /*
+    Only a submission actually in review can be delivered.
+
+    The coach's ownership was already checked by the caller; the *status* wasn't,
+    which meant a stale tab could deliver twice, or deliver work on a submission
+    Yuta had already approved — walking it backwards over its own completion.
+    Unreachable by clicking, which is exactly why it was worth closing.
+  */
+  const current = await getSubmission(submissionId);
+  if (!current || current.status !== "in_review") return null;
+
+  const updated = await updateSubmission(submissionId, {
+    status: "awaiting_approval",
+  });
+
+  // ⑤ — tell Yuta it's waiting, and the coach that it arrived. Best-effort: the
+  // work is delivered either way, and a webhook must never fail on mail.
+  const coach = updated.assignedCoachId
+    ? await getCoach(updated.assignedCoachId)
+    : null;
+  const admins = await listAdminEmails();
+  await sendResponseSubmittedEmail({
+    to: [...admins, ...(coach?.email ? [coach.email] : [])],
+    coachName: coach?.name ?? "The coach",
+    playerName: updated.playerName,
+    fileCount: files.length,
+    reviewUrl: `${env.siteUrl}/admin`,
+  });
+
+  return updated;
+}
+
+/**
+ * The customer collected their feedback — stamp it, and tell Yuta.
+ *
+ * Called from every route that hands a response file over. **Idempotent**: only
+ * the first collection moves the status, so a re-download can't restart the
+ * retention clock or send a second notification.
+ *
+ * Deliberately not awaited on the download path's critical section — see the
+ * routes. A notification must never be the reason a file fails to arrive.
+ */
+export async function noteCustomerCollected(
+  submissionId: string,
+): Promise<void> {
+  const collected = await markCustomerCollected(submissionId);
+  if (!collected) return;
+
+  await sendCustomerCollectedEmail({
+    to: await listAdminEmails(),
+    playerName: collected.playerName,
+    submissionUrl: `${env.siteUrl}/admin`,
+  });
 }
 
 /**

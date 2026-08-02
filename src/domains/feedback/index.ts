@@ -21,5 +21,6 @@ export {
   recordFeedbackFile,
   sendFeedbackForApproval,
   approveAndComplete,
+  noteCustomerCollected,
 } from "./api/feedbackApi";
 export { FeedbackUpload } from "./ui/FeedbackUpload";

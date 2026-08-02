@@ -70,6 +70,36 @@ function fileList(files: SubmissionFile[]): string {
 }
 
 /**
+ * ② (the other half) — a paid submission has arrived. To Yuta.
+ *
+ * The customer gets a receipt; the operator got nothing, so the first anyone
+ * knew of a sale was noticing a new row. A queue that doesn't announce its own
+ * arrivals has to be watched instead of used.
+ */
+export function sendPaymentReceivedEmail(opts: {
+  to: string[];
+  playerName: string;
+  focus?: string;
+  fileCount: number;
+  queueUrl: string;
+}) {
+  if (opts.to.length === 0) return Promise.resolve(false);
+  const player = escapeHtml(opts.playerName);
+  const focus = opts.focus ? ` · ${escapeHtml(opts.focus)}` : "";
+  const files = `${opts.fileCount} file${opts.fileCount === 1 ? "" : "s"}`;
+  return sendEmail({
+    to: opts.to.join(", "),
+    subject: `${site.name} — new paid submission: ${opts.playerName}`,
+    html: emailShell(
+      "A new submission is paid and waiting",
+      `<p><strong>${player}</strong>${focus} — ${files}.</p>
+       <p>It's in the queue and needs a coach.</p>`,
+      { label: "Open the queue", url: opts.queueUrl },
+    ),
+  });
+}
+
+/**
  * A card was declined — tell the customer, and give them the door back in.
  *
  * A decline is someone **trying**, not someone leaving, and silence treats the

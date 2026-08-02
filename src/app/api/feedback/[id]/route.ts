@@ -5,6 +5,7 @@ import {
   isResponse,
   isReleased,
 } from "@/domains/submission";
+import { noteCustomerCollected } from "@/domains/feedback";
 import { storage } from "@/shared/storage";
 import { readSession } from "@/shared/auth";
 
@@ -35,6 +36,21 @@ export async function GET(
   }
 
   const isOperator = !!(await readSession());
+
+  /*
+    Step 14, observed rather than declared — the mirror of step 9.
+
+    Only a customer's download counts: Yuta opening the file to check it is not
+    the customer collecting it, and letting that start the retention clock would
+    delete their feedback thirty days after *he* looked at it.
+
+    Not awaited, for the same reason as step 9 — the notification must never be
+    why a download fails.
+  */
+  if (!isOperator) {
+    void noteCustomerCollected(file.submissionId);
+  }
+
   if (!isOperator) {
     const submission = await getSubmission(file.submissionId);
     if (!submission || !isReleased(submission)) {

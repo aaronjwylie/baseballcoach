@@ -19,6 +19,27 @@ async function findRowByEmail(email: string) {
   return rows[0] ?? null;
 }
 
+/**
+ * Where operator notifications go.
+ *
+ * Read from the `users` table rather than an env var, deliberately: the people
+ * who should hear about a payment or a stalled hand-off are exactly the people
+ * who can log in and act on it, and a config value would let those two drift the
+ * moment an operator changes. Distinct from `site.email` (the public address)
+ * and `EMAIL_FROM` (who mail is sent *as*) — three jobs, three sources.
+ *
+ * Returns every admin, so a second one can be added by creating a user rather
+ * than by a deploy. Empty is survivable: the caller skips the send, because
+ * nobody being told is better than a crash in a webhook.
+ */
+export async function listAdminEmails(): Promise<string[]> {
+  const rows = await db
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.role, "admin"));
+  return rows.map((row) => row.email);
+}
+
 /** Verify an email + password. Returns the operator, or null if either is wrong. */
 export async function verifyCredentials(
   email: string,
