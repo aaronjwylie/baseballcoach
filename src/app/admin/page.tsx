@@ -379,6 +379,26 @@ function SubmissionRow({
 
   const outstanding = stage.find((line) => line.now);
 
+  /*
+    `awaiting_payment` is one rung across two steps, and its own name is only
+    true for the second.
+
+    A customer who has just verified their email is *uploading* — a row saying
+    "awaiting payment" reads as "we're waiting on their money" when we're waiting
+    on their files. The server can't tell step 3 from step 4, because the payment
+    intent id isn't stored until payment succeeds — so this says the thing it
+    actually knows: whether anything has arrived yet.
+
+    The rung is unchanged. Renaming the enum would be a migration to fix a label,
+    and the label is what was wrong.
+  */
+  const railLabel =
+    submission.status === "awaiting_payment"
+      ? folderMap.intake.length === 0
+        ? "Verified — uploading"
+        : `Uploaded ${folderMap.intake.length} — not paid`
+      : undefined;
+
   const lastActivity = submission.updatedAt ?? submission.submittedAt;
   const sessionExpiry = lastActivity
     ? new Date(new Date(lastActivity).getTime() + FLOW_WINDOW_MINUTES * 60_000).toISOString()
@@ -419,7 +439,11 @@ function SubmissionRow({
       ]
         .filter(Boolean)
         .join(" · ")}
-      rail={{ status: submission.status, needsTranslation: wantsTranslation === true }}
+      rail={{
+        status: submission.status,
+        needsTranslation: wantsTranslation === true,
+        label: railLabel,
+      }}
       /*
         Whose court the ball is in — not who is assigned.
 

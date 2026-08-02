@@ -545,6 +545,21 @@ that would otherwise look like oversights.
 | 6, 11 | Retention | Nothing is stored; the files are on Yuta's machine |
 | 3 | `status` | **Deliberate.** Attaching a file doesn't move the submission — the gate opened at step 2 and closes at step 4. A per-file status would make one failed upload look like a state change |
 
+⚠️ **That blank has a cost, found in QA on 2026-08-02.** Because step 3 moves
+nothing, `awaiting_payment` spans both uploading *and* paying — and its name is
+only true for the second. A customer who had just verified their email showed as
+"awaiting payment", which reads as *we're waiting on their money* when we were
+waiting on their files.
+
+The server can't tell the two apart: the payment intent id isn't stored until
+payment succeeds, so there is no marker for "reached step 4". What it can see is
+whether any files have arrived, so the queue's pill now says that instead —
+**"Verified — uploading"** with none, **"Uploaded N — not paid"** with some.
+
+**The rung is unchanged.** Renaming the enum would be a migration to fix a label,
+and the label was what was wrong. Worth revisiting only if step 3 ever earns a
+rung of its own — which the note above still argues against.
+
 Note what *isn't* blank any more: **steps 9 and 14 both notify Yuta.** A download
 used to look like a private act needing no acknowledgement. It isn't — each one
 tells him the pipeline moved without him.

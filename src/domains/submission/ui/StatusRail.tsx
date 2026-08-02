@@ -55,10 +55,19 @@ const WARN: ReadonlySet<SubmissionStatus> = new Set(["purge_imminent"]);
 export function StatusRail({
   status,
   needsTranslation,
+  label,
 }: {
   status: SubmissionStatus;
   /** Fades the optional rungs on a submission that will never touch them. */
   needsTranslation: boolean;
+  /**
+   * Overrides the rung's name in the pill.
+   *
+   * One rung genuinely covers two steps — `awaiting_payment` spans uploading
+   * *and* paying — so its own name tells only half the story. The caller knows
+   * which half applies; the rail doesn't, and shouldn't have to.
+   */
+  label?: string;
 }) {
   const at = SUBMISSION_STATUSES.indexOf(status);
   const pos = (i: number) => (i / (SUBMISSION_STATUSES.length - 1)) * 100;
@@ -67,7 +76,10 @@ export function StatusRail({
   const warn = WARN.has(status);
 
   return (
-    <div className="relative h-11" aria-label={`Step ${at + 1} of 16: ${RUNG_LABEL[status]}`}>
+    <div
+      className="relative h-11"
+      aria-label={`Step ${at + 1} of 16: ${label ?? RUNG_LABEL[status]}`}
+    >
       <span
         className={`${pillClass} absolute top-0 -translate-x-1/2 ${
           warn
@@ -76,7 +88,7 @@ export function StatusRail({
         }`}
         style={{ left: `${pillLeft}%` }}
       >
-        {RUNG_LABEL[status]}
+        {label ?? RUNG_LABEL[status]}
       </span>
       <span
         className={`absolute top-[21px] h-[9px] w-px -translate-x-1/2 ${warn ? "bg-amber-600" : "bg-ink"}`}

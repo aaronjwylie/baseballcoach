@@ -43,7 +43,11 @@ export function QueueRow({
   facts: ReactNode;
   /** The thing that wants attention, if anything does. */
   flag?: string;
-  rail: { status: Parameters<typeof StatusRail>[0]["status"]; needsTranslation: boolean };
+  rail: {
+    status: Parameters<typeof StatusRail>[0]["status"];
+    needsTranslation: boolean;
+    label?: string;
+  };
   stage: ChainState[];
   control?: ReactNode;
   folders: ReactNode;
@@ -70,7 +74,11 @@ export function QueueRow({
         </span>
 
         <span className="pt-0.5 max-[860px]:col-span-2">
-          <StatusRail status={rail.status} needsTranslation={rail.needsTranslation} />
+          <StatusRail
+            status={rail.status}
+            needsTranslation={rail.needsTranslation}
+            label={rail.label}
+          />
         </span>
 
         <span className="text-right text-[11.5px] text-ink-muted max-[860px]:text-left">
