@@ -25,6 +25,15 @@ export {
 } from "./model/submission";
 
 export {
+  STAGE_CHAIN,
+  describeStage,
+  type ChainAction,
+  type ChainLine,
+  type ChainState,
+  type ProgressFacts,
+} from "./model/stageChain";
+
+export {
   FILE_KINDS,
   INTAKE_KINDS,
   RESPONSE_KINDS,
@@ -98,9 +107,12 @@ export {
 export { signStatusToken, verifyStatusToken } from "./api/statusToken";
 
 export {
+  listProgressFacts,
   listSubmissionEvents,
+  noteEmailSent,
   recordSubmissionEvent,
   type SubmissionEvent,
+  type SubmissionEventKind,
 } from "./api/submissionEventApi";
 
 export {

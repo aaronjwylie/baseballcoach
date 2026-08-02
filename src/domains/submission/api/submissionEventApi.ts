@@ -20,7 +20,7 @@
  * disagree with `submissions.status`. If the insert fails, the transition fails
  * with it — a status change nobody can account for is worse than no change.
  */
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db, submissionEvents } from "@/shared/db";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
@@ -28,10 +28,18 @@ import type { SubmissionStatus } from "../model/submission";
 /** A transaction handle, or the connection itself. */
 type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+export type SubmissionEventKind = "status" | "email";
+
 export interface SubmissionEvent {
   id: string;
   submissionId: string;
-  status: SubmissionStatus;
+  kind: SubmissionEventKind;
+  /** The rung it moved to. Absent on an email event — a message isn't a rung. */
+  status?: SubmissionStatus;
+  /** Which message, on an email event — the ①–⑨ handle and its recipient. */
+  label?: string;
+  /** Did the send work? Only meaningful on an email event. */
+  ok?: boolean;
   at: string;
   /** The operator who caused it, or null for the customer and the cron. */
   actorId?: string;
@@ -69,10 +77,103 @@ export async function recordSubmissionEvent(
 ): Promise<void> {
   await tx.insert(submissionEvents).values({
     submissionId,
+    kind: "status",
     status,
     actorId: await currentActorId(),
     note: note ?? null,
   });
+}
+
+/**
+ * Record that we tried to send something, **and whether it worked.**
+ *
+ * The one class of event that fails silently. Sends are best-effort (ADR 004):
+ * a failure logs and is swallowed so it can't take down a webhook, which is
+ * right — and leaves nobody able to tell "the customer has their receipt" from
+ * "we attempted a receipt". The status implies the attempt; only this records
+ * the outcome.
+ *
+ * **Never throws, and never awaited on a critical path.** A failure to record a
+ * failure must not become the thing that breaks. Wrap the send, don't gate on
+ * it:
+ *
+ * ```ts
+ * const ok = await sendSomething(...);
+ * void noteEmailSent(id, "② receipt → customer", ok);
+ * ```
+ */
+export async function noteEmailSent(
+  submissionId: string,
+  label: string,
+  ok: boolean,
+  note?: string,
+): Promise<void> {
+  try {
+    await db.insert(submissionEvents).values({
+      submissionId,
+      kind: "email",
+      // No rung: a message isn't a place on the ladder, and giving it one would
+      // corrupt every read that uses the trail to work out where a submission is.
+      status: null,
+      label,
+      ok,
+      actorId: await currentActorId(),
+      note: note ?? null,
+    });
+  } catch (err) {
+    console.error(`[trail] recording "${label}" failed:`, err);
+  }
+}
+
+/**
+ * The trail for a whole page of submissions, in one read.
+ *
+ * The progress view needs two things per row — which rungs it has passed
+ * through, and which messages landed — and both live in the same table. One
+ * query for the page rather than two per row, because the queue renders
+ * twenty-odd rows and a per-row read turns a page load into forty round trips.
+ *
+ * Returns a map keyed by submission id, with **every** id present even when it
+ * has no events, so callers never have to distinguish "no trail" from "not
+ * loaded".
+ */
+export async function listProgressFacts(
+  submissionIds: string[],
+): Promise<Map<string, { reached: Set<SubmissionStatus>; emails: Map<string, boolean> }>> {
+  const facts = new Map<
+    string,
+    { reached: Set<SubmissionStatus>; emails: Map<string, boolean> }
+  >();
+  for (const id of submissionIds) {
+    facts.set(id, { reached: new Set(), emails: new Map() });
+  }
+  if (submissionIds.length === 0) return facts;
+
+  const rows = await db
+    .select()
+    .from(submissionEvents)
+    .where(inArray(submissionEvents.submissionId, submissionIds))
+    .orderBy(asc(submissionEvents.at));
+
+  for (const row of rows) {
+    const entry = facts.get(row.submissionId);
+    if (!entry) continue;
+    if (row.kind === "status" && row.status) {
+      entry.reached.add(row.status);
+    }
+    if (row.kind === "email" && row.label) {
+      /*
+        Last write wins, deliberately.
+
+        A message can be attempted more than once — a redelivered webhook, a
+        retried action — and what the operator needs to know is whether it
+        landed *in the end*, not whether an earlier try failed. The full history
+        is still in the trail for anyone reading the row itself.
+      */
+      entry.emails.set(row.label, row.ok === true);
+    }
+  }
+  return facts;
 }
 
 /** One submission's history, oldest first. */
@@ -88,7 +189,10 @@ export async function listSubmissionEvents(
   return rows.map((row) => ({
     id: row.id,
     submissionId: row.submissionId,
-    status: row.status,
+    kind: row.kind,
+    status: row.status ?? undefined,
+    label: row.label ?? undefined,
+    ok: row.ok ?? undefined,
     at: row.at.toISOString(),
     actorId: row.actorId ?? undefined,
     note: row.note ?? undefined,

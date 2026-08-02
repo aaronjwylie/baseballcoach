@@ -15,6 +15,7 @@ import {
 import {
   getSubmission,
   markCoachCollected,
+  noteEmailSent,
   type Focus,
 } from "@/domains/submission";
 import { env } from "@/shared/config/env";
@@ -157,12 +158,13 @@ export async function noteCoachCollected(
     const collected = await markCoachCollected(submissionId);
     if (!collected) return;
 
-    await sendCoachCollectedEmail({
+    const ok = await sendCoachCollectedEmail({
       to: await listAdminEmails(),
       coachName: coach.name,
       playerName: collected.playerName,
       submissionUrl: `${env.siteUrl}/admin`,
     });
+    void noteEmailSent(submissionId, "④ picked up → Yuta", ok);
   } catch (err) {
     console.error("[coach] recording a collection failed:", err);
   }

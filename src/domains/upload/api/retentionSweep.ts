@@ -32,6 +32,7 @@ import {
   findResolvedDue,
   findWarningDue,
   listAllSubmissionFiles,
+  noteEmailSent,
   updateSubmission,
 } from "@/domains/submission";
 import { sendDeletionWarning } from "@/domains/feedback";
@@ -86,12 +87,20 @@ export async function runRetentionSweep(): Promise<SweepReport> {
       );
       try {
         if (submission.customerEmail) {
-          await sendDeletionWarning({
+          const ok = await sendDeletionWarning({
             to: submission.customerEmail,
             playerName: submission.playerName,
             deletesOn,
             daysLeft: settings.warnBeforeDeletionDays,
           });
+          void noteEmailSent(
+            submission.id,
+            "⑨ deletion warning → customer",
+            ok,
+            // Worth saying out loud in the trail: the stamp lands either way, so
+            // a failure here is a customer who will never be warned again.
+            ok ? undefined : "stamped regardless — this will not retry",
+          );
         }
         // Stamped whether or not the send worked. A warning we couldn't deliver
         // must not retry nightly — that turns one missed email into seven.

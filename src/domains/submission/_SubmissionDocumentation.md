@@ -866,7 +866,47 @@ rollout plan and resolved in its Phase 6:
   has been told, not that the coach has started". The coach's first download is that
   missing event.
 
-## 3 · Where we are now — 2026-08-01 (evening)
+## 3 · Where we are now — 2026-08-02
+
+**The queue shows progress at the resolution of the path doc** — a sixteen-dot
+rail per row with the current rung named above it, and the stage's chain as a
+checklist that greys out as each line is met.
+
+- ✅ **`model/stageChain.ts`** — what has to happen *within* a rung. Every line
+  carries its own `met` predicate, so nothing is a flag a human ticks; each asks
+  the row, the files, or the trail. That constrains what can be listed, which is
+  the point.
+- ✅ **Passive lines never hold the pointer.** Yuta translating on his laptop
+  can't be observed, so treating it as a gate left a row showing nothing to do
+  while an upload was plainly outstanding.
+- ✅ **The control lives on the outstanding line**, not in a button bar. A bar
+  makes you read the status, infer what it implies, then find the matching
+  button; here the thing you read and the thing you press are the same thing.
+- ✅ **The trail records sends, not just moves** — `submission_events.kind` is
+  `status` or `email`, with `ok` for whether it landed. Sends are best-effort, so
+  a progress view built on the old trail could only say "the status implies we
+  tried".
+
+### 🔴 The bug this surfaced, which was live on `main`
+
+`listSubmissions` — the admin queue's only read — filtered on a **hardcoded list
+of five statuses**, written when the ladder had seven rungs. When the ladder grew
+to sixteen it silently stopped matching, and **every submission from
+`sent_to_coach` onward disappeared from the queue**: all four translation rungs,
+plus `collected`, `resolved`, `purge_imminent` and `purged`. Nothing failed. The
+rows just weren't there.
+
+It is precisely the failure the retention sweep had, and the same rule fixes it:
+**a question about the ladder is a predicate, never a list.** It now derives from
+`PAID_STATUSES`.
+
+Worth noting *how* it was found — not by review, but by rendering the page and
+counting rungs against the database. The literal-list hazard is invisible to the
+compiler by construction.
+
+---
+
+## Where we were — 2026-08-01 (evening)
 
 **The whole pipeline is built.** Phases 1–6 of
 [the rollout](../../../docs/design/rollout.md) landed today; every stage in §2 has

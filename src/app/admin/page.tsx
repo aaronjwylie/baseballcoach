@@ -15,6 +15,10 @@ import {
   listFilesByFolder,
   type FileKind,
   isPaid,
+  listProgressFacts,
+  describeStage,
+  listSubmissionEvents,
+  type SubmissionEvent,
 } from "@/domains/submission";
 import {
   listCoaches,
@@ -27,6 +31,7 @@ import { RowActionForm } from "./RowActionForm";
 import { SendWithFileSet } from "./SendWithFileSet";
 import { FileFolders } from "./FileFolders";
 import { OperatorOverride } from "./OperatorOverride";
+import { QueueRow } from "./QueueRow";
 import { needsTranslation } from "@/domains/coach/model/coach";
 import {
   archiveSubmissionAction,
@@ -48,29 +53,6 @@ export const metadata: Metadata = {
  * pre-payment states out), but the map is exhaustive so a new status can't be
  * added without deciding how the portal shows it.
  */
-const STATUS_LABEL: Record<SubmissionStatus, { text: string; className: string }> = {
-  draft: { text: "Draft", className: "bg-stone-50 text-stone-600 border-stone-200" },
-  awaiting_payment: { text: "Awaiting payment", className: "bg-amber-50 text-amber-700 border-amber-200" },
-  new: { text: "New — needs a coach", className: "bg-blue-50 text-blue-700 border-blue-200" },
-  assigned: { text: "Assigned", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  // The two translation pairs read as "out" / "back" rather than naming the
-  // status, because that's the question being asked of the row.
-  intake_translating: { text: "Files out for translation", className: "bg-sky-50 text-sky-700 border-sky-200" },
-  intake_translated: { text: "Files translated", className: "bg-sky-50 text-sky-700 border-sky-200" },
-  // The distinction `sent_to_coach` exists to make: emailed, but not collected.
-  // This is the row Yuta chases.
-  sent_to_coach: { text: "Sent — not picked up", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  in_review: { text: "In review", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  awaiting_approval: { text: "Coach submitted", className: "bg-purple-50 text-purple-700 border-purple-200" },
-  response_translating: { text: "Response out for translation", className: "bg-sky-50 text-sky-700 border-sky-200" },
-  response_translated: { text: "Response translated", className: "bg-sky-50 text-sky-700 border-sky-200" },
-  complete: { text: "Sent — not collected", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  collected: { text: "Collected", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  resolved: { text: "Resolved", className: "bg-stone-50 text-stone-600 border-stone-200" },
-  purge_imminent: { text: "Deleting in 7 days", className: "bg-amber-50 text-amber-700 border-amber-200" },
-  purged: { text: "Files purged", className: "bg-stone-50 text-stone-600 border-stone-200" },
-};
-
 /**
  * The filter tabs above the table — "all" plus one per status the queue can
  * actually contain, then "Archived".
@@ -156,6 +138,18 @@ export default async function AdminHomePage({
     ),
   );
 
+  // What each row has passed through, and which messages landed. One read for
+  // the page — the progress view needs it on every row.
+  const progressBySubmission = await listProgressFacts(rows.map((s) => s.id));
+
+  // The full trail, for the expanded panel. Per row rather than page-wide: only
+  // an opened row shows it, and most rows are never opened.
+  const eventsBySubmission = new Map(
+    await Promise.all(
+      rows.map(async (s) => [s.id, await listSubmissionEvents(s.id)] as const),
+    ),
+  );
+
   // The coach's feedback files, for the rows where Yuta acts on them — reviewing
   // before approval, and after it's delivered.
   const feedbackBySubmission = new Map(
@@ -195,7 +189,7 @@ export default async function AdminHomePage({
           })}
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-white">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-white">
           {rows.length === 0 ? (
             <p className="p-8 text-center text-sm text-ink-muted">
               {all.length === 0
@@ -203,50 +197,61 @@ export default async function AdminHomePage({
                 : "No submissions in this view."}
             </p>
           ) : (
-            <table className="w-full min-w-[880px] text-left text-sm">
-              <thead className="border-b border-line text-xs uppercase tracking-wide text-ink-muted">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Player</th>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Focus</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Files</th>
-                  <th className="px-4 py-3 font-medium">Coach</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((s) => (
-                  <SubmissionRow
-                    key={s.id}
-                    submission={s}
-                    files={filesBySubmission.get(s.id) ?? []}
-                    feedbackFiles={feedbackBySubmission.get(s.id) ?? []}
-                    folders={foldersBySubmission.get(s.id)}
-                    coaches={coaches}
-                  />
-                ))}
-              </tbody>
-            </table>
+            <>
+              <div className="grid grid-cols-[minmax(0,200px)_1fr_minmax(0,150px)_30px] gap-4 border-b border-line bg-paper-alt px-4 py-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-ink-muted max-[860px]:hidden">
+                <div>Player</div>
+                <div>Progress</div>
+                <div />
+                <div />
+              </div>
+              {rows.map((s) => (
+                <SubmissionRow
+                  key={s.id}
+                  submission={s}
+                  files={filesBySubmission.get(s.id) ?? []}
+                  feedbackFiles={feedbackBySubmission.get(s.id) ?? []}
+                  folders={foldersBySubmission.get(s.id)}
+                  progress={progressBySubmission.get(s.id)}
+                  events={eventsBySubmission.get(s.id) ?? []}
+                  coaches={coaches}
+                />
+              ))}
+            </>
           )}
         </div>
     </Container>
   );
 }
 
+/**
+ * One submission, as the queue shows it.
+ *
+ * A server component that assembles everything and hands it to `QueueRow`,
+ * which owns only the open/closed state. The controls are passed as nodes
+ * because they're bound to Server Actions — the row shouldn't know which.
+ */
 function SubmissionRow({
   submission,
   files,
   feedbackFiles,
   folders,
+  progress,
+  events,
   coaches,
 }: {
   submission: Submission;
   files: SubmissionFile[];
   feedbackFiles: SubmissionFile[];
   folders?: Record<FileKind, SubmissionFile[]>;
+  progress?: { reached: Set<SubmissionStatus>; emails: Map<string, boolean> };
+  events: SubmissionEvent[];
   coaches: Coach[];
 }) {
-  const status = STATUS_LABEL[submission.status];
+  const assignedCoach = coaches.find((c) => c.id === submission.assignedCoachId);
+  const empty: Record<FileKind, SubmissionFile[]> = {
+    intake: [], intake_translation: [], response: [], response_translation: [],
+  };
+  const folderMap = folders ?? empty;
 
   /*
     What each hand-off may offer, derived from what actually exists.
@@ -255,172 +260,178 @@ function SubmissionRow({
     the common case — `SendWithFileSet` then renders the button with no radio at
     all, rather than a question with one answer.
   */
-  const present = folders
-    ? (Object.keys(folders) as FileKind[]).filter((k) => folders[k].length > 0)
-    : [];
-  const intakeSets = availableSets(
-    present.filter((k) => k === "intake" || k === "intake_translation"),
-  );
-  const responseSets = availableSets(
-    present.filter((k) => k === "response" || k === "response_translation"),
-  );
+  const present = (Object.keys(folderMap) as FileKind[]).filter((k) => folderMap[k].length > 0);
+  const intakeSets = availableSets(present.filter((k) => k === "intake" || k === "intake_translation"));
+  const responseSets = availableSets(present.filter((k) => k === "response" || k === "response_translation"));
 
-  const assignedCoach = coaches.find((c) => c.id === submission.assignedCoachId);
-  const wantsTranslation = assignedCoach
-    ? needsTranslation(assignedCoach)
-    : null;
-  const alreadyTranslated = (folders?.intake_translation.length ?? 0) > 0;
-  const translationHint =
-    wantsTranslation === true && !alreadyTranslated
-      ? `${assignedCoach?.name ?? "This coach"} doesn't read English — translate the client files first.`
-      : assignedCoach && assignedCoach.languages.length === 0
-        ? "No languages recorded for this coach."
-        : null;
+  const wantsTranslation = assignedCoach ? needsTranslation(assignedCoach) : null;
+
+  const stage = describeStage(submission, {
+    files: {
+      intake: folderMap.intake.length,
+      intake_translation: folderMap.intake_translation.length,
+      response: folderMap.response.length,
+      response_translation: folderMap.response_translation.length,
+    },
+    coachHasLanguages: (assignedCoach?.languages.length ?? 0) > 0,
+    reached: progress?.reached ?? new Set<SubmissionStatus>(),
+    emails: progress?.emails ?? new Map<string, boolean>(),
+  });
+
+  /*
+    The control belongs to the outstanding line, so it's chosen from the chain
+    rather than from the status. Two sources of truth about "what happens next"
+    is exactly how a button bar and a status badge drift apart.
+  */
+  const act = stage.find((line) => line.now)?.act;
+
+  const control = submission.archivedAt ? (
+    <RowActionForm
+      action={unarchiveSubmissionAction}
+      submissionId={submission.id}
+      label="Unarchive"
+      className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+    />
+  ) : act === "assign" ? (
+    <div className="flex flex-col items-start gap-2">
+      <AssignCoachSelect
+        key={submission.assignedCoachId ?? "unassigned"}
+        submissionId={submission.id}
+        assignedCoachId={submission.assignedCoachId}
+        coaches={coaches}
+      />
+      <p className="text-[11px] text-ink-muted">
+        Assigning is also what makes translation need derivable — the coach decides it.
+      </p>
+    </div>
+  ) : act === "handoff" ? (
+    <SendWithFileSet
+      action={notifyCoachAction}
+      submissionId={submission.id}
+      sets={intakeSets}
+      label="Send email →"
+      className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
+    />
+  ) : act === "approve" ? (
+    <div className="flex flex-col items-start gap-2">
+      <FeedbackFileLinks files={feedbackFiles} />
+      <SendWithFileSet
+        action={completeSubmissionAction}
+        submissionId={submission.id}
+        sets={responseSets}
+        label="Approve & send →"
+        className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+      />
+    </div>
+  ) : act === "resolve" ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <RowActionForm
+        action={resolveSubmissionAction}
+        submissionId={submission.id}
+        label="Mark resolved"
+        className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+      />
+      <RowActionForm
+        action={archiveSubmissionAction}
+        submissionId={submission.id}
+        label="Archive"
+        className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+      />
+    </div>
+  ) : act === "uploadIntake" || act === "uploadResponse" ? (
+    <p className="text-[11px] text-ink-muted">
+      Off-platform work — upload the result into the{" "}
+      {act === "uploadIntake" ? "client" : "coach"}-translated folder on the right.
+    </p>
+  ) : act ? (
+    // The waits. Naming who we're waiting on is more use than a disabled button.
+    <p className="text-[11px] text-ink-muted">
+      {act === "waitCoach"
+        ? "Waiting on the coach. Chase them if this sits."
+        : act === "waitCustomer"
+          ? "Waiting on the customer. No clock runs until they act."
+          : "Waiting on the nightly sweep."}
+    </p>
+  ) : isReleased(submission) && !submission.archivedAt ? (
+    <RowActionForm
+      action={archiveSubmissionAction}
+      submissionId={submission.id}
+      label="Archive"
+      className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+    />
+  ) : undefined;
+
+  const outstanding = stage.find((line) => line.now);
 
   return (
-    <tr className="border-b border-line last:border-0 align-top">
-      <td className="px-4 py-3 font-medium text-ink">
-        {submission.playerName}
-        {submission.playerAge ? <span className="text-ink-muted"> · {submission.playerAge}</span> : null}
-        <div className="text-xs text-ink-muted">{formatDate(submission.submittedAt)}</div>
-      </td>
-      <td className="px-4 py-3 text-ink-muted">{submission.customerEmail}</td>
-      <td className="px-4 py-3 text-ink-muted">{submission.focus ?? "—"}</td>
-      <td className="px-4 py-3">
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${status.className}`}>
-          {status.text}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        {/*
-          The four folders replace the flat list once a submission is paid: the
-          same files, plus the two translation folders Yuta uploads into. Before
-          payment there's nothing to curate, so the simpler list stands.
-        */}
-        {folders && isPaid(submission) ? (
-          <>
-            <FileFolders
-              submissionId={submission.id}
-              folders={folders}
-              uploadAction={uploadTranslationAction}
-            />
-            <div className="mt-2">
-              <OperatorOverride
-                submissionId={submission.id}
-                status={submission.status}
-                purgeAction={purgeFolderAction}
-                resetAction={resetStatusAction}
-              />
-            </div>
-          </>
+    <QueueRow
+      playerName={submission.playerName}
+      meta={[
+        submission.focus,
+        `${folderMap.intake.length} file${folderMap.intake.length === 1 ? "" : "s"}`,
+        submission.customerEmail,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+      rail={{ status: submission.status, needsTranslation: wantsTranslation === true }}
+      facts={
+        <>
+          {assignedCoach ? (
+            <span className="font-semibold text-ink-soft">{assignedCoach.name}</span>
+          ) : (
+            "unassigned"
+          )}
+        </>
+      }
+      /* The flag names what's outstanding rather than restating the status —
+         the rail already says where it is. */
+      flag={outstanding && !submission.archivedAt ? outstanding.what : undefined}
+      stage={stage}
+      control={control}
+      folders={
+        isPaid(submission) ? (
+          <FileFolders
+            submissionId={submission.id}
+            folders={folderMap}
+            uploadAction={uploadTranslationAction}
+          />
         ) : (
-          <SubmissionFileList files={files} emptyLabel="—" />
-        )}
-      </td>
-      <td className="px-4 py-3">
-        {submission.archivedAt ? (
-          <div className="flex flex-col items-start gap-2">
-            <span className="font-medium text-ink">
-              {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
-            </span>
-            <RowActionForm
-              action={unarchiveSubmissionAction}
-              submissionId={submission.id}
-              label="Unarchive"
-              className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-            />
-          </div>
-        ) : submission.status === "in_review" || hasResponse(submission) ? (
-          // The coach is locked in once the review is under way (in_review) or
-          // done — show the name, not a reassign dropdown, so notified work
-          // can't be pulled out from under them. Any per-status action is below.
-          <div className="flex flex-col items-start gap-2">
-            <span className="font-medium text-ink">
-              {coaches.find((c) => c.id === submission.assignedCoachId)?.name ?? "—"}
-            </span>
-
-            {(submission.status === "awaiting_approval" ||
-              submission.status === "response_translated") && (
-              <>
-                <FeedbackFileLinks files={feedbackFiles} />
-                {/* Step 13 — and the radio only appears when a translation
-                    exists to choose between. */}
-                <SendWithFileSet
-                  action={completeSubmissionAction}
-                  submissionId={submission.id}
-                  sets={responseSets}
-                  label="Approve & send →"
-                  className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                />
-              </>
-            )}
-
-            {isReleased(submission) && (
-              <>
-                <FeedbackFileLinks files={feedbackFiles} />
-
-                {/* Step 15 — only offered once they've actually collected, so a
-                    thank-you can't go out for something they haven't seen. */}
-                {submission.status === "collected" && (
-                  <RowActionForm
-                    action={resolveSubmissionAction}
-                    submissionId={submission.id}
-                    label="Mark resolved"
-                    className="rounded-md border border-emerald-500 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
-                  />
-                )}
-
-                <RowActionForm
-                  action={archiveSubmissionAction}
-                  submissionId={submission.id}
-                  label="Archive"
-                  className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
-                />
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col items-start gap-2">
-            <AssignCoachSelect
-              key={submission.assignedCoachId ?? "unassigned"}
-              submissionId={submission.id}
-              assignedCoachId={submission.assignedCoachId}
-              coaches={coaches}
-            />
-
-            {/*
-              Step 5's derivation, surfaced.
-
-              Translation need is a property of the coach — the platform is
-              English, so a submission needs translating exactly when the coach
-              assigned to it doesn't read English. Saying so here is the whole
-              point of assigning before translating: it turns a thing Yuta had to
-              remember into a thing the row tells him.
-            */}
-            {translationHint && (
-              <p className="text-[11px] text-amber-700">{translationHint}</p>
-            )}
-
-            {(submission.status === "assigned" ||
-              submission.status === "intake_translated") &&
-              submission.assignedCoachId && (
-              <SendWithFileSet
-                action={notifyCoachAction}
-                submissionId={submission.id}
-                sets={intakeSets}
-                label="Send email →"
-                className="rounded-md border border-accent px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/5"
-              />
-            )}
-          </div>
-        )}
-      </td>
-    </tr>
+          <SubmissionFileList files={files} emptyLabel="Nothing uploaded yet." />
+        )
+      }
+      details={
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3.5 gap-y-1 text-xs">
+          <dt className="text-ink-muted">Customer</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerEmail}</dd>
+          <dt className="text-ink-muted">Coach</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{assignedCoach?.name ?? "—"}</dd>
+          <dt className="text-ink-muted">Languages</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
+            {assignedCoach ? assignedCoach.languages.join(", ") || "none recorded" : "—"}
+          </dd>
+          <dt className="text-ink-muted">Sent to coach</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.coachFileSet ?? "—"}</dd>
+          <dt className="text-ink-muted">Sent to customer</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerFileSet ?? "—"}</dd>
+          <dt className="text-ink-muted">Collected</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.collectedAt ?? "—"}</dd>
+        </dl>
+      }
+      events={events}
+      override={
+        isPaid(submission) ? (
+          <OperatorOverride
+            submissionId={submission.id}
+            status={submission.status}
+            purgeAction={purgeFolderAction}
+            resetAction={resetStatusAction}
+          />
+        ) : null
+      }
+    />
   );
 }
 
-/** The coach's feedback files as download links — Yuta reviews each before he
- * approves, and can still pull them after delivery. */
 function FeedbackFileLinks({ files }: { files: SubmissionFile[] }) {
   if (files.length === 0) {
     return <span className="text-xs text-ink-muted">No feedback files</span>;
@@ -440,10 +451,3 @@ function FeedbackFileLinks({ files }: { files: SubmissionFile[] }) {
   );
 }
 
-function formatDate(iso?: string): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}

@@ -13,6 +13,7 @@ import {
   kindsForSet,
   listFilesByKinds,
   markSubmissionSentToCoach,
+  noteEmailSent,
   updateSubmission,
   type FileSet,
   type Focus,
@@ -209,13 +210,15 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   );
   if (files.length === 0) return;
 
-  // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails.
-  await sendAssignmentEmail({
+  // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails, but
+  // the trail records whether it actually landed.
+  const ok = await sendAssignmentEmail({
     to: coach.email,
     coachName: coach.name,
     submission,
     files,
   });
+  void noteEmailSent(submissionId, "③ hand-off → coach", ok);
 
   // Record what they were actually sent. "What did we give them?" is asked
   // later, and by then the folders may hold more than they did today.

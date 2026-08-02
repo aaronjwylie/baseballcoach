@@ -18,6 +18,7 @@ import {
   getSubmission,
   isPaid,
   listSubmissionFiles,
+  noteEmailSent,
   parseSubmissionInput,
   readFlowSession,
   setFlowSession,
@@ -174,7 +175,10 @@ export async function startSubmissionAction(
 async function sendCode(submissionId: string, email: string): Promise<boolean> {
   const code = await issueCode(submissionId);
   if (!code) return false;
-  return sendVerificationCode(email, code);
+  const ok = await sendVerificationCode(email, code);
+  // Not awaited: recording the send must never be why the send appears to fail.
+  void noteEmailSent(submissionId, "① code → customer", ok);
+  return ok;
 }
 
 export async function resendCodeAction(): Promise<ActionResult> {

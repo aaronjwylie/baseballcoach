@@ -8,6 +8,7 @@
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
 import {
+  PAID_STATUSES,
   SUBMISSION_STATUSES,
   isReleased,
   type NewSubmission,
@@ -285,15 +286,20 @@ export async function listSubmissions(): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissions)
-    .where(
-      inArray(submissions.status, [
-        "new",
-        "assigned",
-        "in_review",
-        "awaiting_approval",
-        "complete",
-      ]),
-    )
+    /*
+      **Derived from `isPaid`, never listed.**
+
+      This was a hardcoded list of five statuses, written when the ladder had
+      seven rungs, and it silently stopped matching when the ladder grew to
+      sixteen: everything from `sent_to_coach` onward — including every
+      translation rung, and every submission the customer had actually collected
+      — vanished from Yuta's queue. Nothing failed; the rows just weren't there.
+
+      It is the same failure the retention sweep had, and the same rule fixes it:
+      a question about the ladder is a predicate, not a list. Adding a rung now
+      changes what this returns without anyone having to remember it exists.
+    */
+    .where(inArray(submissions.status, PAID_STATUSES))
     .orderBy(desc(submissions.submittedAt));
   return rows.map(fromRow);
 }

@@ -16,6 +16,7 @@ import {
   getSubmission,
   isPaid,
   listSubmissionFiles,
+  noteEmailSent,
   signStatusToken,
   updateSubmission,
 } from "@/domains/submission";
@@ -37,7 +38,7 @@ export async function completePayment({
 
   const files = await listSubmissionFiles(submission.id);
 
-  await sendSubmissionReceipt(submission.customerEmail, {
+  const receiptOk = await sendSubmissionReceipt(submission.customerEmail, {
     playerName: submission.playerName,
     amountCents: submission.stripeAmount ?? site.price.amountCents,
     currency: site.price.currency,
@@ -53,15 +54,18 @@ export async function completePayment({
     statusUrl: `${env.siteUrl}/status/${await signStatusToken(submission.customerEmail)}`,
   });
 
+  void noteEmailSent(submission.id, "② receipt → customer", receiptOk);
+
   // The other half of ②. Gated on `justPaid` above, so a redelivered webhook
   // announces the same sale twice to nobody.
-  await sendPaymentReceivedEmail({
+  const arrivalOk = await sendPaymentReceivedEmail({
     to: await listAdminEmails(),
     playerName: submission.playerName,
     focus: submission.focus,
     fileCount: files.length,
     queueUrl: `${env.siteUrl}/admin`,
   });
+  void noteEmailSent(submission.id, "② arrival → Yuta", arrivalOk);
 }
 
 /**
@@ -107,8 +111,9 @@ export async function handleFailedPayment(
   });
 
   if (!submission.customerEmail) return;
-  await sendPaymentFailed(submission.customerEmail, {
+  const ok = await sendPaymentFailed(submission.customerEmail, {
     playerName: submission.playerName,
     startUrl: `${env.siteUrl}/start`,
   });
+  void noteEmailSent(submission.id, "card declined → customer", ok);
 }

@@ -93,6 +93,19 @@ export const fileKind = pgEnum("file_kind", [
  */
 export const fileSet = pgEnum("file_set", ["original", "translation", "both"]);
 
+/**
+ * What kind of thing an entry in the trail records.
+ *
+ * The trail began as status transitions only, which left the one class of event
+ * that **fails silently** — a send — invisible. `sendEmail` reports its outcome
+ * and nothing was writing it down, so a progress view could only say "the status
+ * implies we tried", never "it landed".
+ */
+export const submissionEventKind = pgEnum("submission_event_kind", [
+  "status",
+  "email",
+]);
+
 // Operator roles. Customers never get a user row.
 export const userRole = pgEnum("user_role", ["admin", "coach"]);
 
@@ -252,7 +265,24 @@ export const submissionEvents = pgTable(
     submissionId: uuid()
       .notNull()
       .references(() => submissions.id, { onDelete: "cascade" }),
-    status: submissionStatus().notNull(),
+    kind: submissionEventKind().notNull().default("status"),
+    /*
+      The rung it moved to. **Null on an email event** — a message isn't a place
+      on the ladder, and inventing one would corrupt every query that reads the
+      trail to work out where a submission is.
+    */
+    status: submissionStatus(),
+    /** Which message, on an email event: the ①–⑨ handle plus its recipient. */
+    label: text(),
+    /**
+     * Did it work?
+     *
+     * Only meaningful on an email event, and the reason this column exists:
+     * sends are best-effort (ADR 004), so a failure is logged and swallowed. A
+     * progress view that can't distinguish "sent" from "attempted" is guessing
+     * about exactly the thing most likely to have gone wrong.
+     */
+    ok: boolean(),
     at: timestamp({ withTimezone: true }).defaultNow().notNull(),
     // Null for the customer and the scheduled sweep — neither has a login.
     actorId: uuid().references(() => users.id, { onDelete: "set null" }),
