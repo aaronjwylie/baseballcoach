@@ -941,6 +941,16 @@ Read this section before coding. These have bitten *this* project.
   `submissionRow.ts`. Don't spell a column anywhere else.
 - **A schema change is a migration** — `npm run db:generate` then `db:migrate`.
   Never edit a table by hand.
+- **A production deploy applies its own migrations**, via
+  `scripts/migrate-on-deploy.mjs` in the `build` script, and **fails the build**
+  if it can't. That's deliberate: a build that can't migrate must not produce a
+  deploy, because fresh code against an old schema is an outage on every request
+  — which is exactly how it went wrong on 2026-08-02. Previews are skipped, since
+  they share the production database and a branch may carry a migration nobody
+  has agreed to.
+- **Several migrations are hand-corrected.** `drizzle-kit generate` can't tell a
+  rename from a drop-plus-add without a TTY, and emits casts that fail on
+  existing rows. Apply them; don't regenerate them.
 - **The pooler needs `prepare: false`** (Supabase transaction pooler); migrations
   use the direct/non-pooling URL. Both are already wired.
 - **Timestamps are `Date` in the row, ISO strings in the domain** — the mapper
