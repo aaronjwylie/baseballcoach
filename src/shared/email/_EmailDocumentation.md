@@ -67,6 +67,22 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 
 Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
 
+### Off the spine
+
+Two messages belong to side-paths rather than to a stage, so they carry no number
+— there's no rung for them to sit on.
+
+| Trigger | To | Status |
+|---|---|---|
+| A card was declined | customer | ✅ **built** — `domains/payment/api/paymentEmail.ts`, carries a link back into the flow |
+| Status-page access code | customer | ✅ **built** — `domains/feedback/api/feedbackEmail.ts` |
+
+**The decline message is deliberately vague about the reason.** Stripe's own
+wording is shown inline on the page, where it's actionable; repeating
+"insufficient funds" in an email that may be read over someone's shoulder isn't
+our call to make. What it *does* say is the part that matters: nothing was
+charged, the files are still here, and finishing takes one click.
+
 ### Outside the submission arc
 
 The nine above are the *submission's* messages, which is why they carry the path

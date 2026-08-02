@@ -8,7 +8,7 @@ import type Stripe from "stripe";
 import { stripe } from "@/shared/stripe/client";
 import { env } from "@/shared/config/env";
 import { markSubmissionPaid } from "../model/fulfillment";
-import { completePayment } from "./paymentCompletion";
+import { completePayment, handleFailedPayment } from "./paymentCompletion";
 
 /**
  * The Stripe events this handler acts on — the single home for that fact.
@@ -75,6 +75,7 @@ export async function handleStripeEvent(event: Stripe.Event): Promise<void> {
           reason: intent.last_payment_error?.message ?? "unknown",
         }),
       );
+      await handleFailedPayment(intent);
       break;
     }
 

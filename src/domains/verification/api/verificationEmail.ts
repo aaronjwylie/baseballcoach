@@ -11,7 +11,18 @@ import { emailShell, sendEmail } from "@/shared/email";
 import { site } from "@/shared/config/site";
 import { CODE_TTL_MINUTES } from "../model/verification";
 
-export function sendVerificationCode(to: string, code: string) {
+/**
+ * Returns whether the code was accepted for delivery.
+ *
+ * The one message a customer is **blocked** on, so unlike every other send in
+ * the app the caller must check: advancing someone to "enter the code" when no
+ * code is coming is a dead end they cannot get out of, and it looks identical to
+ * a slow inbox.
+ */
+export function sendVerificationCode(
+  to: string,
+  code: string,
+): Promise<boolean> {
   return sendEmail({
     to,
     subject: `${code} is your ${site.name} verification code`,

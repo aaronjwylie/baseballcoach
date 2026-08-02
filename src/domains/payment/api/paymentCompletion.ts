@@ -10,11 +10,17 @@
  * webhook, because Stripe retries any non-2xx and a degraded mail provider would
  * become a retry storm against a payment that already succeeded (ADR 004).
  */
+import type Stripe from "stripe";
 import { env } from "@/shared/config/env";
-import { listSubmissionFiles } from "@/domains/submission";
+import {
+  getSubmission,
+  isPaid,
+  listSubmissionFiles,
+  updateSubmission,
+} from "@/domains/submission";
 import { site } from "@/shared/config/site";
 import type { PaidResult } from "../model/fulfillment";
-import { sendSubmissionReceipt } from "./paymentEmail";
+import { sendPaymentFailed, sendSubmissionReceipt } from "./paymentEmail";
 
 export async function completePayment({
   submission,
@@ -31,5 +37,54 @@ export async function completePayment({
     currency: site.price.currency,
     files,
     statusUrl: `${env.siteUrl}/status`,
+  });
+}
+
+/**
+ * What happens when a card is declined.
+ *
+ * Two jobs, and the second is the one that isn't obvious.
+ *
+ * **Tell them.** A decline is someone trying, not someone leaving, and their
+ * files are already uploaded — but nothing on their screen says so once they've
+ * closed the tab, and a customer who assumes the whole submission failed does
+ * not come back.
+ *
+ * **Buy them time.** The abandonment sweep reaps unpaid submissions on a clock,
+ * and a failed payment is the strongest possible evidence that someone is still
+ * working on this one. Touching the row restarts that clock, so a customer who
+ * goes to find another card doesn't return to find their upload deleted. This is
+ * why the note is written rather than only logged: the write *is* the extension.
+ *
+ * Idempotent by construction — a redelivered failure writes the same note and
+ * pushes the clock again, which is harmless. Guarded on paid-ness so a decline
+ * arriving after a successful retry can't disturb a submission that has since
+ * gone through.
+ */
+export async function handleFailedPayment(
+  intent: Stripe.PaymentIntent,
+): Promise<void> {
+  const submissionId = intent.metadata?.submissionId;
+  if (!submissionId) return;
+
+  const submission = await getSubmission(submissionId);
+  if (!submission) return;
+  // A later attempt already succeeded; leave it alone.
+  if (isPaid(submission)) return;
+
+  const reason = intent.last_payment_error?.message ?? "unknown reason";
+  const stamp = new Date().toISOString();
+  const note = `[system ${stamp}] payment failed — ${reason}`;
+
+  await updateSubmission(submission.id, {
+    internalNotes: submission.internalNotes
+      ? `${submission.internalNotes}\n${note}`
+      : note,
+  });
+
+  if (!submission.customerEmail) return;
+  await sendPaymentFailed(submission.customerEmail, {
+    playerName: submission.playerName,
+    startUrl: `${env.siteUrl}/start`,
   });
 }

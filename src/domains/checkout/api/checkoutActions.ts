@@ -43,12 +43,38 @@ import { confirmPaymentForFlow } from "./confirmPayment";
  * at `ok` before reaching for anything else. `data` is always present on
  * success — `void` for the actions that only report whether they worked.
  */
+/**
+ * What every action returns: a discriminated union, so the caller has to look
+ * at `ok` before reaching for anything else. `data` is always present on
+ * success — `void` for the actions that only report whether they worked.
+ *
+ * **`gone` is the second axis, and it exists because a sentence isn't enough.**
+ * "That code was wrong" and "that submission no longer exists" are both failures,
+ * but only one of them should leave the customer where they are. Without a flag
+ * the UI can act on, an expired window renders as an inline error next to a form
+ * that will never work again — and a customer can sit on step 3 uploading into
+ * something the server swept ten minutes ago.
+ *
+ * Every action can return it, because every action re-derives the submission
+ * from the flow cookie and any of them can find it missing.
+ */
 export type ActionResult<T = void> =
   | { ok: true; data: T }
-  | { ok: false; error: string };
+  | { ok: false; error: string; gone?: true };
 
 function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
+}
+
+/**
+ * The submission this browser was working on is no longer there — the window
+ * lapsed, the guesses ran out, or it was scrubbed. The flow's only correct
+ * response is to start over, which is what the flag tells it to do.
+ */
+function gone(
+  error = "Your session timed out. We've started you fresh — sorry about that.",
+): { ok: false; error: string; gone: true } {
+  return { ok: false, error, gone: true };
 }
 
 const DONE: ActionResult<void> = { ok: true, data: undefined };
@@ -108,8 +134,24 @@ export async function startSubmissionAction(
   const submission = await createSubmission(parsed.value);
   await setFlowSession(submission.id);
 
+  /*
+    Do not advance on a send we couldn't make.
+
+    Everywhere else in the app a failed email is honest degradation — the work
+    still happened, someone just wasn't told. Here the customer is *blocked* on
+    the message, so swallowing the failure turns "best-effort" into a dead end:
+    they sit on step 2 waiting for a code that was never sent, with nothing on
+    screen to suggest otherwise.
+
+    The submission stays. They can correct the address and try again, and the
+    scratch pad is discarded on the next attempt like any other.
+  */
   const sent = await sendCode(submission.id, submission.customerEmail);
-  if (!sent) return fail("We couldn't send your code. Please try again.");
+  if (!sent) {
+    return fail(
+      "We couldn't send your code — please check the address and try again.",
+    );
+  }
 
   return {
     ok: true,
@@ -122,11 +164,17 @@ export async function startSubmissionAction(
 
 /* ---- Step 2 — email verification ---------------------------------------- */
 
+/**
+ * Mint a code and get it to the customer.
+ *
+ * False means **they will not receive one** — either the code couldn't be
+ * issued, or the mail didn't reach Resend. Both are dead ends for someone whose
+ * next screen asks them to type it in, so both are reported rather than logged.
+ */
 async function sendCode(submissionId: string, email: string): Promise<boolean> {
   const code = await issueCode(submissionId);
   if (!code) return false;
-  await sendVerificationCode(email, code);
-  return true;
+  return sendVerificationCode(email, code);
 }
 
 export async function resendCodeAction(): Promise<ActionResult> {
@@ -139,15 +187,17 @@ export async function resendCodeAction(): Promise<ActionResult> {
   }
 
   const submissionId = await readFlowSession();
-  if (!submissionId) return fail("Your session has expired. Please start again.");
+  if (!submissionId) return gone();
 
   const submission = await getSubmission(submissionId);
-  if (!submission) return fail("Your session has expired. Please start again.");
+  if (!submission) return gone();
   if (isPaid(submission)) return fail("This submission is already complete.");
 
   await touchFlowSession();
   const sent = await sendCode(submission.id, submission.customerEmail);
-  return sent ? DONE : fail("We couldn't send your code. Please try again.");
+  return sent
+    ? DONE
+    : fail("We couldn't send your code — please try again in a moment.");
 }
 
 export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
@@ -163,7 +213,7 @@ export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
   }
 
   const submissionId = await readFlowSession();
-  if (!submissionId) return fail("Your session has expired. Please start again.");
+  if (!submissionId) return gone();
 
   const result = await verifyCode(submissionId, parsed.data);
   if (result.ok) await touchFlowSession();
@@ -180,7 +230,7 @@ export async function listFlowFilesAction(): Promise<
   ActionResult<SubmissionFile[]>
 > {
   const submissionId = await readFlowSession();
-  if (!submissionId) return fail("Your session has expired. Please start again.");
+  if (!submissionId) return gone();
   await touchFlowSession();
   return { ok: true, data: await listSubmissionFiles(submissionId) };
 }
@@ -195,10 +245,10 @@ export async function listFlowFilesAction(): Promise<
  */
 export async function createIntentAction(): Promise<ActionResult<CreatedIntent>> {
   const submissionId = await readFlowSession();
-  if (!submissionId) return fail("Your session has expired. Please start again.");
+  if (!submissionId) return gone();
 
   const submission = await getSubmission(submissionId);
-  if (!submission) return fail("Your session has expired. Please start again.");
+  if (!submission) return gone();
   if (!submission.emailVerifiedAt) return fail("Please verify your email first.");
   if (isPaid(submission)) return fail("This submission has already been paid for.");
 
@@ -225,7 +275,10 @@ export async function confirmPaymentAction(
   paymentIntentId: string,
 ): Promise<ActionResult> {
   const outcome = await confirmPaymentForFlow(paymentIntentId);
-  return outcome.ok ? DONE : fail(outcome.error);
+  if (outcome.ok) return DONE;
+  // Carry the flag through — the flow resets on it, and a lapsed window at the
+  // payment step is exactly when a stranded customer costs the most.
+  return outcome.gone ? gone(outcome.error) : fail(outcome.error);
 }
 
 /**

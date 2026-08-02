@@ -1,5 +1,5 @@
 /**
- * The one email the payment domain sends: the receipt.
+ * The payment domain's two emails: the receipt, and the way back from a decline.
  *
  * It changed shape with the flow. It used to say "we took your money, now go
  * upload" — payment came first, so the message was an instruction. Payment is
@@ -67,6 +67,38 @@ function fileList(files: SubmissionFile[]): string {
     .join("");
 
   return `<table style="width:100%;border-collapse:collapse;font-size:15px;">${rows}</table>`;
+}
+
+/**
+ * A card was declined — tell the customer, and give them the door back in.
+ *
+ * A decline is someone **trying**, not someone leaving, and silence treats the
+ * two the same. Their files are already uploaded and their submission is intact;
+ * without this they'd have to guess that, and a customer who assumes the whole
+ * thing failed simply doesn't come back.
+ *
+ * Deliberately vague about the reason. Stripe's own message is shown inline on
+ * the page where it's useful; repeating "insufficient funds" in an email that
+ * may be read over someone's shoulder is not our call to make.
+ *
+ * Best-effort like every other send here — the decline was already handled.
+ */
+export function sendPaymentFailed(
+  to: string,
+  details: { playerName: string; startUrl: string },
+) {
+  const player = escapeHtml(details.playerName);
+  return sendEmail({
+    to,
+    subject: `${site.name} — your payment didn't go through`,
+    html: emailShell(
+      "That card didn't go through",
+      `<p>Your card was declined, so we haven't charged you anything.</p>
+       <p><strong>Nothing is lost.</strong> The files you uploaded for ${player} are still with us, and you can finish checking out whenever you're ready — you won't need to upload them again.</p>
+       <p>If it keeps happening, try another card or get in touch and we'll sort it out.</p>`,
+      { label: "Finish checking out", url: details.startUrl },
+    ),
+  });
 }
 
 function formatMoney(cents: number, currency: string): string {

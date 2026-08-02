@@ -17,11 +17,16 @@ import { z } from "zod";
 export const CODE_LENGTH = 6;
 
 /**
- * Ten minutes. Long enough to switch to a mail app and back on a phone,
- * including a slow delivery; short enough that a code left visible on a shared
- * screen stops being useful quickly.
+ * The code lives exactly as long as the flow window, and not a minute less.
+ *
+ * There is **one clock in the flow** (`shared/lib/flowWindow`). A shorter TTL
+ * here would be a second one: a customer well inside their thirty minutes would
+ * find the code dead, having been told one number and held to another. Re-export
+ * rather than redeclare, so the two can't drift.
  */
-export const CODE_TTL_MINUTES = 10;
+import { FLOW_WINDOW_MINUTES } from "@/shared/lib";
+
+export const CODE_TTL_MINUTES = FLOW_WINDOW_MINUTES;
 
 /**
  * Five wrong guesses burns the code and forces a resend.

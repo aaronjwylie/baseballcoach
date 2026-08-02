@@ -295,6 +295,12 @@ export async function findResolvedDue(before: Date): Promise<Submission[]> {
  * `limit` exists because the caller may be a customer request rather than a cron
  * job: cleaning up is worth a few milliseconds of someone's page load, but not
  * an unbounded one.
+ *
+ * **Measured from `updatedAt`, not `submittedAt`** — "gone quiet" is about the
+ * last sign of life, not about when they started. Verifying an email or having a
+ * card declined both touch the row, so a customer who goes to find another card
+ * doesn't come back to a deleted upload. Against `submittedAt` the clock ran
+ * from creation regardless, which reaped people who were still working.
  */
 export async function findAbandonedDue(
   before: Date,
@@ -306,10 +312,10 @@ export async function findAbandonedDue(
     .where(
       and(
         inArray(submissions.status, ["draft", "awaiting_payment"]),
-        lt(submissions.submittedAt, before),
+        lt(submissions.updatedAt, before),
       ),
     )
-    .orderBy(submissions.submittedAt)
+    .orderBy(submissions.updatedAt)
     .limit(limit);
   return rows.map(fromRow);
 }

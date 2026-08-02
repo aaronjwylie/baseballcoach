@@ -101,6 +101,11 @@ export function CheckoutFlow({
   */
   async function startOver() {
     await startAnotherAction();
+    resetToStepOne(null);
+  }
+
+  /** Clear every trace of the attempt and show step 1, with an optional note. */
+  function resetToStepOne(note: string | null) {
     setStep("details");
     setEmail("");
     setPlayerName("");
@@ -108,14 +113,35 @@ export function CheckoutFlow({
     setIntent(null);
     setDetails(undefined);
     setFolder("");
-    setError(null);
+    setError(note);
+  }
+
+  /*
+    The one failure that isn't an error message.
+
+    Every action answers `{ ok: false, error }`, and rendering that string where
+    the customer stands is right for "that code was wrong" — they fix it and
+    carry on. It is wrong for "that submission no longer exists": the window
+    lapsed, the server scrubbed the scratch pad, and nothing on this screen will
+    ever work again. Left as an inline error, a customer sits on step 3 uploading
+    into a submission that was deleted ten minutes ago.
+
+    So `gone` is a flag rather than a sentence, and this is the only thing that
+    reads it: wipe the client state and put them back at step 1, holding the
+    explanation. Returns true when it handled the result, so callers read as
+    `if (handledGone(result)) return`.
+  */
+  function handledGone(result: { ok: false; error: string; gone?: true }): boolean {
+    if (!result.gone) return false;
+    resetToStepOne(result.error);
+    return true;
   }
 
   async function submitDetails(values: SubmissionInput) {
     setError(null);
     const result = await startSubmissionAction(values);
     if (!result.ok) {
-      setError(result.error);
+      if (!handledGone(result)) setError(result.error);
       return;
     }
     setEmail(result.data.email);
@@ -134,7 +160,12 @@ export function CheckoutFlow({
 
   async function submitCode(code: string): Promise<string | null> {
     const result = await verifyCodeAction(code);
-    if (!result.ok) return result.error;
+    if (!result.ok) {
+      // A scrubbed submission can't be fixed by retyping the code, so this one
+      // leaves the panel entirely rather than showing an inline hint.
+      if (handledGone(result)) return null;
+      return result.error;
+    }
 
     // Files may already exist if they got this far before and came back.
     const existing = await listFlowFilesAction();
@@ -146,7 +177,9 @@ export function CheckoutFlow({
 
   async function resend(): Promise<string | null> {
     const result = await resendCodeAction();
-    return result.ok ? null : result.error;
+    if (result.ok) return null;
+    if (handledGone(result)) return null;
+    return result.error;
   }
 
   async function toPayment() {
@@ -156,7 +189,7 @@ export function CheckoutFlow({
 
     const result = await createIntentAction();
     if (!result.ok) {
-      setError(result.error);
+      if (!handledGone(result)) setError(result.error);
       return;
     }
     setIntent(result.data);
@@ -166,7 +199,7 @@ export function CheckoutFlow({
   async function onPaid(paymentIntentId: string) {
     const result = await confirmPaymentAction(paymentIntentId);
     if (!result.ok) {
-      setError(result.error);
+      if (!handledGone(result)) setError(result.error);
       return;
     }
     setStep("done");

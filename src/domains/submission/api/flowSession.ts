@@ -28,11 +28,18 @@
  * survivable.
  */
 import { readSignedCookie, setSignedCookie, clearSignedCookie } from "@/shared/auth";
+import { FLOW_WINDOW_SECONDS } from "@/shared/lib";
 
 const FLOW_COOKIE = "bs_flow";
 
-/** Idle timeout. Refreshed by `touchFlowSession` on every action. */
-export const FLOW_MAX_AGE_S = 60 * 30;
+/**
+ * Idle timeout, refreshed by `touchFlowSession` on every action.
+ *
+ * Read from `shared/lib/flowWindow`, not declared here: the verification code
+ * expires on the same clock, and a constant copied into both domains is how one
+ * clock quietly becomes two.
+ */
+export const FLOW_MAX_AGE_S = FLOW_WINDOW_SECONDS;
 
 interface FlowPayload {
   submissionId: string;

@@ -20,17 +20,29 @@ export interface EmailMessage {
   html: string;
 }
 
+/**
+ * Send one message. **Never throws** (ADR 004) — but it does report.
+ *
+ * "Best-effort" was only ever about not failing a webhook or a portal action
+ * because a mail server hiccuped. It was never meant to make delivery
+ * *unknowable*: most callers should ignore the result, and the one whose
+ * customer is **blocked** on the message must be able to say so.
+ *
+ * Returns false when the key is unset, the API refused, or the network failed —
+ * i.e. "this did not reach Resend". A true means accepted for delivery, which is
+ * the strongest thing any sender can honestly claim.
+ */
 export async function sendEmail({
   to,
   subject,
   html,
-}: EmailMessage): Promise<void> {
+}: EmailMessage): Promise<boolean> {
   const apiKey = env.resendApiKey;
   if (!apiKey) {
     console.warn(
       `[email] RESEND_API_KEY unset — skipping email to ${to}: ${subject}`,
     );
-    return;
+    return false;
   }
 
   try {
@@ -44,8 +56,11 @@ export async function sendEmail({
     });
     if (!res.ok) {
       console.error(`[email] Resend ${res.status}: ${await res.text()}`);
+      return false;
     }
+    return true;
   } catch (err) {
     console.error("[email] send failed:", err);
+    return false;
   }
 }

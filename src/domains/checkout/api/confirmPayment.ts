@@ -20,14 +20,25 @@ import { clearFlowSession, readFlowSession } from "@/domains/submission";
 
 export type ConfirmOutcome =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: string; gone?: true };
 
 export async function confirmPaymentForFlow(
   paymentIntentId: string,
 ): Promise<ConfirmOutcome> {
   const submissionId = await readFlowSession();
   if (!submissionId) {
-    return { ok: false, error: "Your session has expired. Please start again." };
+    /*
+      A lapsed window at the payment step is the worst place for it, so say
+      something true rather than something reassuring: if the card *did* go
+      through, the webhook still fulfils the submission independently (ADR 003),
+      and a receipt will arrive. What we can't do is show it to this browser.
+    */
+    return {
+      ok: false,
+      gone: true,
+      error:
+        "Your session timed out before we could confirm. If your card went through you'll still get a receipt — please check your email before paying again.",
+    };
   }
 
   const intent = await getSucceededPaymentIntent(paymentIntentId);

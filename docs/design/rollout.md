@@ -198,22 +198,44 @@ we can reconstruct (or is deliberately empty before the cutover — decide which
 
 ---
 
-## Phase 2 · Stop stranding customers
+## Phase 2 · Stop stranding customers — ✅ **shipped 2026-08-01**
 
-**Five small independent fixes. Can run in parallel with Phase 1 — no shared
-files.** Every one of them is a case where the product currently fails silently.
+**Five small independent fixes.** Every one of them was a case where the product
+failed silently.
 
-| | Ships | Size | Fixes |
+| | Ships | | Fixed |
 | --- | --- | --- | --- |
-| 2.1 | `{ ok: false, gone: true }` — the flow resets to step 1 on a scrubbed submission instead of showing an inline error | S | a customer uploading into a submission the server swept |
-| 2.2 | One clock — `CODE_TTL_MINUTES` follows the flow window; a resend inherits the remainder | S | a code that dies while the session is alive |
-| 2.3 | The code send is confirmed before the customer advances | S | a missing key leaves them waiting for a code that never comes |
-| 2.4 | "Check your spam folder" on step 2 | XS | the common case, uncaught |
-| 2.5 | A declined card emails a way back, and extends the window | S | files swept out from under a customer finding another card |
+| 2.1 | `{ ok: false, gone: true }` — the flow resets to step 1 rather than showing an inline error | ✅ | a customer uploading into a submission the server swept |
+| 2.2 | One clock — the code's TTL *is* the flow window | ✅ | a code that dies while the session is alive |
+| 2.3 | The code send is confirmed before the customer advances | ✅ | a missing key leaving them waiting for nothing |
+| 2.4 | "Check your spam folder" on step 2 | ✅ | *already shipped* |
+| 2.5 | A declined card emails a way back, and extends the window | ✅ | files swept from under someone finding another card |
 
-**Why so early:** all five are live-customer-facing the moment Phase 0 completes,
-and none needs the new schema. 2.1 is the largest and the most valuable — it's the
-difference between a scrub being *visible* and being *silent*.
+### What the build surfaced that the plan didn't
+
+**"Best-effort" and "unreportable" had been collapsed into one thing.**
+`sendEmail` returned `void` and swallowed every failure, so 2.3 wasn't a matter of
+checking a result — there was no result. ADR 004 only ever meant *never throw into
+a webhook or a portal action*; it never meant delivery should be unknowable. The
+transport now returns a boolean and still never throws. Most callers rightly ignore
+it; the one whose customer is **blocked** on the message does not.
+
+**One clock had to move to `shared/`.** `FLOW_MAX_AGE_S` lived in
+`domains/submission` and `CODE_TTL_MINUTES` in `domains/verification`, and neither
+domain can own a constant the other needs without inverting a dependency. It now
+lives in `shared/lib/flowWindow.ts` — the highest node where it's still true
+(PRINCIPLES §5) — so "one clock" is structural rather than a comment someone has to
+honour.
+
+**2.5's email was the easy half.** "Extends the window" can't be done from a
+webhook — there's no cookie to touch. The real fix was that `findAbandonedDue`
+measured from `submittedAt`, so the clock ran from creation no matter what the
+customer did; it now measures from `updatedAt`. Recording the decline **is** the
+extension, which is why the note is written rather than only logged — and it
+incidentally protects anyone else mid-flow, not just the declined card.
+
+**Verified:** the three clocks agree (30m / 30m / 1800s), and a backdated
+submission due for sweeping stops being due the moment a failed payment touches it.
 
 ---
 

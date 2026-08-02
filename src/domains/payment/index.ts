@@ -17,6 +17,7 @@ export {
   type ReceiptDetails,
 } from "./api/paymentEmail";
 export { completePayment } from "./api/paymentCompletion";
+export { handleFailedPayment } from "./api/paymentCompletion";
 export {
   HANDLED_STRIPE_EVENTS,
   handleStripeEvent,
