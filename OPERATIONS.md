@@ -1,17 +1,30 @@
 # OPERATIONS.md — Setup & Runbook
 
-> ## ⚠️ Changed on 2026-08-01 — read this before following anything below
+> ## ⚠️ Changed 2026-08-01 → 02 — read this before following anything below
 >
 > The whole seventeen-stage pipeline shipped in one day
-> ([`docs/design/rollout.md`](docs/design/rollout.md)). Four things in this
+> ([`docs/design/rollout.md`](docs/design/rollout.md)). Several things in this
 > runbook are now out of date:
 >
-> **Migrations run to `0010`.** `0008` grows the status enum to sixteen and adds
+> **A production deploy now applies its own migrations.** `npm run build` runs
+> `scripts/migrate-on-deploy.mjs` first, which applies anything pending and
+> **fails the build if it can't** — so a deploy can never go out ahead of its
+> schema again. It runs only when `VERCEL_ENV=production`; previews are skipped
+> on purpose, because they share this database and a branch may carry a migration
+> nobody has agreed to yet.
+>
+> *Added 2026-08-02, after a push to `main` took `/admin` down by deploying code
+> whose migration hadn't been applied. Nothing has to be run by hand on deploy
+> any more; `npm run db:migrate` remains for local work.*
+>
+> **Migrations run to `0011`.** `0008` grows the status enum to sixteen and adds
 > `submission_events`; `0009` adds the two file-set columns; `0010` adds the
-> retention anchors and replaces `retain_resolved_hours` with three settings.
-> `0008` and `0010` are **hand-corrected** — `drizzle-kit generate` emitted a
-> cast that fails on existing rows, and can't tell a rename from a drop-plus-add
-> without a TTY. Apply with `npm run db:migrate`; don't regenerate them.
+> retention anchors and replaces `retain_resolved_hours` with three settings;
+> `0011` widens the trail to record sends as well as status moves.
+> `0008`, `0010` and `0011` are **hand-corrected** — `drizzle-kit generate`
+> emits a cast that fails on existing rows, and can't tell a rename from a
+> drop-plus-add (or a NOT NULL being relaxed) without a TTY. Apply them; don't
+> regenerate them.
 >
 > **Retention settings changed shape.** `retainResolvedHours` is gone. In its
 > place: `retainCollectedDays` (30), `retainDeliveredDays` (90) and
