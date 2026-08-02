@@ -237,6 +237,59 @@ export function isWithCoach(submission: Pick<Submission, "status">): boolean {
 }
 
 /**
+ * Whose court is the ball in?
+ *
+ * Not the same question as "who is assigned" — a submission can belong to a
+ * coach for days while everyone is actually waiting on Yuta to approve it, or on
+ * a customer to download. The queue's job is to say *who is holding this up*, and
+ * the assigned coach is only sometimes the answer.
+ *
+ * `translator` is a role rather than a person: translation happens off-platform,
+ * so nobody in the database is doing it. Naming the role anyway is the point —
+ * "waiting on the translator" is actionable in a way "assigned to Yuki" isn't
+ * when Yuki hasn't been sent anything yet.
+ *
+ * `system` means a clock, not a person. Nobody should chase it.
+ *
+ * A `Record`, so a new rung can't be added without deciding who is waiting.
+ */
+export type Court = "customer" | "admin" | "coach" | "translator" | "system";
+
+const COURT_AT_STATUS: Record<SubmissionStatus, Court> = {
+  // Filling in the form, reading the code, uploading, paying.
+  draft: "customer",
+  awaiting_payment: "customer",
+  // Paid and unassigned — the queue is waiting on Yuta to pick someone.
+  new: "admin",
+  // Assigned, but not yet handed over: still Yuta's move, whether that means
+  // sending it on or sending it out to be translated.
+  assigned: "admin",
+  intake_translating: "translator",
+  // The translation is back; the hand-off is Yuta's again.
+  intake_translated: "admin",
+  // Emailed. Now genuinely the coach's, and the rung exists to make the
+  // difference between "told" and "started" visible.
+  sent_to_coach: "coach",
+  in_review: "coach",
+  // Delivered — nothing reaches the customer until Yuta releases it.
+  awaiting_approval: "admin",
+  response_translating: "translator",
+  response_translated: "admin",
+  // Released. The clock doesn't start until they collect, so it's their move.
+  complete: "customer",
+  // Collected — the only thing left is Yuta closing it.
+  collected: "admin",
+  // Closed. Everything after this is a scheduled sweep, not a person.
+  resolved: "system",
+  purge_imminent: "system",
+  purged: "system",
+};
+
+export function whoseCourt(submission: Pick<Submission, "status">): Court {
+  return COURT_AT_STATUS[submission.status];
+}
+
+/**
  * A submission, as the app sees it. `id` is the row's uuid — the app's handle
  * on it and the key every other domain links by. Optional fields are genuinely
  * optional (null in the DB → undefined here).

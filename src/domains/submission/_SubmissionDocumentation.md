@@ -882,6 +882,13 @@ checklist that greys out as each line is met.
 - ✅ **The control lives on the outstanding line**, not in a button bar. A bar
   makes you read the status, infer what it implies, then find the matching
   button; here the thing you read and the thing you press are the same thing.
+- ✅ **`whoseCourt`** — the row names *who is holding it up*, not who is
+  assigned. A submission can belong to a coach for days while everyone is
+  actually waiting on Yuta to approve it, and "assigned to Yuki" is no use when
+  Yuki hasn't been sent anything yet. Another exhaustive `Record`, so a new rung
+  can't be added without deciding who is waiting. The coach gets their name;
+  everyone else gets their role, because a name only beats a role when there's a
+  specific person to chase.
 - ✅ **The trail records sends, not just moves** — `submission_events.kind` is
   `status` or `email`, with `ok` for whether it landed. Sends are best-effort, so
   a progress view built on the old trail could only say "the status implies we

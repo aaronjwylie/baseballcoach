@@ -22,6 +22,8 @@ export {
   type Submission,
   type SubmissionPatch,
   type SubmissionStatus,
+  whoseCourt,
+  type Court,
 } from "./model/submission";
 
 export {
