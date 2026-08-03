@@ -904,6 +904,63 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### Sixteen rungs, one word each
+
+| # | Status | Label | | # | Status | Label |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `draft` | Draft | | 9 | `awaiting_approval` | Submitted |
+| 2 | `awaiting_payment` | Upload | | 10 | `response_translating` | Translating |
+| 3 | `new` | New | | 11 | `response_translated` | Translated |
+| 4 | `assigned` | Assigned | | 12 | `complete` | Delivered |
+| 5 | `intake_translating` | Translating | | 13 | `collected` | Collected |
+| 6 | `intake_translated` | Translated | | 14 | `resolved` | Resolved |
+| 7 | `sent_to_coach` | Sent | | 15 | `purge_imminent` | Deleting |
+| 8 | `in_review` | Reviewing | | 16 | `purged` | Purged |
+
+Sixteen of these sit on one rail, so each has to be readable at a glance and
+none can afford a clause. The rung says *where*; the line beneath says what's
+owed. That division is what let the labels shrink — "Upload" needs no
+qualification once "Attach a file" is sitting under it, which is why the derived
+pill label ("Uploaded 3 — awaiting payment") is gone.
+
+**Four rungs share two names.** A submission translates twice, once each way,
+and "Translating" is the honest word both times. On the rail position carries
+the difference; in a flat list it can't, so the override's dropdown numbers them
+(`5 · Translating`).
+
+### The filter tabs read from the same map
+
+They carried their own vocabulary — "Not picked up", "In review", "Coach
+submitted" — which read fine until the rungs were renamed and the two sets
+disagreed inside one view. **A tab called "Sent" filtered everything released,
+while the rung newly called "Sent" means handed to the coach**, which that tab
+excludes.
+
+Tab names now come from `RUNG_LABEL`, never a string typed at the call site, so
+the drift can't recur. A tab spanning several rungs takes the name of the one
+it's about — "Assigned" covers the two translation rungs, because that is still
+where the submission is.
+
+The cost is real: "Not picked up" said *someone is waiting on a person*, which
+"Sent" doesn't. The chain line under the pill carries it instead — "Coach
+downloads the files".
+
+### The override is its own section
+
+Three sections when a row opens: what's next, what it is, and the handle for
+when it's wrong. The override was a footnote under the details before, which
+undersold it — it is the only thing on the row that *changes* the submission.
+
+**Two boxes, ordered by how bad the mistake is.** Moving a status back is
+recoverable; you move it forward again. Deleting files is not, so the purge sits
+below in its own red frame rather than beside the thing people came here to do.
+
+**The reset takes a substep as well as a step, and the substep is recorded, not
+enforced.** Only the rung is stored — a chain line is derived from the data and
+has no column to set. What it buys is precision in the trail: "back to Assigned"
+and "back to Assigned, at the hand-off" are different intentions, and the second
+is the one worth being able to say afterwards.
+
 ### A failed email hid the assign control
 
 The chain's pointer is the first unmet, non-passive line, and **the stage's

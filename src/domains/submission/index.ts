@@ -12,6 +12,8 @@ export {
   FOCUS_OPTIONS,
   PAID_STATUSES,
   SUBMISSION_STATUSES,
+  RUNG_LABEL,
+  numberedRungLabel,
   hasResponse,
   isPaid,
   isReleased,

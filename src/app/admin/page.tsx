@@ -22,6 +22,7 @@ import {
   type SubmissionEvent,
   whoseCourt,
   needsTranslation,
+  RUNG_LABEL,
 } from "@/domains/submission";
 import {
   listCoaches,
@@ -70,6 +71,19 @@ export const metadata: Metadata = {
  * rungs are folded into their neighbours and `sent_to_coach` gets its own — it's
  * the one that means *chase somebody*.
  */
+/*
+  Tabs are named from `RUNG_LABEL`, never from a string typed here.
+
+  They carried their own vocabulary once — "Not picked up", "In review", "Coach
+  submitted" — which read fine until the rungs were renamed and the two sets
+  drifted apart in the same view. The worst of it: a tab called "Sent" filtered
+  everything *released*, while the rung newly called "Sent" means handed to the
+  coach, which that tab excludes.
+
+  A tab spanning several rungs takes the name of the one it's about — "Assigned"
+  covers the two translation rungs too, because that is still where the
+  submission is.
+*/
 const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] = [
   { key: "all", label: "All", match: (s) => !s.archivedAt },
   {
@@ -86,10 +100,10 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     */
     match: (s) => !isPaid(s) && !s.archivedAt,
   },
-  { key: "new", label: "New", match: (s) => s.status === "new" && !s.archivedAt },
+  { key: "new", label: RUNG_LABEL.new, match: (s) => s.status === "new" && !s.archivedAt },
   {
     key: "assigned",
-    label: "Assigned",
+    label: RUNG_LABEL.assigned,
     // Assignment through translation — the coach has it on their desk but
     // hasn't been handed anything yet.
     match: (s) =>
@@ -100,15 +114,15 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
   },
   {
     key: "sent_to_coach",
-    label: "Not picked up",
+    label: RUNG_LABEL.sent_to_coach,
     // The row that means someone is waiting on a person. Its own tab because
     // that's the whole reason the rung exists.
     match: (s) => s.status === "sent_to_coach" && !s.archivedAt,
   },
-  { key: "in_review", label: "In review", match: (s) => s.status === "in_review" && !s.archivedAt },
+  { key: "in_review", label: RUNG_LABEL.in_review, match: (s) => s.status === "in_review" && !s.archivedAt },
   {
     key: "awaiting_approval",
-    label: "Coach submitted",
+    label: RUNG_LABEL.awaiting_approval,
     // Delivered, plus the response-translation pair — all of it is waiting on
     // Yuta and none of it has reached the customer.
     match: (s) =>
@@ -119,7 +133,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
   },
   {
     key: "complete",
-    label: "Sent",
+    label: RUNG_LABEL.complete,
     // Everything released, whether or not the customer has collected it yet.
     match: (s) => isReleased(s) && !s.archivedAt,
   },
@@ -409,28 +423,6 @@ function SubmissionRow({
 
   const outstanding = stage.find((line) => line.now);
 
-  /*
-    `awaiting_payment` is one rung across two steps, and its own name is only
-    true for the second.
-
-    A customer who has just verified their email is *uploading* — a row saying
-    "awaiting payment" reads as "we're waiting on their money" when we're waiting
-    on their files. The server can't tell step 3 from step 4, because the payment
-    intent id isn't stored until payment succeeds — so this says the thing it
-    actually knows: whether anything has arrived yet.
-
-    So the rung's own label is "Upload pending", and this sharpens it once files
-    have actually landed — at which point payment really is the thing we're
-    waiting on. Before that there's nothing to add, and the label stands.
-
-    The rung is unchanged. Renaming the enum would be a migration to fix a
-    label, and the label is what was wrong.
-  */
-  const railLabel =
-    submission.status === "awaiting_payment" && folderMap.intake.length > 0
-      ? `Uploaded ${folderMap.intake.length} — awaiting payment`
-      : undefined;
-
   const lastActivity = submission.updatedAt ?? submission.submittedAt;
   const sessionExpiry = lastActivity
     ? new Date(new Date(lastActivity).getTime() + FLOW_WINDOW_MINUTES * 60_000).toISOString()
@@ -474,7 +466,6 @@ function SubmissionRow({
       rail={{
         status: submission.status,
         needsTranslation: wantsTranslation === true,
-        label: railLabel,
       }}
       /*
         Whose court the ball is in — not who is assigned.

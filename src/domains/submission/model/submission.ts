@@ -498,25 +498,36 @@ export function choiceForLanguages(
  *
  * Exhaustive over the enum, so a new rung is a compile error here too.
  *
- * `awaiting_payment` is the one whose own name misleads: it spans uploading
- * *and* paying, and a customer who has just verified is doing the first. The
- * label says the honest half; renaming the enum is a separate migration.
+ * One word each, so sixteen of them read as one process rather than sixteen
+ * sentences. The rung says *where*; the line under it says what's owed.
  */
 export const RUNG_LABEL: Record<SubmissionStatus, string> = {
   draft: "Draft",
-  awaiting_payment: "Upload pending",
-  new: "New — needs a coach",
+  awaiting_payment: "Upload",
+  new: "New",
   assigned: "Assigned",
-  intake_translating: "Files out for translation",
-  intake_translated: "Files translated",
-  sent_to_coach: "Sent — not picked up",
-  in_review: "In review",
-  awaiting_approval: "Coach submitted",
-  response_translating: "Response out for translation",
-  response_translated: "Response translated",
-  complete: "Sent — not collected",
+  intake_translating: "Translating",
+  intake_translated: "Translated",
+  sent_to_coach: "Sent",
+  in_review: "Reviewing",
+  awaiting_approval: "Submitted",
+  response_translating: "Translating",
+  response_translated: "Translated",
+  complete: "Delivered",
   collected: "Collected",
   resolved: "Resolved",
-  purge_imminent: "Deleting in 7 days",
-  purged: "Files purged",
+  purge_imminent: "Deleting",
+  purged: "Purged",
 };
+
+/**
+ * The label with its position, for a flat list.
+ *
+ * **Four rungs share two names** — a submission translates twice, once each
+ * way, and "Translating" is the honest word both times. On the rail that reads
+ * fine because position carries the difference; in a dropdown it is two
+ * identical options. The number restores what the rail shows spatially.
+ */
+export function numberedRungLabel(status: SubmissionStatus): string {
+  return `${SUBMISSION_STATUSES.indexOf(status) + 1} · ${RUNG_LABEL[status]}`;
+}

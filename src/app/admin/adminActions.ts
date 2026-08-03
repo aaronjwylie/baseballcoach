@@ -210,6 +210,14 @@ export async function resetStatusAction(formData: FormData): Promise<void> {
   const id = String(formData.get("submissionId") ?? "");
   const rawStatus = String(formData.get("status") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
+  /*
+    Which line of the step they meant. **Recorded, never enforced** — only the
+    rung is stored, because a chain line is derived from the data and has no
+    column to set. It earns its place in the note: "back to Assigned" and "back
+    to Assigned, at the hand-off" are different intentions, and the second is
+    the one worth being able to say afterwards.
+  */
+  const substep = String(formData.get("substep") ?? "").trim();
   if (!id) return;
   if (!SUBMISSION_STATUSES.includes(rawStatus as SubmissionStatus)) return;
   const status = rawStatus as SubmissionStatus;
@@ -226,7 +234,10 @@ export async function resetStatusAction(formData: FormData): Promise<void> {
   await updateSubmission(
     id,
     { status },
-    reason ? `reset: ${reason}` : "reset by an admin",
+    [
+      substep ? `reset to “${substep}”` : "reset",
+      reason || "by an admin",
+    ].join(": "),
   );
   revalidatePath("/admin");
 }

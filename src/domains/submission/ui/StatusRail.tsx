@@ -38,20 +38,11 @@ const WARN: ReadonlySet<SubmissionStatus> = new Set(["purge_imminent"]);
 export function StatusRail({
   status,
   needsTranslation,
-  label,
   detail,
 }: {
   status: SubmissionStatus;
   /** Fades the optional rungs on a submission that will never touch them. */
   needsTranslation: boolean;
-  /**
-   * Overrides the rung's name in the pill.
-   *
-   * One rung genuinely covers two steps — `awaiting_payment` spans uploading
-   * *and* paying — so its own name tells only half the story. The caller knows
-   * which half applies; the rail doesn't, and shouldn't have to.
-   */
-  label?: string;
   /**
    * A second line under the name: the breadcrumb still outstanding.
    *
@@ -81,7 +72,7 @@ export function StatusRail({
   return (
     <div
       className={detail ? "relative h-[61px]" : "relative h-11"}
-      aria-label={`Step ${at + 1} of 16: ${label ?? RUNG_LABEL[status]}`}
+      aria-label={`Step ${at + 1} of 16: ${RUNG_LABEL[status]}`}
     >
       <span
         className={`${pillClass} absolute top-0 -translate-x-1/2 ${
@@ -93,7 +84,7 @@ export function StatusRail({
         }`}
         style={{ left: `${pillLeft}%` }}
       >
-        <span>{label ?? RUNG_LABEL[status]}</span>
+        <span>{RUNG_LABEL[status]}</span>
         {detail ? (
           <span
             className={`max-w-[34ch] truncate text-[10px] font-normal ${

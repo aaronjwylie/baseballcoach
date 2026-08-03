@@ -47,7 +47,6 @@ export function QueueRow({
   rail: {
     status: Parameters<typeof StatusRail>[0]["status"];
     needsTranslation: boolean;
-    label?: string;
   };
   stage: ChainState[];
   control?: ReactNode;
@@ -79,7 +78,7 @@ export function QueueRow({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="grid w-full grid-cols-[minmax(0,200px)_1fr_minmax(0,150px)_30px] items-center gap-4 px-4 py-2.5 text-left hover:bg-paper-alt focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ink max-[860px]:grid-cols-[1fr_30px]"
+        className="grid w-full grid-cols-[minmax(0,200px)_1fr_minmax(0,150px)_30px] items-center gap-4 px-4 py-2.5 text-left outline-ink hover:outline hover:outline-1 hover:-outline-offset-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 max-[860px]:grid-cols-[1fr_30px]"
       >
         <span className="min-w-0">
           <span className="block text-sm font-semibold text-ink">{playerName}</span>
@@ -93,7 +92,6 @@ export function QueueRow({
           <StatusRail
             status={rail.status}
             needsTranslation={rail.needsTranslation}
-            label={rail.label}
             detail={pending ? `○ ${pending.next}` : undefined}
           />
         </span>
@@ -128,13 +126,17 @@ export function QueueRow({
             <div>
               <Label>This submission</Label>
               {details}
-              <div className="mt-3">{override}</div>
             </div>
             <div>
               <Label>Trail</Label>
               <Trail events={events} pending={pending?.next} />
             </div>
           </div>
+
+          {/* Its own section rather than a footnote under the details: it is the
+              only thing here that changes the submission, and the only thing
+              that can destroy anything. */}
+          <div className="mt-4 border-t border-line pt-3">{override}</div>
         </div>
       )}
     </div>
