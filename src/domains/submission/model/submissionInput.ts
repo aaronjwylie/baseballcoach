@@ -14,7 +14,11 @@
  * honest users; anyone can POST directly.
  */
 import { z } from "zod";
-import { FOCUS_OPTIONS, LANGUAGES } from "./submission";
+import {
+  FOCUS_OPTIONS,
+  LANGUAGE_CHOICES,
+  languagesForChoice,
+} from "./submission";
 
 /**
  * Values ride on Stripe metadata, which caps each entry at 500 characters.
@@ -107,17 +111,18 @@ export const submissionInputSchema = z.object({
     .transform((value) => value || undefined),
 
   /*
-    What the customer reads.
+    What the customer reads — the same three-way choice the coach form asks,
+    defaulted to English rather than Japanese.
 
-    Required with at least one choice, because an empty set makes the
-    intersection with the coach meaningless — and a silently-empty answer is
-    worse than no question, since it looks like a declaration and isn't. The
-    form ticks English by default, so the common case costs nobody a click.
+    Checkboxes here first, which could be unticked to nothing and needed a
+    `.min(1)` and an error message to catch it. A radio group has no empty state
+    to catch: the answer the intersection can't use is simply not expressible,
+    and `.catch` covers a post that didn't come from the form.
   */
   languages: z
-    .array(z.enum(LANGUAGES))
-    .min(1, "Please choose at least one language.")
-    .default([...LANGUAGES.slice(0, 1)]),
+    .enum(LANGUAGE_CHOICES)
+    .catch("English")
+    .transform(languagesForChoice),
 });
 
 /** What the form collects, before parsing — every field a string. */

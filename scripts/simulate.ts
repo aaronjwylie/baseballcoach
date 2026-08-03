@@ -51,6 +51,7 @@ import {
 import { approveAndComplete, resolveSubmission, sendFeedbackForApproval } from "@/domains/feedback";
 import { runRetentionSweep } from "@/domains/upload";
 import { getSettings } from "@/domains/settings";
+import { submissionInputSchema } from "@/domains/submission/model/submissionInput";
 
 const day = 24 * 3600_000;
 let pass = 0;
@@ -315,6 +316,25 @@ function checkLanguageRule() {
   for (const [customer, coach, want, what] of cases) {
     check(needsTranslation(customer, coach) === want, `${String(want).padEnd(5)} — ${what}`);
   }
+
+  /*
+    And the form's half: a radio posts one string, the rule consumes a list.
+    The empty answer the radios make unreachable must also be unreachable for
+    anything that skips them — the checkbox version leaned on `.min(1)`, which
+    is a message, not a guarantee.
+  */
+  const parse = (languages: unknown) =>
+    submissionInputSchema.parse({
+      customerEmail: "x@example.com",
+      playerName: "P",
+      playerAge: "12",
+      ...(languages === undefined ? {} : { languages }),
+    }).languages;
+  check(parse("English").join() === "English", "posts English");
+  check(parse("Japanese").join() === "Japanese", "posts Japanese");
+  check(parse("both").join() === "English,Japanese", "posts both");
+  check(parse(undefined).join() === "English", "a post with no answer falls back to English");
+  check(parse("Klingon").join() === "English", "an answer we don't offer falls back too");
 }
 
 async function main() {

@@ -3,8 +3,9 @@
 import { useActionState } from "react";
 import { Button, Field, inputClass } from "@/shared/ui";
 import { FOCUS_OPTIONS } from "@/domains/submission/model/submission";
-import { choiceForLanguages } from "../model/coach";
-import { LanguageChoiceField } from "./LanguageChoiceField";
+import { DEFAULT_LANGUAGE_CHOICE } from "../model/coach";
+import { choiceForLanguages } from "@/domains/submission/model/submission";
+import { LanguageChoiceField } from "@/domains/submission/ui/LanguageChoiceField";
 import { updateCoachAction, type CoachFormState } from "../api/coachActions";
 import type { Coach } from "../model/coach";
 
@@ -73,7 +74,11 @@ export function EditCoachForm({ coach }: { coach: Coach }) {
         </div>
       </fieldset>
 
-      <LanguageChoiceField defaultChoice={choiceForLanguages(coach.languages)} />
+      <LanguageChoiceField
+        label="Languages"
+        hint="What this coach reads. A submission is translated when it shares none with the customer."
+        defaultChoice={choiceForLanguages(coach.languages, DEFAULT_LANGUAGE_CHOICE)}
+      />
 
       <Field label="Bio" hint="A short blurb for the public site.">
         <textarea

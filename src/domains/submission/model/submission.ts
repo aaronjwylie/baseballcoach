@@ -424,3 +424,66 @@ export interface NewSubmission {
 
 /** Fields the app may update on an existing submission. */
 export type SubmissionPatch = Partial<Omit<Submission, "id" | "submittedAt">>;
+
+/**
+ * What both language questions offer: one of the two, or both.
+ *
+ * **Shared by the customer's form and the coach's**, because it feeds one rule
+ * that reads both sides — two vocabularies would let the halves drift into
+ * spellings that can never intersect.
+ *
+ * It replaced free entry on each side. A text box can be left empty, and empty
+ * is the one input `needsTranslation` can't answer: it returns `null`, and the
+ * queue reports a missing declaration instead of routing the submission. Three
+ * options with one always selected makes that state unreachable from a form.
+ *
+ * The cost is that a third language needs a code change rather than typing it
+ * into a box. Worth it while `LANGUAGES` is two.
+ */
+export const LANGUAGE_CHOICES = ["English", "Japanese", "both"] as const;
+
+export type LanguageChoice = (typeof LANGUAGE_CHOICES)[number];
+
+export function languagesForChoice(choice: LanguageChoice): string[] {
+  return choice === "both" ? [...LANGUAGES] : [choice];
+}
+
+/**
+ * Read a posted choice, falling back to the caller's default.
+ *
+ * The fallback is what makes "nothing" unreachable from the server's side too:
+ * a missing or tampered field lands on a real answer rather than writing the
+ * empty array the radios exist to prevent. The default differs by side —
+ * English for a customer, Japanese for a coach — so it's a parameter, not a
+ * constant here.
+ */
+export function readLanguageChoice(
+  value: unknown,
+  fallback: LanguageChoice,
+): LanguageChoice {
+  const given = String(value ?? "");
+  return (LANGUAGE_CHOICES as readonly string[]).includes(given)
+    ? (given as LanguageChoice)
+    : fallback;
+}
+
+/**
+ * Which radio to preselect for an existing record.
+ *
+ * Anything the three options can't express — a blank column, or a language we
+ * no longer offer — shows as the fallback, and **saving the form would write
+ * that over what's there**. Acceptable only because `LANGUAGES` is these two
+ * and every existing row was backfilled to one of them.
+ */
+export function choiceForLanguages(
+  languages: readonly string[] | undefined,
+  fallback: LanguageChoice,
+): LanguageChoice {
+  const set = new Set((languages ?? []).map((l) => l.trim().toLowerCase()));
+  const en = set.has("english");
+  const ja = set.has("japanese");
+  if (en && ja) return "both";
+  if (en) return "English";
+  if (ja) return "Japanese";
+  return fallback;
+}

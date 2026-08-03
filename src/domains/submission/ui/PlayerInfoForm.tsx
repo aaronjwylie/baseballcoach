@@ -6,7 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, inputClass } from "@/shared/ui";
 // Client-safe imports from the slice's model, not its barrel — the barrel pulls
 // in Postgres-backed queries that can't ship to the browser.
-import { FOCUS_OPTIONS, LANGUAGES } from "../model/submission";
+import { FOCUS_OPTIONS } from "../model/submission";
+import { LanguageChoiceField } from "./LanguageChoiceField";
 import {
   submissionInputSchema,
   type SubmissionInput,
@@ -50,7 +51,9 @@ export function PlayerInfoForm({
     // Validate on blur rather than on every keystroke — flagging an email as
     // invalid while it's still being typed is hostile.
     mode: "onBlur",
-    defaultValues,
+    // English unless the caller says otherwise: RHF owns the radio selection,
+    // so the field itself sets no `defaultChoice`.
+    defaultValues: { languages: "English", ...defaultValues },
   });
 
   const submit = handleSubmit(async (values) => {
@@ -116,33 +119,16 @@ export function PlayerInfoForm({
       </div>
 
       {/*
-        Which languages the customer reads, so we can pair them with a coach who
-        shares one. Checkboxes rather than a select because "both" is a real and
-        common answer, and English is ticked by default so the ordinary case
-        costs nobody a click.
+        Half of the translation rule, asked with the same component and the same
+        three options the coach form uses — a shared vocabulary is what lets the
+        two halves intersect at all.
       */}
-      <Field
-        label="What language should your coach write in?"
-        hint="Tick both if either works. We'll have the review translated if your coach doesn't share one."
+      <LanguageChoiceField
+        label="What language should your feedback be in?"
+        hint="Choose Both if either works. If your coach doesn't share one, we'll have the review translated."
         error={errors.languages?.message}
-      >
-        <div className="flex flex-wrap gap-4 pt-1">
-          {LANGUAGES.map((language) => (
-            <label
-              key={language}
-              className="flex items-center gap-2 text-sm text-ink-soft"
-            >
-              <input
-                type="checkbox"
-                value={language}
-                {...register("languages")}
-                className="h-4 w-4"
-              />
-              {language}
-            </label>
-          ))}
-        </div>
-      </Field>
+        inputProps={register("languages")}
+      />
 
       <Field
         label="Anything you want the coach to look at?"

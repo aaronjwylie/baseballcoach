@@ -19,7 +19,8 @@ import {
   type Focus,
 } from "@/domains/submission";
 import { storage, coachImageKey } from "@/shared/storage";
-import { languagesForChoice, readLanguageChoice } from "../model/coach";
+import { languagesForChoice, readLanguageChoice } from "@/domains/submission/model/submission";
+import { DEFAULT_LANGUAGE_CHOICE } from "../model/coach";
 import { createCoach, updateCoach, getCoach } from "./coachApi";
 import { sendAssignmentEmail } from "./coachEmail";
 
@@ -55,7 +56,7 @@ export async function createCoachAction(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const specialties = formData.getAll("specialties").map(String).filter(isFocus);
-  const languages = languagesForChoice(readLanguageChoice(formData.get("languages")));
+  const languages = languagesForChoice(readLanguageChoice(formData.get("languages"), DEFAULT_LANGUAGE_CHOICE));
   const bio = String(formData.get("bio") ?? "").trim();
 
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 8) {
@@ -93,7 +94,7 @@ export async function updateCoachAction(
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const specialties = formData.getAll("specialties").map(String).filter(isFocus);
-  const languages = languagesForChoice(readLanguageChoice(formData.get("languages")));
+  const languages = languagesForChoice(readLanguageChoice(formData.get("languages"), DEFAULT_LANGUAGE_CHOICE));
   const isActive = formData.get("isActive") === "on";
   const password = String(formData.get("password") ?? "");
   const bio = String(formData.get("bio") ?? "").trim();

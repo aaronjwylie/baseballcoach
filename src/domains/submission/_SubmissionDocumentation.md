@@ -902,6 +902,28 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### One question, one component, both sides
+
+**The customer and the coach are asked the same three-way choice** — English ·
+Japanese · Both — through the same component, differing only in default
+(English for a customer, Japanese for a coach) and in wording.
+
+Each side started with free entry: a comma-separated box for the coach,
+checkboxes for the customer. Both could reach **empty**, and empty is the one
+input `needsTranslation` can't answer — it returns `null`, and the queue reports
+a missing declaration instead of routing. The checkbox version leaned on a
+`.min(1)` and an error message, which is a message, not a guarantee. Radios have
+no empty state to catch, and the server-side fallback covers a post that never
+came from the form.
+
+**A shared vocabulary is what lets the two halves intersect at all.** Asking the
+same question two ways invites two spellings, and two spellings of "Japanese"
+never meet. So `LANGUAGE_CHOICES` and its helpers live in `domains/submission`
+beside the rule that consumes them, not in either form.
+
+The cost, stated plainly: a third language now needs a code change rather than
+typing it into a box. Worth it while `LANGUAGES` is two.
+
 ### Translation need is an intersection, not a property of the coach
 
 **Both sides declare their languages, and a submission needs translating exactly
