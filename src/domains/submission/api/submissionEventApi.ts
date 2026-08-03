@@ -28,7 +28,7 @@ import type { SubmissionStatus } from "../model/submission";
 /** A transaction handle, or the connection itself. */
 type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export type SubmissionEventKind = "status" | "email";
+export type SubmissionEventKind = "status" | "email" | "verification";
 
 /** How far an email got. See the `email_outcome` enum. */
 export type EmailOutcome =
@@ -138,6 +138,50 @@ export async function noteEmailSent(
     });
   } catch (err) {
     console.error(`[trail] recording "${label}" failed:`, err);
+  }
+}
+
+/**
+ * The customer entered a code — and whether it worked.
+ *
+ * The one thing they *do* between a send and a status move. Success was already
+ * visible as its side effect, the rung advancing; failure left no trace at all,
+ * and failure is the half worth having. **Four wrong guesses and a customer who
+ * never received the code look identical from the outside**, yet one wants the
+ * code read back to them and the other wants it resent.
+ *
+ * Best-effort like the email notes, and for a stronger reason: a trail write
+ * must never be what stops someone verifying their own email. The success case
+ * passes its transaction so the breadcrumb and the rung move together; the
+ * failures have no transaction to join, because nothing else about them is
+ * written down.
+ *
+ * `note` carries *why* — the same reason string the customer's message is
+ * chosen from — because "rejected" alone doesn't distinguish a typo from an
+ * expired window, and those are different conversations.
+ */
+export async function noteVerification(
+  submissionId: string,
+  accepted: boolean,
+  detail?: string,
+  tx?: Db,
+): Promise<void> {
+  try {
+    await (tx ?? db).insert(submissionEvents).values({
+      submissionId,
+      kind: "verification",
+      // No rung, for the same reason a send has none: the trail is read to work
+      // out where a submission is, and a check isn't a place on the ladder.
+      status: null,
+      label: accepted ? "code accepted" : "code rejected",
+      ok: accepted,
+      // The customer has no session — this is the anonymous actor the column
+      // was made nullable for.
+      actorId: null,
+      note: detail ?? null,
+    });
+  } catch (err) {
+    console.error(`[trail] recording a verification failed:`, err);
   }
 }
 

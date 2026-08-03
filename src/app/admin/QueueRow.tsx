@@ -135,7 +135,7 @@ function Label({ children }: { children: ReactNode }) {
 /**
  * Everything that happened, newest last.
  *
- * Status moves and sends share one list on purpose — reading them apart makes
+ * Status moves, sends and the customer's code attempts share one list on purpose — reading them apart makes
  * "the status says delivered but the email never went" a two-place comparison,
  * which is exactly the failure this view exists to surface. A send that didn't
  * land is the one thing here drawn in a colour.
@@ -154,6 +154,16 @@ function Trail({ events }: { events: SubmissionEvent[] }) {
           <span className="min-w-0 truncate">
             {e.kind === "status" ? (
               <span className="font-mono text-ink">{e.status}</span>
+            ) : e.kind === "verification" ? (
+              /* The customer's own act, so it reads as one rather than as a
+                 message we sent. A rejection is drawn like a bounce because it
+                 is the same class of thing: the flow stalled and somebody may
+                 need to help. */
+              <span
+                className={e.ok ? "text-emerald-700" : "font-semibold text-amber-700"}
+              >
+                {e.ok ? "🔑" : "⚠"} {e.label}
+              </span>
             ) : (
               <span
                 className={

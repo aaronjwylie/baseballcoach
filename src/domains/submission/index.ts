@@ -115,6 +115,7 @@ export {
   listProgressFacts,
   listSubmissionEvents,
   noteEmailSent,
+  noteVerification,
   recordSubmissionEvent,
   type SubmissionEvent,
   type SubmissionEventKind,

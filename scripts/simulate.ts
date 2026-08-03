@@ -51,6 +51,7 @@ import {
 import { approveAndComplete, resolveSubmission, sendFeedbackForApproval } from "@/domains/feedback";
 import { runRetentionSweep } from "@/domains/upload";
 import { getSettings } from "@/domains/settings";
+import { issueCode, isEmailVerified, verifyCode } from "@/domains/verification";
 import { submissionInputSchema } from "@/domains/submission/model/submissionInput";
 
 const day = 24 * 3600_000;
@@ -112,12 +113,33 @@ async function walk(label: string, translating: boolean) {
   );
   check(!isPaid(await at(s.id)), "   nothing is paid at draft");
 
-  // ── rung 2: uploading (verify, attach, pay) ──────────────────────────
-  await updateSubmission(s.id, {
-    status: "awaiting_payment",
-    emailVerifiedAt: new Date().toISOString(),
-  });
+  /*
+    ── rung 2: uploading ──────────────────────────────────────────────────
+
+    Through the real code path rather than by setting the column, because the
+    trail's verification breadcrumbs only exist if `verifyCode` writes them, and
+    a walk that stamps `emailVerifiedAt` directly would prove nothing about
+    that. A wrong guess first, so the failure branch is exercised too.
+  */
+  const code = await issueCode(s.id);
+  check(!!code && /^\d{6}$/.test(code), "   a 6-digit code is issued");
+  const wrong = await verifyCode(s.id, code === "000000" ? "111111" : "000000");
+  check(!wrong.ok && wrong.reason === "mismatch", "   a wrong code is refused");
+  const right = await verifyCode(s.id, code!);
+  check(right.ok, "   the right code is accepted");
   await rung(s.id, "awaiting_payment", "customer");
+  check(await isEmailVerified(s.id), "   and the email is verified");
+
+  const checks = (await listSubmissionEvents(s.id)).filter((e) => e.kind === "verification");
+  check(checks.length === 2, `   both attempts are in the trail (${checks.length})`);
+  check(checks[0]?.ok === false && /wrong code/.test(checks[0]?.note ?? ""),
+    "   the refusal says why, and how much rope is left");
+  check(checks[1]?.ok === true, "   the acceptance is recorded too");
+  check((await verifyCode(s.id, code!)).ok, "   re-submitting a verified step is fine");
+  check(
+    (await listSubmissionEvents(s.id)).filter((e) => e.kind === "verification").length === 2,
+    "   and doesn't bury the real one under duplicates",
+  );
 
   for (let n = 0; n < 2; n += 1) {
     await addSubmissionFile({

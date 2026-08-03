@@ -902,6 +902,29 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### The trail records the customer's code attempts
+
+A third event kind, `verification`, beside `status` and `email`. Entering the
+code is the one thing a customer *does* between a send and a status move, and it
+was visible only as its side effect — the rung advancing to `awaiting_payment`.
+
+**The failure half is the reason.** A wrong guess left no trace at all, so four
+wrong guesses and a customer who never received the code looked identical from
+the outside — and they call for opposite responses: read the code back to them,
+or resend it. The note carries which, along with how many attempts are spent.
+
+Recorded on every terminal branch — wrong code, expired window, attempts spent,
+accepted — except one: **a reload of an already-verified step writes nothing**,
+or the real acceptance would be buried under duplicates of itself. The
+acceptance shares the transaction that moves the rung, so the two can't
+disagree; the failures have none to join, because nothing else about them is
+written down. Best-effort throughout: a trail write must never be what stops
+someone verifying their own email.
+
+The simulation now verifies through `verifyCode` rather than stamping
+`emailVerifiedAt`, since a walk that sets the column proves nothing about the
+breadcrumbs.
+
 ### One question, one component, both sides
 
 **The customer and the coach are asked the same three-way choice** — English ·

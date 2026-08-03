@@ -10,7 +10,7 @@ import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db, submissions } from "@/shared/db";
-import { recordSubmissionEvent } from "@/domains/submission";
+import { noteVerification, recordSubmissionEvent } from "@/domains/submission";
 import {
   CODE_LENGTH,
   CODE_TTL_MINUTES,
@@ -79,16 +79,26 @@ export async function verifyCode(
     .where(eq(submissions.id, submissionId))
     .limit(1);
 
+  // No row means no submission: there is nothing to leave a breadcrumb on.
   if (!row) return { ok: false, reason: "no_code" };
 
-  // Already through — re-submitting the step is not an error.
+  /*
+    Already through. Not an error, and deliberately not recorded — a customer
+    who reloads step 2 would otherwise stamp a fresh "code accepted" every time,
+    burying the real one under duplicates of itself.
+  */
   if (row.verifiedAt) return { ok: true };
 
-  if (!row.hash || !row.expiresAt) return { ok: false, reason: "no_code" };
+  if (!row.hash || !row.expiresAt) {
+    await noteVerification(submissionId, false, "no code outstanding");
+    return { ok: false, reason: "no_code" };
+  }
   if (row.expiresAt.getTime() < Date.now()) {
+    await noteVerification(submissionId, false, "the window had closed");
     return { ok: false, reason: "expired" };
   }
   if (row.attempts >= MAX_ATTEMPTS) {
+    await noteVerification(submissionId, false, `${MAX_ATTEMPTS} attempts spent`);
     return { ok: false, reason: "too_many_attempts" };
   }
 
@@ -98,7 +108,17 @@ export async function verifyCode(
     .where(eq(submissions.id, submissionId));
 
   const matches = await bcrypt.compare(code, row.hash);
-  if (!matches) return { ok: false, reason: "mismatch" };
+  if (!matches) {
+    // The count *after* this attempt, which is what the reader wants: "3 of 5
+    // spent" answers "how much rope is left" without arithmetic.
+    const spent = row.attempts + 1;
+    await noteVerification(
+      submissionId,
+      false,
+      `wrong code — ${spent} of ${MAX_ATTEMPTS} attempts spent`,
+    );
+    return { ok: false, reason: "mismatch" };
+  }
 
   // Only a draft advances. A submission already paid for must not be walked
   // backwards into `awaiting_payment` by a replayed verification.
@@ -124,8 +144,19 @@ export async function verifyCode(
       .where(and(eq(submissions.id, submissionId), eq(submissions.status, row.status)))
       .returning({ id: submissions.id });
 
-    if (updated.length > 0 && nextStatus !== row.status) {
-      await recordSubmissionEvent(submissionId, nextStatus, undefined, tx);
+    if (updated.length > 0) {
+      // Inside the transaction, so the breadcrumb and the rung cannot disagree
+      // — and only when the guarded update actually took, or a lost race would
+      // record an acceptance that never happened.
+      await noteVerification(
+        submissionId,
+        true,
+        row.attempts > 0 ? `on attempt ${row.attempts + 1}` : undefined,
+        tx,
+      );
+      if (nextStatus !== row.status) {
+        await recordSubmissionEvent(submissionId, nextStatus, undefined, tx);
+      }
     }
   });
 
