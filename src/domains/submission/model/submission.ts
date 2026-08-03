@@ -487,3 +487,36 @@ export function choiceForLanguages(
   if (ja) return "Japanese";
   return fallback;
 }
+
+/**
+ * How each rung reads to a person.
+ *
+ * Beside the ladder rather than inside a component, because **two surfaces show
+ * it**: the queue's pill and the trail underneath it. When they came from
+ * different places the same rung read two ways on one screen — the pill saying
+ * one thing and the breadcrumb below it saying `awaiting_payment`.
+ *
+ * Exhaustive over the enum, so a new rung is a compile error here too.
+ *
+ * `awaiting_payment` is the one whose own name misleads: it spans uploading
+ * *and* paying, and a customer who has just verified is doing the first. The
+ * label says the honest half; renaming the enum is a separate migration.
+ */
+export const RUNG_LABEL: Record<SubmissionStatus, string> = {
+  draft: "Draft",
+  awaiting_payment: "Upload pending",
+  new: "New — needs a coach",
+  assigned: "Assigned",
+  intake_translating: "Files out for translation",
+  intake_translated: "Files translated",
+  sent_to_coach: "Sent — not picked up",
+  in_review: "In review",
+  awaiting_approval: "Coach submitted",
+  response_translating: "Response out for translation",
+  response_translated: "Response translated",
+  complete: "Sent — not collected",
+  collected: "Collected",
+  resolved: "Resolved",
+  purge_imminent: "Deleting in 7 days",
+  purged: "Files purged",
+};

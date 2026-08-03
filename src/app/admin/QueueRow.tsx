@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { LocalTime } from "@/shared/ui";
 import { StatusRail } from "@/domains/submission/ui/StatusRail";
 import { StageChain } from "@/domains/submission/ui/StageChain";
+import { RUNG_LABEL } from "@/domains/submission/model/submission";
 import type { ChainState } from "@/domains/submission/model/stageChain";
 import type { SubmissionEvent } from "@/domains/submission/api/submissionEventApi";
 
@@ -153,7 +154,12 @@ function Trail({ events }: { events: SubmissionEvent[] }) {
         >
           <span className="min-w-0 truncate">
             {e.kind === "status" ? (
-              <span className="font-mono text-ink">{e.status}</span>
+              /* The rung's own label, the same one the pill above shows. It
+                 spelled the raw enum before, which made one rung read two ways
+                 on a single screen. */
+              <span className="text-ink">
+                {e.status ? RUNG_LABEL[e.status] : "—"}
+              </span>
             ) : e.kind === "verification" ? (
               /* The customer's own act, so it reads as one rather than as a
                  message we sent. A rejection is drawn like a bounce because it

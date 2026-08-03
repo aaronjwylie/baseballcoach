@@ -419,14 +419,16 @@ function SubmissionRow({
     intent id isn't stored until payment succeeds — so this says the thing it
     actually knows: whether anything has arrived yet.
 
-    The rung is unchanged. Renaming the enum would be a migration to fix a label,
-    and the label is what was wrong.
+    So the rung's own label is "Upload pending", and this sharpens it once files
+    have actually landed — at which point payment really is the thing we're
+    waiting on. Before that there's nothing to add, and the label stands.
+
+    The rung is unchanged. Renaming the enum would be a migration to fix a
+    label, and the label is what was wrong.
   */
   const railLabel =
-    submission.status === "awaiting_payment"
-      ? folderMap.intake.length === 0
-        ? "Verified — uploading"
-        : `Uploaded ${folderMap.intake.length} — not paid`
+    submission.status === "awaiting_payment" && folderMap.intake.length > 0
+      ? `Uploaded ${folderMap.intake.length} — awaiting payment`
       : undefined;
 
   const lastActivity = submission.updatedAt ?? submission.submittedAt;

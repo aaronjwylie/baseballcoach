@@ -125,8 +125,10 @@ Two things follow, and both are improvements:
   then its chain. Two descriptions of one process was the drift.
 - **⚠️ Rung 2 needs renaming.** `awaiting_payment` is the name of its *second*
   half; the customer spends most of it uploading. **`uploading`** is proposed
-  here and not yet migrated — the label already says the honest thing, and an
-  enum rename is a migration to be taken deliberately.
+  here and not yet migrated — an enum rename is a migration to fix a label, and
+  the label is what was wrong. It reads **"Upload pending"** now, sharpening to
+  "Uploaded N — awaiting payment" once files have actually landed, at which
+  point payment really is what we're waiting on.
 
 **It describes the northstar, not the build** — and as of 2026-08-01 the two have
 converged. Every stage below has code behind it, verified by probe rather than by
@@ -901,6 +903,20 @@ rollout plan and resolved in its Phase 6:
   missing event.
 
 ## 3 · Where we are now — 2026-08-02
+
+### One rung, one label
+
+`RUNG_LABEL` moved out of `StatusRail` and in beside the ladder, because **two
+surfaces render it**: the queue's pill and the trail underneath it. While they
+came from different places the same rung read two ways on one screen — the pill
+saying "Verified — uploading" and the breadcrumb three lines below it saying
+`awaiting_payment`.
+
+The trail spelled the raw enum. Defensible while it was the only place a rung
+appeared; not once the pill sat directly above it. It renders the label now, and
+the enum is still what's stored.
+
+Exhaustive over the sixteen, so a new rung is a compile error here too.
 
 ### The trail records the customer's code attempts
 

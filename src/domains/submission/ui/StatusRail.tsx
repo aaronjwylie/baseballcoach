@@ -2,6 +2,7 @@
 
 import { pillClass } from "@/shared/ui";
 import {
+  RUNG_LABEL,
   SUBMISSION_STATUSES,
   type SubmissionStatus,
 } from "../model/submission";
@@ -22,25 +23,6 @@ import {
  */
 
 /** Operator-facing names. The customer's lookup collapses these; this doesn't. */
-const RUNG_LABEL: Record<SubmissionStatus, string> = {
-  draft: "Draft",
-  awaiting_payment: "Awaiting payment",
-  new: "New — needs a coach",
-  assigned: "Assigned",
-  intake_translating: "Files out for translation",
-  intake_translated: "Files translated",
-  sent_to_coach: "Sent — not picked up",
-  in_review: "In review",
-  awaiting_approval: "Coach submitted",
-  response_translating: "Response out for translation",
-  response_translated: "Response translated",
-  complete: "Sent — not collected",
-  collected: "Collected",
-  resolved: "Resolved",
-  purge_imminent: "Deleting in 7 days",
-  purged: "Files purged",
-};
-
 /** The four rungs only a submission needing translation touches. */
 const OPTIONAL: ReadonlySet<SubmissionStatus> = new Set([
   "intake_translating",
