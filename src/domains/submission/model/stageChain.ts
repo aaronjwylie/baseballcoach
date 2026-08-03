@@ -101,24 +101,47 @@ const has = (kind: FileKind) => (_s: Submission, f: ProgressFacts) =>
 const reached = (status: SubmissionStatus) => (_s: Submission, f: ProgressFacts) =>
   f.reached.has(status);
 
+/**
+ * What has to happen **while a submission sits on this rung** — and nothing else.
+ *
+ * Every rung used to open by restating the condition that got it there: "Coach
+ * chosen" closed `new` and opened `assigned`, "Response uploaded" closed
+ * `in_review` and opened `awaiting_approval`. The intent was that a rung read as
+ * a complete account of itself. What it produced was eleven lines that say a
+ * thing twice, and in a flat list — the override's substep dropdown — two
+ * identical entries one step apart with no way to tell which is which.
+ *
+ * So the rule is now strict: **a line earns its place only if its truth can
+ * change during this rung.** How the submission arrived is the previous rung's
+ * business, and the trail already records it.
+ *
+ * An email that fires on *entry* does belong here — it is triggered by arriving,
+ * and whether it landed is live information while you're looking at the rung.
+ * That is why `③ hand-off → coach` sits on `sent_to_coach` rather than beside
+ * the button that sent it: the button is an act, the delivery is an outcome, and
+ * they are two facts a rung apart.
+ *
+ * **Two lines still appear at two rungs, and should.** "Handed to the coach" is
+ * the way out of both `assigned` and `intake_translated`; "Approved and sent" is
+ * the way out of both `awaiting_approval` and `response_translated`. Those are
+ * one action reachable by two routes — translate first, or don't — not a fact
+ * stated twice.
+ */
 export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   draft: [
-    { what: "Player details captured", next: "Capture player details", from: "playerName · focus", met: (s) => !!s.playerName },
+    { what: "Code sent to the customer", next: "Send the code", from: "①", passive: true, met: sent("① code → customer") },
     { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", act: "waitCustomer", met: (s) => !!s.emailVerifiedAt },
   ],
   awaiting_payment: [
-    { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", met: (s) => !!s.emailVerifiedAt },
     { what: "At least one file attached", next: "Attach a file", from: "intake", met: has("intake") },
     { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", met: (s) => !!s.paidAt },
   ],
   new: [
-    { what: "Payment cleared", next: "Clear payment", from: "paidAt", met: (s) => !!s.paidAt },
     { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, met: sent("② receipt → customer") },
     { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", passive: true, met: sent("② arrival → Yuta") },
     { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
-    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", met: (s) => !!s.assignedCoachId },
     {
       what: "Coach's languages recorded", next: "Record the coach's languages",
       from: "coaches.languages",
@@ -128,10 +151,10 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     {
       what: "Sent out for translation, if this coach needs it", next: "Send for translation, if needed",
       from: "rung 5",
-      why: "optional — an English-reading coach skips it",
+      why: "optional — a coach who shares a language skips it",
       act: "sendForTranslation",
       // Never blocks: most submissions skip translation entirely, so treating
-      // this as a gate would leave every English-coach row looking unfinished.
+      // this as a gate would leave every shared-language row looking unfinished.
       passive: true,
       met: (_s, f) => f.files.intake_translation > 0,
     },
@@ -148,7 +171,6 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", met: has("intake_translation") },
   ],
   intake_translated: [
-    { what: "Translated set stored", next: "Store the translated set", from: "intake_translation", met: has("intake_translation") },
     { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
@@ -162,11 +184,9 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   in_review: [
-    { what: "Coach has the files", next: "Coach opens the files", from: "trail · in_review", met: reached("in_review") },
     { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", met: has("response") },
   ],
   awaiting_approval: [
-    { what: "Response uploaded", next: "Upload the response", from: "response", met: has("response") },
     { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", passive: true, met: sent("⑤ response submitted → Yuta + coach") },
     {
       what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
@@ -189,12 +209,10 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", met: has("response_translation") },
   ],
   response_translated: [
-    { what: "Translation stored", next: "Store the translation", from: "response_translation", met: has("response_translation") },
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [
     { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, met: sent("⑥ feedback ready → customer") },
-    { what: "Delivery stamped", next: "Stamp delivery", from: "completedAt", met: (s) => !!s.completedAt },
     {
       what: "Customer downloaded it", next: "Customer downloads it",
       from: "collectedAt",
@@ -204,12 +222,10 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   collected: [
-    { what: "Customer has it", next: "Customer opens it", from: "collectedAt", met: (s) => !!s.collectedAt },
     { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", passive: true, met: sent("⑦ collected → Yuta") },
     { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
   ],
   resolved: [
-    { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", met: reached("resolved") },
     { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, met: sent("⑧ thank you → customer") },
     { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", met: (s) => !!s.deletionWarnedAt },
   ],

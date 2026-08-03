@@ -928,6 +928,25 @@ and "Translating" is the honest word both times. On the rail position carries
 the difference; in a flat list it can't, so the override's dropdown numbers them
 (`5 · Translating`).
 
+### The four folders
+
+White, not the drawer's own grey — a folder that shares the background it sits
+on isn't a container, it's a heading with a list under it.
+
+**One button per folder, and only the one that folder is for.** The two intake
+folders take everything out; the two translation folders put something back.
+Filenames stay individually clickable, because fetching just the one you want is
+a real need — but a folder you have to click through four times to collect isn't
+doing its job.
+
+Download-all is a staggered anchor per file rather than a zip. Zipping means a
+route that streams and buffers whole videos through a serverless function, and
+what's actually wanted is the files on disk. The stagger is because browsers
+throttle a burst of downloads from one gesture and drop the tail silently.
+
+Swept files are listed but not counted toward the button — their rows outlive
+their bytes, so offering them would promise a download that 410s.
+
 ### An open row stays open across a reload
 
 An override or an assignment reloads the page, and the row being worked in
@@ -1011,11 +1030,27 @@ length** — and it's what closes the trail. "Payment cleared" against "Clear
 payment". A full sentence beside a column of clipped ones reads as a different
 kind of entry altogether.
 
-**43 lines across the sixteen rungs, 36 distinct.** Seven repeat because each
-rung opens by restating the condition that got it there — "Payment cleared" is
-the last line of rung 2 and the first line of rung 3. That overlap is the point:
-a rung's chain reads as a complete account of itself, not a fragment needing the
-previous one for context.
+**33 lines across the sixteen rungs, 31 distinct** — and no rung ends on the
+line the next one opens with.
+
+It was 43 and 36. Every rung used to restate the condition that got it there,
+so that its chain read as a complete account of itself. What that produced was
+eleven lines saying a thing twice, and in a flat list — the override's substep
+dropdown — two identical entries one step apart with no way to tell which was
+which. **A line now earns its place only if its truth can change during that
+rung.** How the submission arrived is the previous rung's business, and the
+trail already records it.
+
+An email that fires on *entry* does belong: it is triggered by arriving, and
+whether it landed is live while you're looking at the rung. That is why
+`③ hand-off → coach` sits on `sent_to_coach` rather than beside the button that
+sent it — the button is an act, the delivery is an outcome, and they are two
+facts a rung apart.
+
+**Two lines still appear at two rungs, and should.** "Handed to the coach" is
+the way out of both `assigned` and `intake_translated`; "Approved and sent" is
+the way out of both `awaiting_approval` and `response_translated`. One action,
+two routes — translate first, or don't — not a fact stated twice.
 
 Two are marked **passive** — "Originals downloaded" and "Response downloaded" —
 because they happen off-platform and we can't observe them. A passive line never
@@ -1028,35 +1063,30 @@ anyone for something the system can't see.
 | Arrival announced | Tell Yuta it arrived | `②` | 3 |
 | At least one file attached | Attach a file | `intake` | 2 |
 | Bytes removed from storage | Remove the bytes | `filesPurgedAt` | 16 |
-| Coach chosen | Pick a coach | `assignedCoachId` | 3, 4 |
+| Coach chosen | Pick a coach | `assignedCoachId` | 3 |
 | Coach downloaded the files | Coach downloads the files | `trail · in_review` | 7 |
-| Coach has the files | Coach opens the files | `trail · in_review` | 8 |
 | Coach's languages recorded | Record the coach's languages | `coaches.languages` | 4 |
+| Code sent to the customer | Send the code | `①` | 1 |
 | Collection announced | Tell Yuta they collected | `⑦` | 13 |
 | Customer downloaded it | Customer downloads it | `collectedAt` | 12 |
-| Customer has it | Customer opens it | `collectedAt` | 13 |
 | Deletion warning due | Warning falls due | `deletionWarnedAt` | 14 |
-| Delivery stamped | Stamp delivery | `completedAt` | 12 |
-| Email proven | Prove the email | `emailVerifiedAt` | 1, 2 |
+| Email proven | Prove the email | `emailVerifiedAt` | 1 |
 | Feedback emailed | Email the feedback | `⑥` | 12 |
 | Files deleted | Delete the files | `filesPurgedAt` | 15 |
 | Hand-off emailed | Email the hand-off | `③` | 7 |
 | Handed to the coach | Hand to the coach | `③` | 4, 6 |
 | Locators cleared | Clear the locators | `fileUrl = null` | 16 |
-| Marked resolved | Mark resolved | `trail · resolved` | 13, 14 |
+| Marked resolved | Mark resolved | `trail · resolved` | 13 |
 | Originals downloaded | Download the originals | `off-platform` | 5 |
-| Payment cleared | Clear payment | `paidAt` | 2, 3 |
-| Player details captured | Capture player details | `playerName · focus` | 1 |
+| Payment cleared | Clear payment | `paidAt` | 2 |
 | Receipt sent to the customer | Send the receipt | `②` | 3 |
 | Record kept — permanently | Keep the record | `the row survives` | 16 |
 | Response downloaded | Download the response | `off-platform` | 10 |
-| Response uploaded | Upload the response | `response` | 8, 9 |
+| Response uploaded | Upload the response | `response` | 8 |
 | Sent out for translation, if the customer needs it | Send for translation, if needed | `rung 10` | 9 |
 | Sent out for translation, if this coach needs it | Send for translation, if needed | `rung 5` | 4 |
 | Thank-you sent | Send the thank-you | `⑧` | 14 |
 | Translated files uploaded | Upload the translated files | `intake_translation` | 5 |
-| Translated set stored | Store the translated set | `intake_translation` | 6 |
-| Translation stored | Store the translation | `response_translation` | 11 |
 | Translation uploaded | Upload the translation | `response_translation` | 10 |
 | Warning sent | Send the warning | `⑨` | 15 |
 | Yuta and the coach told | Tell Yuta and the coach | `⑤` | 9 |

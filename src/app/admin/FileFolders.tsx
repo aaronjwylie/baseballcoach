@@ -80,6 +80,27 @@ export function FileFolders({
   );
 }
 
+/**
+ * Pull every file in a folder down, one click.
+ *
+ * A hidden anchor per file rather than a zip: zipping means a server route that
+ * streams and buffers whole videos, and the thing actually wanted here is the
+ * files on disk. Staggered because browsers throttle a burst of downloads from
+ * one gesture and silently drop the tail.
+ */
+function downloadAll(files: SubmissionFile[]) {
+  files.forEach((file, i) => {
+    setTimeout(() => {
+      const a = document.createElement("a");
+      a.href = `/api/files/${file.id}`;
+      a.download = file.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }, i * 400);
+  });
+}
+
 function Folder({
   submissionId,
   kind,
@@ -100,8 +121,12 @@ function Folder({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
+  // Swept files keep their row but lose their bytes, so they're listed and not
+  // fetchable — counting them would promise a download that 410s.
+  const downloadable = files.filter((f) => f.fileUrl);
+
   return (
-    <section className="rounded-lg border border-line p-3">
+    <section className="rounded-lg border border-line bg-paper p-3">
       <header className="flex items-baseline justify-between gap-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {label}
@@ -137,6 +162,22 @@ function Folder({
         </ul>
       ) : (
         <p className="mt-2 text-xs text-ink-muted">{hint}</p>
+      )}
+
+      {/*
+        One button per folder, and only the one that folder is for: take
+        everything out, or put something back. Individual filenames stay
+        clickable — that's how you fetch just the one you want — but a folder
+        you have to click through four times to collect isn't a folder.
+      */}
+      {downloadable.length > 0 && (
+        <button
+          type="button"
+          onClick={() => downloadAll(downloadable)}
+          className="mt-3 rounded-md border border-line bg-white px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
+        >
+          Download {downloadable.length > 1 ? `all ${downloadable.length}` : ""}
+        </button>
       )}
 
       {writable && (
