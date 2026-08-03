@@ -98,7 +98,11 @@ export function QueueRow({
 
         <span className="text-right text-[11.5px] text-ink-muted max-[860px]:text-left">
           {facts}
-          {flag ? <span className="block font-semibold text-amber-700">{flag}</span> : null}
+          {flag ? (
+            <span className="mt-px block text-[10.5px] font-semibold leading-tight text-amber-700">
+              {flag}
+            </span>
+          ) : null}
         </span>
 
         <span
@@ -113,7 +117,6 @@ export function QueueRow({
         <div className="bg-paper-alt px-4 pb-5">
           <div className="grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-6 pt-4 max-[860px]:grid-cols-1">
             <div>
-              <Label>Then, in order</Label>
               <StageChain stage={stage} control={control} />
             </div>
             <div>

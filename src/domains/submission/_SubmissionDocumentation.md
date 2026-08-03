@@ -947,6 +947,25 @@ throttle a burst of downloads from one gesture and drop the tail silently.
 Swept files are listed but not counted toward the button — their rows outlive
 their bytes, so offering them would promise a download that 410s.
 
+### The drawer splits by tense: Completed, then Next
+
+One list did both jobs before, under a heading — "Then, in order" — that
+described neither. The done lines and the outstanding one sat in the same
+column in the same voice, and the eye had to sort them by colour.
+
+**Completed** is the record: past voice, checked off, there to be scanned.
+**Next** is the only part anyone acts on, so it takes the future voice and the
+control. Anything unmet *behind* the outstanding line is listed under it as
+"then", because at `assigned` the pointer can sit on the coach's languages
+while the hand-off waits behind it, and showing only the first would make a
+two-step rung look like one.
+
+**The amber flag on the collapsed row moved to the same future voice**, smaller.
+It said "Payment cleared" — a condition, in a colour that means *attention* —
+where what a scanner wants is "Clear payment". That string is now one sentence
+in four places: the flag, the pill's second line, the trail's last line, and the
+drawer's Next block.
+
 ### The rail's dots name themselves on hover
 
 Sixteen dots, and the pill names only the one you're already on — so fifteen of
@@ -956,6 +975,11 @@ second, can't be styled, and never appears on touch.
 Its own label now, shown the instant the pointer lands, and numbered
 (`7 · Sent`) because four rungs share two names and position is the only thing
 that tells them apart.
+
+**The hover target is much larger than the dot.** A 7px circle is a hard thing
+to hit and an easy thing to slip off; an invisible `-inset-2` pad on a
+pseudo-element makes it about 25px square without moving anything, because the
+dot still lays out at its own size.
 
 The dot stays the hover target and the label is `pointer-events-none`, so a
 tooltip can never sit between the cursor and the thing it describes. The rail's
@@ -1045,10 +1069,10 @@ columns of operator vocabulary":
 | Column | Where it renders |
 | --- | --- |
 | **Step** | • the pill's top line<br>• every rail dot's hover label, numbered<br>• the rail's screen-reader label<br>• status rows in the trail<br>• the queue's filter tabs<br>• the override's **Move back to**, numbered |
-| **Still to do** | • the pill's second line<br>• the last line of the trail<br>*one string, rendered twice* |
+| **Still to do** | • the pill's second line<br>• the last line of the trail<br>• the drawer's **Next** block<br>• **the amber flag on the collapsed row**<br>*one string, four places* |
 | **Written when it fails** | • the trail, in the drawer |
 | **Written when it works** | • the trail, in the drawer |
-| **Done** | • the drawer's **Then, in order**<br>• **the amber flag on the collapsed row**<br>• the override's **at:** |
+| **Done** | • the drawer's **Completed** list<br>• the override's **at:** |
 | **Shown, never written** | • the customer's upload cards at step 3 |
 
 **Three of those columns are a catalogue, not a source.** `failures`, `records`

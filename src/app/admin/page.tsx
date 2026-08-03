@@ -501,13 +501,14 @@ function SubmissionRow({
           </span>
         )
       }
-      /* The flag names what's outstanding rather than restating the status —
+      /* The flag names what's owed, in the same future voice the pill's second
+         line and the trail's last line use — one sentence, three places —
          the rail already says where it is. */
       /* The hint wins when it's set: "no shared language" is more actionable
          than naming the outstanding line, and it's the reason for the delay. */
       flag={
         translationHint ??
-        (outstanding && !submission.archivedAt ? outstanding.what : undefined)
+        (outstanding && !submission.archivedAt ? outstanding.next : undefined)
       }
       stage={stage}
       control={control}

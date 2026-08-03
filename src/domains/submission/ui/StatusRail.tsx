@@ -125,7 +125,11 @@ export function StatusRail({
             <span
               key={rung}
               className={[
+                // An invisible -inset-2 pad makes the hover target ~25px
+                // without moving anything: the dot still lays out at its own
+                // size, and the pad is a pseudo-element on top of it.
                 "group relative flex-none rounded-full",
+                "before:absolute before:-inset-2 before:content-['']",
                 now ? "h-[9px] w-[9px] outline outline-[3px] outline-white" : "h-[7px] w-[7px]",
                 now
                   ? warn

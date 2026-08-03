@@ -4,51 +4,107 @@ import type { ReactNode } from "react";
 import type { ChainState } from "../model/stageChain";
 
 /**
- * What has to happen at the rung a submission is sitting on, and what's left.
+ * What has happened at the rung a submission is sitting on, and what's left.
  *
- * **Met lines recede rather than bolding up.** Inverted from the usual on
- * purpose: what's done needs no attention, so the eye should land on what's
- * outstanding.
+ * **Split into two blocks by tense**, because they answer different questions.
+ * *Completed* is the record — past voice, checked off, and there to be scanned
+ * rather than read. *Next* is the only part anyone acts on, so it gets the
+ * future voice and the control.
  *
- * The control for the stage is passed in and rendered **on the outstanding
- * line** rather than in a button bar below. A bar makes you read the status,
- * work out what it implies, then find the matching button; here the thing you
- * read and the thing you press are the same thing, and they can't drift.
+ * One list did both jobs before, under a heading ("Then, in order") that
+ * described neither: the done lines and the outstanding one sat in the same
+ * column in the same voice, and the eye had to sort them by colour.
+ *
+ * The control lives **on the line it satisfies** rather than in a button bar
+ * below. A bar makes you read the status, work out what it implies, then find
+ * the matching button; here the thing you read and the thing you press are the
+ * same thing, and they can't drift.
  */
 export function StageChain({
   stage,
   control,
 }: {
   stage: ChainState[];
-  /** Rendered inside the line the submission is waiting on. */
+  /** Rendered under the line the submission is waiting on. */
   control?: ReactNode;
 }) {
+  const done = stage.filter((line) => line.met);
+  const outstanding = stage.find((line) => line.now);
+  /*
+    What follows the outstanding line, still unmet.
+
+    Kept rather than dropped: at `assigned` the pointer can sit on "record the
+    coach's languages" while the hand-off waits behind it, and a panel that
+    showed only the first would make the rung look like one step of work when
+    it's two.
+  */
+  const later = stage.filter((line) => !line.met && !line.now);
+
   return (
-    <ol className="mt-2 list-none p-0">
-      {stage.map((line, i) => (
-        <li
-          key={line.what}
-          className={`grid grid-cols-[15px_1fr] items-start gap-2 py-1 text-[12.5px] leading-snug ${
-            line.met ? "text-ink-muted" : "text-ink"
-          }`}
-        >
-          <span
-            className={`pt-px font-mono text-[11px] ${
-              line.met ? "text-emerald-600" : line.now ? "text-ink" : "text-band"
-            }`}
-          >
-            {line.met ? "✓" : String(i + 1).padStart(2, "0")}
-          </span>
-          <span>
-            <span className={line.now ? "font-semibold" : undefined}>{line.what}</span>
+    <div>
+      <Heading>Completed</Heading>
+      {done.length > 0 ? (
+        <ol className="list-none p-0">
+          {done.map((line) => (
+            <li
+              key={line.what}
+              className="grid grid-cols-[15px_1fr] items-start gap-2 py-0.5 text-[12px] leading-snug text-ink-muted"
+            >
+              <span className="pt-px font-mono text-[11px] text-emerald-600">✓</span>
+              <span>
+                {line.what}
+                <span className="ml-1.5 text-[10.5px] text-ink-muted opacity-80">
+                  {line.from}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-[12px] italic text-ink-muted">Nothing yet.</p>
+      )}
+
+      <div className="mt-3">
+        <Heading>Next</Heading>
+        {outstanding ? (
+          <div className="text-[12.5px] leading-snug text-ink">
+            <span className="font-semibold">{outstanding.next}</span>
             <span className="mt-px block text-[11px] font-normal text-ink-muted">
-              {line.from}
-              {line.why ? ` — ${line.why}` : ""}
+              {outstanding.from}
+              {outstanding.why ? ` — ${outstanding.why}` : ""}
             </span>
-            {line.now && control ? <div className="mt-2">{control}</div> : null}
-          </span>
-        </li>
-      ))}
-    </ol>
+            {control ? <div className="mt-2">{control}</div> : null}
+          </div>
+        ) : (
+          /* Every line met and the rung hasn't moved: it is waiting on a
+             transition, not on a person, and naming a to-do would invent one. */
+          <p className="text-[12px] italic text-ink-muted">
+            Nothing outstanding — waiting on the next transition.
+          </p>
+        )}
+
+        {later.length > 0 && (
+          <ol className="mt-2 list-none p-0">
+            {later.map((line) => (
+              <li
+                key={line.what}
+                className="grid grid-cols-[15px_1fr] items-start gap-2 py-0.5 text-[11.5px] leading-snug text-ink-muted"
+              >
+                <span className="pt-px font-mono text-[11px] text-band">then</span>
+                <span>{line.next}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Heading({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+      {children}
+    </div>
   );
 }
