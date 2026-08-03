@@ -233,10 +233,10 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   awaiting_payment: [
     { what: "At least one file attached", next: "Attach a file", from: "intake", toldOnFail: ["Customer/flow: \"You can attach up to 5 files.\"", "Customer/flow: \"Files must be under 50 MB.\"", "Customer/flow: \"That file type isn't supported.\"", "Customer/flow: \"That file is empty.\"", "Customer/flow: \"Your session has expired. Please start again.\"", "Customer/flow: \"Please attach at least one file first.\" on trying to advance"], toldOnSuccess: ["Customer/flow: each file appears in the list with its size"], met: has("intake") },
-    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", failures: ["card declined → customer", ...sendFailures("card declined → customer"), "declined *(not built)* — only the notice is recorded, not the decline"], toldOnFail: ["Customer/flow: \"That card didn't go through\"", "Customer/flow: \"That payment didn't go through.\"", "Customer/flow: \"We couldn't start the payment. Please try again.\"", "Customer/flow: \"Your payment is still processing. We'll email you as soon as it clears.\"", "Customer/email: the decline email, carrying a way back in", "Customer/flow: after the window their attempt is gone and the flow restarts at step 1, with nothing saying why *(not built)*"], toldOnSuccess: ["Customer/flow: the confirmation screen", "Customer/email: ② the receipt, listing every file"], met: (s) => !!s.paidAt },
+    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", failures: ["card declined → customer", ...sendFailures("card declined → customer"), "declined *(not built)* — only the notice is recorded, not the decline"], toldOnFail: ["Customer/flow: \"That card didn't go through\"", "Customer/flow: \"That payment didn't go through.\"", "Customer/flow: \"We couldn't start the payment. Please try again.\"", "Customer/flow: \"Your payment is still processing. We'll email you as soon as it clears.\"", "Customer/email: the decline email, carrying a way back in", "Customer/flow: after the window their attempt is gone and the flow restarts at step 1, with nothing saying why *(not built)*"], toldOnSuccess: ["Customer/flow: the confirmation screen"], met: (s) => !!s.paidAt },
   ],
   new: [
-    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, records: [...sendRecords("② receipt → customer")], failures: [...sendFailures("② receipt → customer")], toldOnFail: ["Admin/portal: “The receipt to {customer} bounced — they may not know their submission arrived.” *(not built)*"], toldOnSuccess: ["Customer/email: ② the receipt"], met: sent("② receipt → customer") },
+    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, records: [...sendRecords("② receipt → customer")], failures: [...sendFailures("② receipt → customer")], toldOnFail: ["Admin/portal: “The receipt to {customer} bounced — they may not know their submission arrived.” *(not built)*"], toldOnSuccess: ["Customer/email: ② the receipt, listing every file"], met: sent("② receipt → customer") },
     { what: "Arrival announced", next: "Tell Admin it arrived", from: "②", passive: true, records: [...sendRecords("② arrival → Admin")], failures: [...sendFailures("② arrival → Admin")], toldOnFail: ["Admin/portal: a banner on the row — “Your arrival notice bounced. Check the address on your account.” *(not built)*"], toldOnSuccess: ["Admin/email: ② the arrival notice"], met: sent("② arrival → Admin") },
     { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Assigned and the coach's name appears on it"], met: (s) => !!s.assignedCoachId },
   ],
@@ -258,7 +258,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.intake_translation > 0,
     },
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Coach/email: ③ the hand-off, with a download link per file", "Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
   ],
   intake_translating: [
     {
@@ -272,10 +272,10 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("intake_translation") },
   ],
   intake_translated: [
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Coach/email: ③ the hand-off, with a download link per file", "Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
-    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)*"], toldOnSuccess: ["Coach/email: ③ the hand-off"], met: sent("③ hand-off → coach") },
+    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)*"], toldOnSuccess: ["Coach/email: ③ the hand-off, with a download link per file"], met: sent("③ hand-off → coach") },
     {
       what: "Coach downloaded the files", next: "Coach downloads the files",
       from: "trail · in_review",
@@ -286,7 +286,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   in_review: [
-    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", toldOnFail: ["Coach/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Coach/portal: the file appears in their folder", "Admin/email: ⑤ response submitted", "Coach/email: ⑤ the same notice, to the coach"], met: has("response") },
+    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", toldOnFail: ["Coach/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Coach/portal: the file appears in their folder"], met: has("response") },
   ],
   awaiting_approval: [
     { what: "Admin and the coach told", next: "Tell Admin and the coach", from: "⑤", passive: true, records: [...sendRecords("⑤ response submitted → Admin + coach")], failures: [...sendFailures("⑤ response submitted → Admin + coach")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/email: ⑤ response submitted", "Coach/email: ⑤ the same notice"], met: sent("⑤ response submitted → Admin + coach") },
@@ -298,7 +298,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.response_translation > 0,
     },
-    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑥ feedback ready, stating the retention window", "Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
   ],
   response_translating: [
     {
@@ -312,29 +312,29 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("response_translation") },
   ],
   response_translated: [
-    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑥ feedback ready, stating the retention window", "Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [
-    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer")], toldOnFail: ["Admin/portal: a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑥ feedback ready"], met: sent("⑥ feedback ready → customer") },
+    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer")], toldOnFail: ["Admin/portal: a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑥ feedback ready, stating the retention window"], met: sent("⑥ feedback ready → customer") },
     {
       what: "Customer downloaded it", next: "Customer downloads it",
       from: "collectedAt",
       why: "starts the retention clock — nothing is purged before this",
       act: "waitCustomer",
       
-      toldOnFail: ["Customer/status: the download is gone — an operator purged the folder early (410)"], toldOnSuccess: ["Customer/status: the file downloads", "Admin/email: ⑦ collected — the customer has it"], met: (s) => !!s.collectedAt,
+      toldOnFail: ["Customer/status: the download is gone — an operator purged the folder early (410)"], toldOnSuccess: ["Customer/status: the file downloads"], met: (s) => !!s.collectedAt,
     },
   ],
   collected: [
-    { what: "Collection announced", next: "Tell Admin they collected", from: "⑦", passive: true, records: [...sendRecords("⑦ collected → Admin")], failures: [...sendFailures("⑦ collected → Admin")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/email: ⑦ collected"], met: sent("⑦ collected → Admin") },
-    { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑧ thank you, carrying the deletion date", "Admin/portal: the row moves to Resolved"], met: reached("resolved") },
+    { what: "Collection announced", next: "Tell Admin they collected", from: "⑦", passive: true, records: [...sendRecords("⑦ collected → Admin")], failures: [...sendFailures("⑦ collected → Admin")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/email: ⑦ collected — the customer has it"], met: sent("⑦ collected → Admin") },
+    { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Resolved"], met: reached("resolved") },
   ],
   resolved: [
-    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, records: [...sendRecords("⑧ thank you → customer")], failures: [...sendFailures("⑧ thank you → customer")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑧ thank you"], met: sent("⑧ thank you → customer") },
-    { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", failures: ["The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded"], toldOnFail: ["Admin/portal: “The nightly sweep has not run since {date}.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑨ the deletion warning, a week out"], met: (s) => !!s.deletionWarnedAt },
+    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, records: [...sendRecords("⑧ thank you → customer")], failures: [...sendFailures("⑧ thank you → customer")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑧ thank you, carrying the deletion date"], met: sent("⑧ thank you → customer") },
+    { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", failures: ["The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded"], toldOnFail: ["Admin/portal: “The nightly sweep has not run since {date}.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Deleting"], met: (s) => !!s.deletionWarnedAt },
   ],
   purge_imminent: [
-    { what: "Warning sent", next: "Send the warning", from: "⑨", passive: true, records: [...sendRecords("⑨ deletion warning → customer")], failures: [...sendFailures("⑨ deletion warning → customer"), "Stamped even when the send failed — retrying nightly would turn one miss into seven"], toldOnFail: ["Admin/portal: “The deletion warning to {customer} did not send. They have no notice, and it will not retry.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑨ the deletion warning"], met: sent("⑨ deletion warning → customer") },
+    { what: "Warning sent", next: "Send the warning", from: "⑨", passive: true, records: [...sendRecords("⑨ deletion warning → customer")], failures: [...sendFailures("⑨ deletion warning → customer"), "Stamped even when the send failed — retrying nightly would turn one miss into seven"], toldOnFail: ["Admin/portal: “The deletion warning to {customer} did not send. They have no notice, and it will not retry.” *(not built)*"], toldOnSuccess: ["Customer/email: ⑨ the deletion warning, a week out"], met: sent("⑨ deletion warning → customer") },
     { what: "Files deleted", next: "Delete the files", from: "filesPurgedAt", act: "waitCron", failures: ["Storage refused the delete — the locator stays and the sweep retries *(not built)*"], toldOnFail: ["Admin/portal: “Storage refused the delete — {n} files are still there.” *(not built)*"], toldOnSuccess: ["Customer/status: any link they kept now answers 410", "Admin/portal: the filenames show struck through in the folders"], met: (s) => !!s.filesPurgedAt },
   ],
   purged: [
