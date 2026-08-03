@@ -1029,12 +1029,12 @@ columns of operator vocabulary":
 
 | Column | Where it renders |
 | --- | --- |
-| **Step** | the pill's top line · every rail dot's tooltip · the rail's screen-reader label · status rows in the trail · the queue's filter tabs · the override's **Move back to** dropdown, numbered |
-| **Still to do** | the pill's second line · the last line of the trail. **Those are one string rendered twice** |
-| **Written when it fails** | the trail, in the drawer |
-| **Written when it works** | the trail, in the drawer |
-| **Done** | the drawer's **Then, in order** checklist · **the amber flag on the collapsed row** · the override's **at:** dropdown |
-| **Shown, never written** | the customer's upload cards at step 3 |
+| **Step** | • the pill's top line<br>• every rail dot's tooltip<br>• the rail's screen-reader label<br>• status rows in the trail<br>• the queue's filter tabs<br>• the override's **Move back to**, numbered |
+| **Still to do** | • the pill's second line<br>• the last line of the trail<br>*one string, rendered twice* |
+| **Written when it fails** | • the trail, in the drawer |
+| **Written when it works** | • the trail, in the drawer |
+| **Done** | • the drawer's **Then, in order**<br>• **the amber flag on the collapsed row**<br>• the override's **at:** |
+| **Shown, never written** | • the customer's upload cards at step 3 |
 
 **Three of those columns are a catalogue, not a source.** `failures`, `records`
 and `told` are never rendered from these arrays — the trail composes its rows at
