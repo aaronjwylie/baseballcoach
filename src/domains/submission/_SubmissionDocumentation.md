@@ -1030,9 +1030,17 @@ afterwards**. Failure sits before success because failure is the reason to look.
 - **Written to the trail when it works** — the row you'll see on a good one.
 - **Done** — the same substep after the fact, still the operator's words.
 - **Shown to someone, never written down** — a refusal at the door. The person
-  in front of it is told; the trail stays silent. Every upload rejection is one
-  of these, because there is no submission-level event for a file that was
-  never accepted.
+  in front of it is told; the trail stays silent. That distinction is the whole
+  reason for the column: **an empty trail otherwise has two readings**, and only
+  this says which one applies.
+
+  The customer's upload refusals come from `uploadPolicy`, which runs on
+  `/api/upload`, `/api/upload/blob` and `/api/upload/complete` and surfaces on
+  the step-3 upload cards. **The operator's and the coach's uploads run no
+  policy at all** — `uploadTranslationAction` is a Server Action returning
+  `void`, and the feedback route validates nothing — so a file that fails there
+  is a page that refreshes unchanged. That's listed as *(not built)* rather than
+  left blank, because a blank cell would read as "nothing can go wrong here".
 
 That last column is why the split is worth six columns rather than a footnote:
 **an empty trail can mean two different things**, and only this says which.
@@ -1048,26 +1056,26 @@ don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 | Step | Substep — still to do | Written to the trail when it fails | Written to the trail when it works | Substep — done | Shown to someone, never written down |
 | --- | --- | --- | --- | --- | --- |
 | **1 · Draft** | Send the code | `① code → customer failed`<br>`① code → customer bounced — hard`<br>`① code → customer bounced — soft`<br>`① code → customer bounced`<br>`① code → customer complained` | `① code → customer`<br>`① code → customer delivered` | Code sent to the customer | — |
-|  | Prove the email | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding` | `code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` | Email proven | Abandoned — the row and its files are deleted outright, leaving no trail at all |
+|  | Prove the email | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding` | `code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` | Email proven | — |
 | **2 · Upload** | Attach a file | — | — | At least one file attached | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
-|  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | — | Payment cleared | Abandoned — the row and its files are deleted outright |
+|  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | — | Payment cleared | Their attempt was scrubbed — the flow returns them to step 1 |
 | **3 · New** | Send the receipt | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | `② receipt → customer`<br>`② receipt → customer delivered` | Receipt sent to the customer | — |
 |  | Tell Yuta it arrived | `② arrival → Yuta failed`<br>`② arrival → Yuta bounced — hard`<br>`② arrival → Yuta bounced — soft`<br>`② arrival → Yuta bounced`<br>`② arrival → Yuta complained` | `② arrival → Yuta`<br>`② arrival → Yuta delivered` | Arrival announced | — |
 |  | Pick a coach | — | — | Coach chosen | Refused — already handed off, so a stale tab can't reassign |
 | **4 · Assigned** | Record the coach's languages | `None recorded — translation need can't be derived, and the queue says which side is missing` | — | Coach's languages recorded | — |
 |  | Send for translation, if needed | — | — | Sent out for translation, if this coach needs it | — |
 |  | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Handed to the coach | Refused — a stale tab tried to reassign after hand-off |
-| **5 · Translating** | Download the originals | — | — | Originals downloaded | Unobservable — a translator who never downloads looks identical to one who did |
-|  | Upload the translated files | — | — | Translated files uploaded | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **5 · Translating** | Download the originals | — | — | Originals downloaded | — |
+|  | Upload the translated files | — | — | Translated files uploaded | Nothing — the upload is unvalidated and failures are silent *(not built)* |
 | **6 · Translated** | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Handed to the coach | Refused — a stale tab tried to reassign after hand-off |
 | **7 · Sent** | Email the hand-off | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Hand-off emailed | — |
 |  | Coach downloads the files | `Gone — the folder was purged before they collected (410)` | — | Coach downloaded the files | Refused — a different coach asked (403) |
-| **8 · Reviewing** | Upload the response | — | — | Response uploaded | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **8 · Reviewing** | Upload the response | — | — | Response uploaded | Nothing — the upload is unvalidated and failures are silent *(not built)* |
 | **9 · Submitted** | Tell Yuta and the coach | `⑤ response submitted → Yuta + coach failed`<br>`⑤ response submitted → Yuta + coach bounced — hard`<br>`⑤ response submitted → Yuta + coach bounced — soft`<br>`⑤ response submitted → Yuta + coach bounced`<br>`⑤ response submitted → Yuta + coach complained` | `⑤ response submitted → Yuta + coach`<br>`⑤ response submitted → Yuta + coach delivered` | Yuta and the coach told | — |
 |  | Send for translation, if needed | — | — | Sent out for translation, if the customer needs it | — |
 |  | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
-| **10 · Translating** | Download the response | — | — | Response downloaded | Unobservable — the upload is the only proof |
-|  | Upload the translation | — | — | Translation uploaded | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **10 · Translating** | Download the response | — | — | Response downloaded | — |
+|  | Upload the translation | — | — | Translation uploaded | Nothing — the upload is unvalidated and failures are silent *(not built)* |
 | **11 · Translated** | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
 | **12 · Delivered** | Email the feedback | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Feedback emailed | — |
 |  | Customer downloads it | `Gone — an operator purged the folder early (410)` | — | Customer downloaded it | — |
