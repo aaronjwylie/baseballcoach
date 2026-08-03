@@ -75,6 +75,17 @@ flowchart LR
 - ✅ **Reassignment is guarded server-side**, not just hidden: a stale tab could
   previously pull a submission out from under a coach who had already been
   emailed it.
+- ✅ **Languages are a radio choice — Japanese · English · Both**, defaulting to
+  Japanese, on both the add and edit forms. It replaces a comma-separated text
+  box that could be **left empty**, and empty is the one input the translation
+  rule can't answer: it returns `null` and the queue reports "no languages
+  recorded" instead of routing the submission. One option is always selected, so
+  that state is now unreachable from the form — and `readLanguageChoice` falls
+  back to the default server-side, so it's unreachable from a tampered post too.
+  **Both is a real answer, not a convenience**: a bilingual coach reads whatever
+  the customer declared.
+  The cost is that a third language now needs a code change rather than typing
+  it into a box. Worth it while `LANGUAGES` is two — revisit it when it isn't.
 - ✅ **Existing coaches were backfilled to English** (migration `0014`). Every
   coach on record predates the question and every one of them reads English —
   that was the platform's own assumption until the intersection replaced it.
