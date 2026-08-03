@@ -39,6 +39,12 @@ export function StageChain({
     it's two.
   */
   const later = stage.filter((line) => !line.met && !line.now);
+  /*
+    Where the control goes. Usually the outstanding line; when nothing is
+    outstanding it's the last line anyone can press, which is what keeps a rung
+    whose work is done but whose status hasn't moved from being a dead end.
+  */
+  const handle = stage.find((line) => line.holdsControl);
 
   return (
     <div>
@@ -73,14 +79,22 @@ export function StageChain({
               {outstanding.from}
               {outstanding.why ? ` — ${outstanding.why}` : ""}
             </span>
-            {control ? <div className="mt-2">{control}</div> : null}
+            {outstanding.holdsControl && control ? (
+              <div className="mt-2">{control}</div>
+            ) : null}
           </div>
         ) : (
-          /* Every line met and the rung hasn't moved: it is waiting on a
-             transition, not on a person, and naming a to-do would invent one. */
-          <p className="text-[12px] italic text-ink-muted">
-            Nothing outstanding — waiting on the next transition.
-          </p>
+          <div>
+            {/* Every line is met and the rung hasn't moved. Say so plainly, and
+                still offer the handle — a reset lands here every time, and
+                without the control the row can only be moved by another
+                override. */}
+            <p className="text-[12px] italic text-ink-muted">
+              Everything here is done and the rung hasn&apos;t moved
+              {handle ? ` — run “${handle.next}” again to advance it` : ""}.
+            </p>
+            {control ? <div className="mt-2">{control}</div> : null}
+          </div>
         )}
 
         {later.length > 0 && (

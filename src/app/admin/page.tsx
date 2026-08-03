@@ -336,7 +336,10 @@ function SubmissionRow({
     rather than from the status. Two sources of truth about "what happens next"
     is exactly how a button bar and a status badge drift apart.
   */
-  const act = stage.find((line) => line.now)?.act;
+  // From the line that *holds the control*, not the outstanding one. They are
+  // the same line in every ordinary case; where they differ, the difference is
+  // the whole point — see `holdsControl`.
+  const act = stage.find((line) => line.holdsControl)?.act;
 
   const control = submission.archivedAt ? (
     <RowActionForm

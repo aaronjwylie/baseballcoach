@@ -947,6 +947,30 @@ throttle a burst of downloads from one gesture and drop the tail silently.
 Swept files are listed but not counted toward the button — their rows outlive
 their bytes, so offering them would promise a download that 410s.
 
+### A reset could strand a rung with no way forward
+
+Sending a submission back to `New` leaves its coach attached, so "Coach chosen"
+reads met, nothing is outstanding — and **the assign control renders nowhere.**
+The row could then only be moved by another override. `1fdfe6d3` sat like that
+through a QA run.
+
+It is the same shape as the failed-email bug and the opposite cause: there, an
+unmet line that could never be satisfied held the pointer; here, *no* unmet line
+exists to hold it. Both end with an operator unable to act.
+
+**`holdsControl` is now its own field on `ChainState`, beside `now`.** Usually
+they are the same line. They part exactly when a rung's work is all done and its
+status hasn't moved, and then the control falls to the **last line a person can
+act on** — re-running that action is what advances the rung.
+
+Honesty about the state must not cost the operator the handle. So `now` stays
+strict, `Next` says plainly that everything is done and the rung hasn't moved,
+and the control is offered underneath it anyway.
+
+One field read by both the page choosing *which* control and the panel choosing
+*where*, so the two can't disagree — which they previously could, since each
+worked it out separately.
+
 ### The drawer splits by tense: Completed, then Next
 
 One list did both jobs before, under a heading — "Then, in order" — that

@@ -358,14 +358,32 @@ export interface ChainState {
   met: boolean;
   /** The one line the submission is actually waiting on. */
   now: boolean;
+  /**
+   * The line whose control is offered — **not always the same as `now`.**
+   *
+   * Usually they're identical. They part when every line of a rung is met and
+   * the status still hasn't moved, which a reset produces every time: sending a
+   * submission back to `new` leaves its coach assigned, so "Coach chosen" reads
+   * met, nothing is outstanding, and the assign control renders nowhere. The
+   * row is then stuck with no way forward but another override.
+   *
+   * So when there is nothing outstanding, the control falls to the **last line
+   * a person can act on** — re-running that action is exactly what moves the
+   * rung. One field, read by both the page choosing *which* control and the
+   * panel choosing *where*, so the two cannot disagree about it.
+   */
+  holdsControl: boolean;
 }
 
 /**
  * Resolve the chain for a submission's current rung.
  *
  * `now` is the first **unmet and non-passive** line — the thing to act on. When
- * every line is met the stage is done and nothing is highlighted, which is the
- * honest reading of a rung waiting on a transition that hasn't fired.
+ * every line is met, nothing is highlighted: that is the honest reading of a
+ * rung waiting on a transition rather than on a person.
+ *
+ * `holdsControl` is deliberately more forgiving. Honesty about the *state* must
+ * not cost the operator the *handle* — see the field's own note.
  */
 export function describeStage(
   submission: Submission,
@@ -374,6 +392,18 @@ export function describeStage(
   const lines = STAGE_CHAIN[submission.status];
   const met = lines.map((line) => line.met(submission, facts));
   const now = lines.findIndex((line, i) => !met[i] && !line.passive);
+
+  // Nothing outstanding: fall back to the last line anyone can press, so a
+  // reset can't strand the rung with its work done and its status behind.
+  const actionable = (line: ChainLine) => !!line.act && !line.passive;
+  let control = now >= 0 && actionable(lines[now]) ? now : -1;
+  if (control < 0 && now < 0) {
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      if (actionable(lines[i])) { control = i; break; }
+    }
+  }
+  if (control < 0 && now >= 0) control = now;
+
   return lines.map((line, i) => ({
     what: line.what,
     next: line.next,
@@ -382,5 +412,6 @@ export function describeStage(
     act: line.act,
     met: met[i],
     now: i === now,
+    holdsControl: i === control,
   }));
 }
