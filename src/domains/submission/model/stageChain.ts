@@ -27,8 +27,6 @@ import type { FileKind } from "./submissionFile";
 export interface ProgressFacts {
   /** How many files sit in each of the four folders. */
   files: Record<FileKind, number>;
-  /** Whether the assigned coach has any languages recorded. */
-  coachHasLanguages: boolean;
   /** Rungs this submission has actually passed through, from the trail. */
   reached: ReadonlySet<SubmissionStatus>;
   /** Messages we tried to send, and whether they landed. */
@@ -266,13 +264,6 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Assigned and the coach's name appears on it"], met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
-    {
-      what: "Coach's languages recorded", next: "Record the coach's languages",
-      from: "coaches.languages",
-      why: "without them, translation need can't be derived",
-      failures: ["None recorded — translation need can't be derived, and the queue says which side is missing"],
-      toldOnFail: ["Admin/portal: \"no languages recorded for this coach\" on the row"], toldOnSuccess: ["Admin/portal: the translation prompt appears, or doesn't, per the language rule"], met: (_s, f) => f.coachHasLanguages,
-    },
     {
       what: "Sent out for translation, if this coach needs it", next: "Send for translation, if needed",
       from: "rung 5",

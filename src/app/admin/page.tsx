@@ -304,20 +304,19 @@ function SubmissionRow({
   /*
     Say which side is missing, not just that something is.
 
-    "Can't tell" has two causes and two different fixes — fill in the coach's
-    languages, or the customer never declared theirs — and an operator told only
-    that the derivation failed has to go looking for which.
+    Only one cause survives: a submission taken before step 1 asked. The coach
+    half can no longer be empty — the form offers three radios and the server
+    falls back to one, so `languagesForChoice` never returns an empty array, and
+    0014 backfilled every row that predated it.
   */
   const translationHint =
     !assignedCoach
       ? null
       : wantsTranslation === true
         ? `No shared language with ${assignedCoach.name} — translate the client files first.`
-        : (assignedCoach.languages?.length ?? 0) === 0
-          ? "No languages recorded for this coach."
-          : (submission.languages?.length ?? 0) === 0
-            ? "The customer didn't declare a language."
-            : null;
+        : (submission.languages?.length ?? 0) === 0
+          ? "The customer didn't declare a language."
+          : null;
 
   const stage = describeStage(submission, {
     files: {
@@ -326,7 +325,6 @@ function SubmissionRow({
       response: folderMap.response.length,
       response_translation: folderMap.response_translation.length,
     },
-    coachHasLanguages: (assignedCoach?.languages.length ?? 0) > 0,
     reached: progress?.reached ?? new Set<SubmissionStatus>(),
     emails: progress?.emails ?? new Map<string, boolean>(),
   });

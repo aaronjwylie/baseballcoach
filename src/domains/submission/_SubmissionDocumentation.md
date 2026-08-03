@@ -1025,6 +1025,22 @@ Read through `useSyncExternalStore`. The server has no `sessionStorage`, and
 `getServerSnapshot` is the hook's answer to exactly that; seeding state in an
 effect would render open on the client and closed on the server.
 
+### "Coach's languages recorded" is gone
+
+It asked whether the coach had declared a language, and it can no longer be
+false. The coach form offers three radios with one always selected,
+`readLanguageChoice` falls back server-side, so `languagesForChoice` never
+returns an empty array — and 0014 backfilled every row that predated the radios.
+A line that cannot be unmet is a line that only ever adds a tick.
+
+**The customer's half is not symmetric, and its branch stays.** Submissions
+taken before step 1 asked still carry `languages = []` — `5ca77ec9` and
+`6252260b` are sitting in production like that — so "the customer didn't declare
+a language" remains reachable and remains worth saying.
+
+That is the shape of a checklist earning its keep: the line goes when the input
+is fixed at the source, not when it becomes inconvenient.
+
 ### The filter tabs read from the same map
 
 They carried their own vocabulary — "Not picked up", "In review", "Coach
@@ -1189,8 +1205,7 @@ don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 | **3 · New**<br>`New` | Send the receipt<br>`Send the receipt` | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | **Admin** ▣ “The receipt to {customer} bounced — they may not know their submission arrived.” *(not built)* | `② receipt → customer`<br>`② receipt → customer delivered` | **Customer** ✉ ② the receipt, listing every file | Receipt sent to the customer<br>`Receipt sent to the customer` |
 |  | Tell Admin it arrived<br>`Tell Admin it arrived` | `② arrival → Admin failed`<br>`② arrival → Admin bounced — hard`<br>`② arrival → Admin bounced — soft`<br>`② arrival → Admin bounced`<br>`② arrival → Admin complained` | **Admin** ▣ a banner on the row — “Your arrival notice bounced. Check the address on your account.” *(not built)* | `② arrival → Admin`<br>`② arrival → Admin delivered` | **Admin** ✉ ② the arrival notice | Arrival announced<br>`Arrival announced` |
 |  | Pick a coach<br>`Pick a coach` | — | **Admin** ▣ “This has already gone to a coach. Reload to see where it is.” *(not built)* | — | **Admin** ▣ the row moves to Assigned and the coach's name appears on it | Coach chosen<br>`Coach chosen` |
-| **4 · Assigned**<br>`Assigned` | Record the coach's languages<br>`Record the coach's languages` | `None recorded — translation need can't be derived, and the queue says which side is missing` | **Admin** ▣ "no languages recorded for this coach" on the row | — | **Admin** ▣ the translation prompt appears, or doesn't, per the language rule | Coach's languages recorded<br>`Coach's languages recorded` |
-|  | Send for translation, if needed<br>`Send for translation, if needed` | — | **Admin** ▣ “That did not go through — try again.” *(not built)* | — | **Admin** ▣ the row moves to Translating | Sent out for translation, if this coach needs it<br>`Sent out for translation, if this coach needs it` |
+| **4 · Assigned**<br>`Assigned` | Send for translation, if needed<br>`Send for translation, if needed` | — | **Admin** ▣ “That did not go through — try again.” *(not built)* | — | **Admin** ▣ the row moves to Translating | Sent out for translation, if this coach needs it<br>`Sent out for translation, if this coach needs it` |
 |  | Hand to the coach<br>`Hand to the coach` | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | **Admin** ▣ “This has already gone to a coach. Reload to see where it is.” *(not built)* | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | **Admin** ▣ the row moves to Sent | Handed to the coach<br>`Handed to the coach` |
 | **5 · Translating**<br>`Translating` | Download the originals<br>`Download the originals` | — | **Admin** · nothing, by design — the step happens off-platform and the upload is the only proof | — | **Admin** · nothing, by design — there is no signal to surface | Originals downloaded<br>`Originals downloaded` |
 |  | Upload the translated files<br>`Upload the translated files` | — | **Admin** ▣ “That file was rejected — too large, wrong type, or empty.” *(not built)* | `files attached — 1 intake_translation` *(not built)*<br>`files attached — 2 intake_translation` *(not built)*<br>`files attached — 3 intake_translation` *(not built)*<br>`files attached — 4 intake_translation` *(not built)*<br>`files attached — 5 intake_translation` *(not built)* | **Admin** ▣ the files appear in the folder | Translated files uploaded<br>`Translated files uploaded` |
