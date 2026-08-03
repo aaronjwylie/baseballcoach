@@ -235,7 +235,7 @@ export async function resetStatusAction(formData: FormData): Promise<void> {
     id,
     { status },
     [
-      substep ? `reset to “${substep}”` : "reset",
+      substep ? `reset — resume at “${substep}”` : "reset",
       reason || "by an admin",
     ].join(": "),
   );

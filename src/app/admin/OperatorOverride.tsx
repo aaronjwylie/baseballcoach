@@ -104,11 +104,15 @@ export function OperatorOverride({
             </label>
 
             {/*
-              The substep is **recorded, not enforced.** Only the rung is stored
-              — a chain line is derived from the data, so there is no column to
-              set it to. What this buys is precision in the trail: "back to
-              Assigned" and "back to Assigned, at the hand-off" are different
-              intentions, and the second one is the one worth being able to say.
+              **The to-do voice, not the past one.** Resetting *to* a substep
+              says it hasn't happened yet — "resume at the hand-off", not "the
+              hand-off is done" — so the list reads the way `Next` does, and the
+              note it leaves reads as an instruction rather than a claim.
+
+              Still **recorded, not enforced**: only the rung is stored, because
+              a chain line is derived from the data and has no column to set.
+              The northstar is that a reset actually resumes the pipeline from
+              the start of the chosen substep *(not built)*.
             */}
             <label className="text-[11px] text-ink-muted">
               at:
@@ -119,8 +123,8 @@ export function OperatorOverride({
               >
                 <option value="">the start of the step</option>
                 {STAGE_CHAIN[target].map((line) => (
-                  <option key={line.what} value={line.what}>
-                    {line.what}
+                  <option key={line.what} value={line.next}>
+                    {line.next}
                   </option>
                 ))}
               </select>

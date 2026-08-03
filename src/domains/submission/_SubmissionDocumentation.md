@@ -1052,11 +1052,18 @@ undersold it — it is the only thing on the row that *changes* the submission.
 recoverable; you move it forward again. Deleting files is not, so the purge sits
 below in its own red frame rather than beside the thing people came here to do.
 
-**The reset takes a substep as well as a step, and the substep is recorded, not
-enforced.** Only the rung is stored — a chain line is derived from the data and
-has no column to set. What it buys is precision in the trail: "back to Assigned"
-and "back to Assigned, at the hand-off" are different intentions, and the second
-is the one worth being able to say afterwards.
+**The reset's substep list is in the to-do voice, not the past one.** Resetting
+*to* a substep says it hasn't happened yet — "resume at the hand-off", not "the
+hand-off is done" — so the list reads the way `Next` does, and the note it
+leaves reads as an instruction rather than a claim:
+`reset — resume at "Hand to the coach"`.
+
+Still **recorded, not enforced**: only the rung is stored, because a chain line
+is derived from the data and has no column to set. **The northstar is that a
+reset resumes the pipeline from the start of the chosen substep** *(not built)*
+— today it moves the rung and the chain re-derives from whatever the data
+already says, which is exactly why resetting to `New` with a coach still
+attached leaves nothing outstanding.
 
 ### A failed email hid the assign control
 
@@ -1093,12 +1100,12 @@ experience, and a pipeline is only as good as the worse of the two.
 
 | Column | What it holds |
 | --- | --- |
-| **Still to do** | the substep before the fact — the pill's second line, the trail's last line, the drawer's **Next**, the amber flag |
+| **Still to do** | the substep before the fact — **the trail, opening the substep** · the pill's second line · the trail's last line · the drawer's **Next** · the amber flag · the override's **at:**, where a reset resumes |
 | **Written when it fails** | the verbatim trail row |
 | **Shown when it fails** | who finds out, and in what words |
 | **Written when it works** | the verbatim trail row |
 | **Shown when it works** | who finds out — mostly the nine emails, which is the point: ⑥ isn't a row in a log, it's the thing the customer receives |
-| **Done** | the substep after the fact — the drawer's **Completed**, the override's **at:** |
+| **Done** | the substep after the fact — **the trail, closing the substep** · the drawer's **Completed** |
 
 **Every message names its audience and the surface it lands on.** Four surfaces,
 not three:
