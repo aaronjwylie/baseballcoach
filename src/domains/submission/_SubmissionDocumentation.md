@@ -1018,72 +1018,66 @@ failed — before and after.
 
 ### The substep inventory — the northstar list
 
-**Every substep, in all three voices.** What has to happen, every way it can go
-wrong, and what it reads as once it hasn't. **33 substeps · 116 failure rows ·
-31 success rows.**
+Every substep of every rung, and what each one leaves behind.
 
-**The strings are verbatim**, not summaries of themselves. The point of the list
-is that you can search a trail for a line and find it here, or read it here and
-know exactly what to look for — so `code rejected — wrong code — 3 of 5 attempts
-spent` is listed as itself, all five of it, rather than as "wrong code".
+The first three columns are the substep in the operator's own words: what still
+has to happen, and what it's called once it has. **The last three are what gets
+written down** — and they're split apart because the difference between them is
+the thing that matters when you're reading a submission's history:
 
-**Monospace carries one meaning, everywhere in the table: a string the system
-literally emits.** Prose type is words written for a person — the condition in
-the operator's vocabulary, or a message shown to a customer. So the difference
-between the two faces is the difference between *search for this* and *someone
-was told this*, and a `†` line is always the second kind.
+- **Written to the trail when it works** — the row you'll see on a good run.
+- **Written to the trail when it fails** — the row you'll see on a bad one.
+- **Shown to someone, never written down** — a refusal at the door. The person
+  in front of it is told; the trail stays silent. Every upload rejection is one
+  of these, because there is no submission-level event for a file that was
+  never accepted.
 
-This is written as the **northstar**: the failures listed are the ones the
-system should account for, whether or not it does today. `*(not built)*` marks
-the gap. `†` marks a failure that **never reaches the trail** — the person in
-front of it is told and nothing is written down, which is a deliberate answer
-rather than a missing one, and worth knowing when you're reading a submission's
-history and wondering why it's silent.
+That last column is why the split is worth six columns rather than a footnote:
+**an empty trail can mean two different things**, and only this says which.
 
-Column two is the line that closes the trail and sits under the rung on the
-pill. **Those are the same string** — one `next` per substep, rendered twice.
-Column three is what the chain used to say nothing about at all, which is how
-`② arrival → Yuta` failing managed to hide the assign control for a day. Column
-four is what the trail records once it goes right — **last, because it is the
-one outcome that needs no attention.**
+**The strings are verbatim.** You can search a trail for a line and find it
+here, or read it here and know exactly what to look for — so
+`code rejected — wrong code — 3 of 5 attempts spent` is listed as itself, all
+five of it, rather than as "wrong code".
 
-Generated from `STAGE_CHAIN`, not hand-maintained.
+Written as the **northstar**: `*(not built)*` marks a row we should write and
+don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 
-| Step | Substep — to do | Substep — gone wrong | Substep — done |
-| --- | --- | --- | --- |
-| **1 · Draft** | Send the code | `① code → customer failed`<br>`① code → customer bounced — hard`<br>`① code → customer bounced — soft`<br>`① code → customer bounced`<br>`① code → customer complained` | Code sent to the customer<br>`① code → customer`<br>`① code → customer delivered` |
-|  | Prove the email | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding`<br>† Abandoned — the row and its files are deleted outright, leaving no trail at all | Email proven<br>`code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` |
-| **2 · Upload** | Attach a file | † You can attach up to 5 files.<br>† Files must be under 50 MB.<br>† That file type isn't supported.<br>† That file is empty.<br>† Your session has expired. Please start again. | At least one file attached |
-|  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined *(not built)* — only the notice is recorded, not the decline`<br>† Abandoned — the row and its files are deleted outright | Payment cleared |
-| **3 · New** | Send the receipt | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | Receipt sent to the customer<br>`② receipt → customer`<br>`② receipt → customer delivered` |
-|  | Tell Yuta it arrived | `② arrival → Yuta failed`<br>`② arrival → Yuta bounced — hard`<br>`② arrival → Yuta bounced — soft`<br>`② arrival → Yuta bounced`<br>`② arrival → Yuta complained` | Arrival announced<br>`② arrival → Yuta`<br>`② arrival → Yuta delivered` |
-|  | Pick a coach | † Refused — already handed off, so a stale tab can't reassign | Coach chosen |
-| **4 · Assigned** | Record the coach's languages | `None recorded — translation need can't be derived, and the queue says which side is missing` | Coach's languages recorded |
-|  | Send for translation, if needed | *nothing can* | Sent out for translation, if this coach needs it |
-|  | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained`<br>† Refused — a stale tab tried to reassign after hand-off | Handed to the coach<br>`③ hand-off → coach`<br>`③ hand-off → coach delivered` |
-| **5 · Translating** | Download the originals | † Unobservable — a translator who never downloads looks identical to one who did | Originals downloaded |
-|  | Upload the translated files | † You can attach up to 5 files.<br>† Files must be under 50 MB.<br>† That file type isn't supported.<br>† That file is empty.<br>† Your session has expired. Please start again. | Translated files uploaded |
-| **6 · Translated** | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained`<br>† Refused — a stale tab tried to reassign after hand-off | Handed to the coach<br>`③ hand-off → coach`<br>`③ hand-off → coach delivered` |
-| **7 · Sent** | Email the hand-off | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | Hand-off emailed<br>`③ hand-off → coach`<br>`③ hand-off → coach delivered` |
-|  | Coach downloads the files | `Gone — the folder was purged before they collected (410)`<br>† Refused — a different coach asked (403) | Coach downloaded the files |
-| **8 · Reviewing** | Upload the response | † You can attach up to 5 files.<br>† Files must be under 50 MB.<br>† That file type isn't supported.<br>† That file is empty.<br>† Your session has expired. Please start again. | Response uploaded |
-| **9 · Submitted** | Tell Yuta and the coach | `⑤ response submitted → Yuta + coach failed`<br>`⑤ response submitted → Yuta + coach bounced — hard`<br>`⑤ response submitted → Yuta + coach bounced — soft`<br>`⑤ response submitted → Yuta + coach bounced`<br>`⑤ response submitted → Yuta + coach complained` | Yuta and the coach told<br>`⑤ response submitted → Yuta + coach`<br>`⑤ response submitted → Yuta + coach delivered` |
-|  | Send for translation, if needed | *nothing can* | Sent out for translation, if the customer needs it |
-|  | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | Approved and sent<br>`⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` |
-| **10 · Translating** | Download the response | † Unobservable — the upload is the only proof | Response downloaded |
-|  | Upload the translation | † You can attach up to 5 files.<br>† Files must be under 50 MB.<br>† That file type isn't supported.<br>† That file is empty.<br>† Your session has expired. Please start again. | Translation uploaded |
-| **11 · Translated** | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | Approved and sent<br>`⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` |
-| **12 · Delivered** | Email the feedback | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | Feedback emailed<br>`⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` |
-|  | Customer downloads it | `Gone — an operator purged the folder early (410)` | Customer downloaded it |
-| **13 · Collected** | Tell Yuta they collected | `⑦ collected → Yuta failed`<br>`⑦ collected → Yuta bounced — hard`<br>`⑦ collected → Yuta bounced — soft`<br>`⑦ collected → Yuta bounced`<br>`⑦ collected → Yuta complained` | Collection announced<br>`⑦ collected → Yuta`<br>`⑦ collected → Yuta delivered` |
-|  | Mark resolved | *nothing can* | Marked resolved |
-| **14 · Resolved** | Send the thank-you | `⑧ thank you → customer failed`<br>`⑧ thank you → customer bounced — hard`<br>`⑧ thank you → customer bounced — soft`<br>`⑧ thank you → customer bounced`<br>`⑧ thank you → customer complained` | Thank-you sent<br>`⑧ thank you → customer`<br>`⑧ thank you → customer delivered` |
-|  | Warning falls due | `The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded` | Deletion warning due |
-| **15 · Deleting** | Send the warning | `⑨ deletion warning → customer failed`<br>`⑨ deletion warning → customer bounced — hard`<br>`⑨ deletion warning → customer bounced — soft`<br>`⑨ deletion warning → customer bounced`<br>`⑨ deletion warning → customer complained`<br>`Stamped even when the send failed — retrying nightly would turn one miss into seven` | Warning sent<br>`⑨ deletion warning → customer`<br>`⑨ deletion warning → customer delivered` |
-|  | Delete the files | `Storage refused the delete — the locator stays and the sweep retries *(not built)*` | Files deleted |
-| **16 · Purged** | Remove the bytes | *nothing can* | Bytes removed from storage |
-|  | Clear the locators | *nothing can* | Locators cleared |
-|  | Keep the record | *nothing can* | Record kept — permanently |
+| Step | Substep — still to do | Substep — done | Written to the trail when it works | Written to the trail when it fails | Shown to someone, never written down |
+| --- | --- | --- | --- | --- | --- |
+| **1 · Draft** | Send the code | Code sent to the customer | `① code → customer`<br>`① code → customer delivered` | `① code → customer failed`<br>`① code → customer bounced — hard`<br>`① code → customer bounced — soft`<br>`① code → customer bounced`<br>`① code → customer complained` | — |
+|  | Prove the email | Email proven | `code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding` | Abandoned — the row and its files are deleted outright, leaving no trail at all |
+| **2 · Upload** | Attach a file | At least one file attached | — | — | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+|  | Clear payment | Payment cleared | — | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | Abandoned — the row and its files are deleted outright |
+| **3 · New** | Send the receipt | Receipt sent to the customer | `② receipt → customer`<br>`② receipt → customer delivered` | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | — |
+|  | Tell Yuta it arrived | Arrival announced | `② arrival → Yuta`<br>`② arrival → Yuta delivered` | `② arrival → Yuta failed`<br>`② arrival → Yuta bounced — hard`<br>`② arrival → Yuta bounced — soft`<br>`② arrival → Yuta bounced`<br>`② arrival → Yuta complained` | — |
+|  | Pick a coach | Coach chosen | — | — | Refused — already handed off, so a stale tab can't reassign |
+| **4 · Assigned** | Record the coach's languages | Coach's languages recorded | — | `None recorded — translation need can't be derived, and the queue says which side is missing` | — |
+|  | Send for translation, if needed | Sent out for translation, if this coach needs it | — | — | — |
+|  | Hand to the coach | Handed to the coach | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | Refused — a stale tab tried to reassign after hand-off |
+| **5 · Translating** | Download the originals | Originals downloaded | — | — | Unobservable — a translator who never downloads looks identical to one who did |
+|  | Upload the translated files | Translated files uploaded | — | — | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **6 · Translated** | Hand to the coach | Handed to the coach | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | Refused — a stale tab tried to reassign after hand-off |
+| **7 · Sent** | Email the hand-off | Hand-off emailed | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | — |
+|  | Coach downloads the files | Coach downloaded the files | — | `Gone — the folder was purged before they collected (410)` | Refused — a different coach asked (403) |
+| **8 · Reviewing** | Upload the response | Response uploaded | — | — | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **9 · Submitted** | Tell Yuta and the coach | Yuta and the coach told | `⑤ response submitted → Yuta + coach`<br>`⑤ response submitted → Yuta + coach delivered` | `⑤ response submitted → Yuta + coach failed`<br>`⑤ response submitted → Yuta + coach bounced — hard`<br>`⑤ response submitted → Yuta + coach bounced — soft`<br>`⑤ response submitted → Yuta + coach bounced`<br>`⑤ response submitted → Yuta + coach complained` | — |
+|  | Send for translation, if needed | Sent out for translation, if the customer needs it | — | — | — |
+|  | Approve and send | Approved and sent | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | — |
+| **10 · Translating** | Download the response | Response downloaded | — | — | Unobservable — the upload is the only proof |
+|  | Upload the translation | Translation uploaded | — | — | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
+| **11 · Translated** | Approve and send | Approved and sent | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | — |
+| **12 · Delivered** | Email the feedback | Feedback emailed | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | — |
+|  | Customer downloads it | Customer downloaded it | — | `Gone — an operator purged the folder early (410)` | — |
+| **13 · Collected** | Tell Yuta they collected | Collection announced | `⑦ collected → Yuta`<br>`⑦ collected → Yuta delivered` | `⑦ collected → Yuta failed`<br>`⑦ collected → Yuta bounced — hard`<br>`⑦ collected → Yuta bounced — soft`<br>`⑦ collected → Yuta bounced`<br>`⑦ collected → Yuta complained` | — |
+|  | Mark resolved | Marked resolved | — | — | — |
+| **14 · Resolved** | Send the thank-you | Thank-you sent | `⑧ thank you → customer`<br>`⑧ thank you → customer delivered` | `⑧ thank you → customer failed`<br>`⑧ thank you → customer bounced — hard`<br>`⑧ thank you → customer bounced — soft`<br>`⑧ thank you → customer bounced`<br>`⑧ thank you → customer complained` | — |
+|  | Warning falls due | Deletion warning due | — | `The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded` | — |
+| **15 · Deleting** | Send the warning | Warning sent | `⑨ deletion warning → customer`<br>`⑨ deletion warning → customer delivered` | `⑨ deletion warning → customer failed`<br>`⑨ deletion warning → customer bounced — hard`<br>`⑨ deletion warning → customer bounced — soft`<br>`⑨ deletion warning → customer bounced`<br>`⑨ deletion warning → customer complained`<br>`Stamped even when the send failed — retrying nightly would turn one miss into seven` | — |
+|  | Delete the files | Files deleted | — | `Storage refused the delete — the locator stays and the sweep retries` *(not built)* | — |
+| **16 · Purged** | Remove the bytes | Bytes removed from storage | — | — | — |
+|  | Clear the locators | Locators cleared | — | — | — |
+|  | Keep the record | Record kept — permanently | — | — | — |
 
 ### The breadcrumb library — two voices for one line
 
