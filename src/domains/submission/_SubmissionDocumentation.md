@@ -1083,31 +1083,32 @@ failed — before and after.
 
 Every substep of every rung, and what each one leaves behind.
 
-It reads left to right as the substep's own story: **what is owed**, the ways it
-can **go wrong**, the rows it writes when it **doesn't**, and what it's **called
-afterwards**. Failure sits before success because failure is the reason to look.
+Left to right, the substep's own story — and **each outcome twice**: what the
+system writes down, and what a person is actually told.
 
-**Where each column surfaces**, which is also the answer to "why are there two
-columns of operator vocabulary":
+Those are not the same event and they don't always both happen. A bounced
+verification code writes a row *and* puts a sentence in front of the customer. A
+refused reassignment does neither. The trail is the record; the message is the
+experience, and a pipeline is only as good as the worse of the two.
 
-| Column | Where it renders |
+| Column | What it holds |
 | --- | --- |
-| **Step** | • the pill's top line<br>• every rail dot's hover label, numbered<br>• the rail's screen-reader label<br>• status rows in the trail<br>• the queue's filter tabs<br>• the override's **Move back to**, numbered |
-| **Still to do** | • the pill's second line<br>• the last line of the trail<br>• the drawer's **Next** block<br>• **the amber flag on the collapsed row**<br>*one string, four places* |
-| **Written when it fails** | • the trail, in the drawer |
-| **Written when it works** | • the trail, in the drawer |
-| **Done** | • the drawer's **Completed** list<br>• the override's **at:** |
-| **Shown, never written** | • the customer's upload cards at step 3 |
+| **Still to do** | the substep before the fact — the pill's second line, the trail's last line, the drawer's **Next**, the amber flag |
+| **Written when it fails** | the verbatim trail row |
+| **Shown when it fails** | who finds out, and in what words |
+| **Written when it works** | the verbatim trail row |
+| **Shown when it works** | who finds out — mostly the nine emails, which is the point: ⑥ isn't a row in a log, it's the thing the customer receives |
+| **Done** | the substep after the fact — the drawer's **Completed**, the override's **at:** |
 
-**Three of those columns are a catalogue, not a source.** `failures`, `records`
-and `told` are never rendered from these arrays — the trail composes its rows at
-runtime from a label and its outcome, and `uploadPolicy` returns its own
-refusals. They're written down here so the set is *knowable*; nothing breaks if
-they drift, which is exactly why they have to be checked against the code rather
-than trusted.
+**Every message names its audience**, because the three don't overlap. A
+customer's decline, an admin's silent guard and a coach's dead download link are
+three different people finding out three different things.
 
-The other three are live. `RUNG_LABEL` and `what` and `next` are read straight
-out of the model by the components listed above, so those rows can't drift.
+**This is the northstar, not the build.** Where nobody is told today, the entry
+says *what should be said* and carries `*(not built)*`. Silence is a gap, not the
+absence of one — and there is a lot of it: **every bounced notification to an
+operator currently surfaces nowhere**, and both the operator's and the coach's
+uploads accept anything and report nothing.
 
 **The strings are verbatim.** You can search a trail for a line and find it
 here, or read it here and know exactly what to look for — so
@@ -1117,41 +1118,41 @@ five of it, rather than as "wrong code".
 Written as the **northstar**: `*(not built)*` marks a row we should write and
 don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 
-| Step | Substep — still to do | Written to the trail when it fails | Written to the trail when it works | Substep — done | Shown to someone, never written down |
-| --- | --- | --- | --- | --- | --- |
-| **1 · Draft** | Send the code | `① code → customer failed`<br>`① code → customer bounced — hard`<br>`① code → customer bounced — soft`<br>`① code → customer bounced`<br>`① code → customer complained` | `① code → customer`<br>`① code → customer delivered` | Code sent to the customer | — |
-|  | Prove the email | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding` | `code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` | Email proven | — |
-| **2 · Upload** | Attach a file | — | — | At least one file attached | **Customer** You can attach up to 5 files.<br>**Customer** Files must be under 50 MB.<br>**Customer** That file type isn't supported.<br>**Customer** That file is empty.<br>**Customer** Your session has expired. Please start again. |
-|  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | — | Payment cleared | **Customer** their attempt was scrubbed, and the flow returns them to step 1 |
-| **3 · New** | Send the receipt | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | `② receipt → customer`<br>`② receipt → customer delivered` | Receipt sent to the customer | — |
-|  | Tell Admin it arrived | `② arrival → Admin failed`<br>`② arrival → Admin bounced — hard`<br>`② arrival → Admin bounced — soft`<br>`② arrival → Admin bounced`<br>`② arrival → Admin complained` | `② arrival → Admin`<br>`② arrival → Admin delivered` | Arrival announced | — |
-|  | Pick a coach | — | — | Coach chosen | **Admin** nothing — the guard returns silently, so a stale tab looks like it worked *(not built)* |
-| **4 · Assigned** | Record the coach's languages | `None recorded — translation need can't be derived, and the queue says which side is missing` | — | Coach's languages recorded | — |
-|  | Send for translation, if needed | — | — | Sent out for translation, if this coach needs it | — |
-|  | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Handed to the coach | **Admin** nothing — the guard returns silently, so a stale tab looks like it worked *(not built)* |
-| **5 · Translating** | Download the originals | — | — | Originals downloaded | — |
-|  | Upload the translated files | — | — | Translated files uploaded | **Operator** nothing at all — the upload is unvalidated, and a failure just refreshes the page *(not built)* |
-| **6 · Translated** | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Handed to the coach | **Admin** nothing — the guard returns silently, so a stale tab looks like it worked *(not built)* |
-| **7 · Sent** | Email the hand-off | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Hand-off emailed | — |
-|  | Coach downloads the files | — | — | Coach downloaded the files | **Coach** the download is gone — the folder was purged before they collected (410) |
-| **8 · Reviewing** | Upload the response | — | — | Response uploaded | **Operator** nothing at all — the upload is unvalidated, and a failure just refreshes the page *(not built)* |
-| **9 · Submitted** | Tell Admin and the coach | `⑤ response submitted → Admin + coach failed`<br>`⑤ response submitted → Admin + coach bounced — hard`<br>`⑤ response submitted → Admin + coach bounced — soft`<br>`⑤ response submitted → Admin + coach bounced`<br>`⑤ response submitted → Admin + coach complained` | `⑤ response submitted → Admin + coach`<br>`⑤ response submitted → Admin + coach delivered` | Admin and the coach told | — |
-|  | Send for translation, if needed | — | — | Sent out for translation, if the customer needs it | — |
-|  | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
-| **10 · Translating** | Download the response | — | — | Response downloaded | — |
-|  | Upload the translation | — | — | Translation uploaded | **Operator** nothing at all — the upload is unvalidated, and a failure just refreshes the page *(not built)* |
-| **11 · Translated** | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
-| **12 · Delivered** | Email the feedback | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Feedback emailed | — |
-|  | Customer downloads it | — | — | Customer downloaded it | **Customer** the download is gone — an operator purged the folder early (410) |
-| **13 · Collected** | Tell Admin they collected | `⑦ collected → Admin failed`<br>`⑦ collected → Admin bounced — hard`<br>`⑦ collected → Admin bounced — soft`<br>`⑦ collected → Admin bounced`<br>`⑦ collected → Admin complained` | `⑦ collected → Admin`<br>`⑦ collected → Admin delivered` | Collection announced | — |
-|  | Mark resolved | — | — | Marked resolved | — |
-| **14 · Resolved** | Send the thank-you | `⑧ thank you → customer failed`<br>`⑧ thank you → customer bounced — hard`<br>`⑧ thank you → customer bounced — soft`<br>`⑧ thank you → customer bounced`<br>`⑧ thank you → customer complained` | `⑧ thank you → customer`<br>`⑧ thank you → customer delivered` | Thank-you sent | — |
-|  | Warning falls due | `The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded` | — | Deletion warning due | — |
-| **15 · Deleting** | Send the warning | `⑨ deletion warning → customer failed`<br>`⑨ deletion warning → customer bounced — hard`<br>`⑨ deletion warning → customer bounced — soft`<br>`⑨ deletion warning → customer bounced`<br>`⑨ deletion warning → customer complained`<br>`Stamped even when the send failed — retrying nightly would turn one miss into seven` | `⑨ deletion warning → customer`<br>`⑨ deletion warning → customer delivered` | Warning sent | — |
-|  | Delete the files | `Storage refused the delete — the locator stays and the sweep retries` *(not built)* | — | Files deleted | — |
-| **16 · Purged** | Remove the bytes | — | — | Bytes removed from storage | — |
-|  | Clear the locators | — | — | Locators cleared | — |
-|  | Keep the record | — | — | Record kept — permanently | — |
+| Step | Substep — still to do | Written to the trail when it fails | Shown to someone when it fails | Written to the trail when it works | Shown to someone when it works | Substep — done |
+| --- | --- | --- | --- | --- | --- | --- |
+| **1 · Draft** | Send the code | `① code → customer failed`<br>`① code → customer bounced — hard`<br>`① code → customer bounced — soft`<br>`① code → customer bounced`<br>`① code → customer complained` | **Customer** "That email address doesn't exist. Please check it for a typo and try again."<br>**Customer** "That inbox couldn't accept our email. It may be full, so please try a different address."<br>**Customer** "We couldn't deliver your code to that address. Check it for a typo, or try a different email."<br>**Customer** "We couldn't send your code — please check the address and try again."<br>**Customer** "We couldn't send your code — please try again in a moment." | `① code → customer`<br>`① code → customer delivered` | **Customer** "Enter the code from your email."<br>**Customer** "We've sent a new code." on a resend | Code sent to the customer |
+|  | Prove the email | `code rejected — wrong code — 1 of 5 attempts spent`<br>`code rejected — wrong code — 2 of 5 attempts spent`<br>`code rejected — wrong code — 3 of 5 attempts spent`<br>`code rejected — wrong code — 4 of 5 attempts spent`<br>`code rejected — wrong code — 5 of 5 attempts spent`<br>`code rejected — 5 attempts spent`<br>`code rejected — the window had closed`<br>`code rejected — no code outstanding` | **Customer** "That code doesn't match. Check the email and try again."<br>**Customer** "Too many incorrect attempts. Ask for a new code to try again."<br>**Customer** "We haven't sent a code yet. Ask for a new one below."<br>**Customer** "Too many attempts. Please wait a few minutes."<br>**Customer** "Too many code requests. Please wait a few minutes." on the resend | `code accepted`<br>`code accepted — on attempt 2`<br>`code accepted — on attempt 3`<br>`code accepted — on attempt 4`<br>`code accepted — on attempt 5` | **Customer** the upload step opens — no message, the screen simply advances | Email proven |
+| **2 · Upload** | Attach a file | — | **Customer** "You can attach up to 5 files."<br>**Customer** "Files must be under 50 MB."<br>**Customer** "That file type isn't supported."<br>**Customer** "That file is empty."<br>**Customer** "Your session has expired. Please start again."<br>**Customer** "Please attach at least one file first." on trying to advance | — | **Customer** each file appears in the list with its size | At least one file attached |
+|  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | **Customer** "That card didn't go through"<br>**Customer** "That payment didn't go through."<br>**Customer** "We couldn't start the payment. Please try again."<br>**Customer** "Your payment is still processing. We'll email you as soon as it clears."<br>**Customer** the decline email, carrying a way back in<br>**Customer** after the window their attempt is gone and the flow restarts at step 1, with nothing saying why *(not built)* | — | **Customer** the confirmation screen<br>**Customer** ② the receipt, listing every file | Payment cleared |
+| **3 · New** | Send the receipt | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | **Admin** “The receipt to {customer} bounced — they may not know their submission arrived.” *(not built)* | `② receipt → customer`<br>`② receipt → customer delivered` | **Customer** ② the receipt | Receipt sent to the customer |
+|  | Tell Admin it arrived | `② arrival → Admin failed`<br>`② arrival → Admin bounced — hard`<br>`② arrival → Admin bounced — soft`<br>`② arrival → Admin bounced`<br>`② arrival → Admin complained` | **Admin** a banner on the row — “Your arrival notice bounced. Check the address on your account.” *(not built)* | `② arrival → Admin`<br>`② arrival → Admin delivered` | **Admin** ② the arrival notice | Arrival announced |
+|  | Pick a coach | — | **Admin** “This has already gone to a coach. Reload to see where it is.” *(not built)* | — | **Admin** the row moves to Assigned and the coach's name appears on it | Coach chosen |
+| **4 · Assigned** | Record the coach's languages | `None recorded — translation need can't be derived, and the queue says which side is missing` | **Admin** "no languages recorded for this coach" on the row | — | **Admin** the translation prompt appears, or doesn't, per the language rule | Coach's languages recorded |
+|  | Send for translation, if needed | — | **Admin** “That did not go through — try again.” *(not built)* | — | **Admin** the row moves to Translating | Sent out for translation, if this coach needs it |
+|  | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | **Admin** “This has already gone to a coach. Reload to see where it is.” *(not built)* | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | **Coach** ③ the hand-off, with a download link per file<br>**Admin** the row moves to Sent | Handed to the coach |
+| **5 · Translating** | Download the originals | — | **Admin** nothing, by design — the step happens off-platform and the upload is the only proof | — | **Admin** nothing, by design — there is no signal to surface | Originals downloaded |
+|  | Upload the translated files | — | **Admin** “That file was rejected — too large, wrong type, or empty.” *(not built)* | — | **Admin** the files appear in the folder | Translated files uploaded |
+| **6 · Translated** | Hand to the coach | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | **Admin** “This has already gone to a coach. Reload to see where it is.” *(not built)* | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | **Coach** ③ the hand-off, with a download link per file<br>**Admin** the row moves to Sent | Handed to the coach |
+| **7 · Sent** | Email the hand-off | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | **Admin** a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)* | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | **Coach** ③ the hand-off | Hand-off emailed |
+|  | Coach downloads the files | — | **Coach** the download is gone — the folder was purged before they collected (410) | — | **Coach** the file downloads<br>**Admin** ④ picked up — the coach has it | Coach downloaded the files |
+| **8 · Reviewing** | Upload the response | — | **Coach** “That file was rejected — too large, wrong type, or empty.” *(not built)* | — | **Coach** the file appears in their folder<br>**Admin** ⑤ response submitted<br>**Coach** ⑤ the same notice, to the coach | Response uploaded |
+| **9 · Submitted** | Tell Admin and the coach | `⑤ response submitted → Admin + coach failed`<br>`⑤ response submitted → Admin + coach bounced — hard`<br>`⑤ response submitted → Admin + coach bounced — soft`<br>`⑤ response submitted → Admin + coach bounced`<br>`⑤ response submitted → Admin + coach complained` | **Admin** “That did not go through — try again.” *(not built)* | `⑤ response submitted → Admin + coach`<br>`⑤ response submitted → Admin + coach delivered` | **Admin** ⑤ response submitted<br>**Coach** ⑤ the same notice | Admin and the coach told |
+|  | Send for translation, if needed | — | **Admin** “That did not go through — try again.” *(not built)* | — | **Admin** the row moves to Translating | Sent out for translation, if the customer needs it |
+|  | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | **Admin** “There is no response file to send yet.” *(not built)* | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | **Customer** ⑥ feedback ready, stating the retention window<br>**Admin** the row moves to Delivered | Approved and sent |
+| **10 · Translating** | Download the response | — | **Admin** nothing, by design — the step happens off-platform and the upload is the only proof | — | **Admin** nothing, by design — there is no signal to surface | Response downloaded |
+|  | Upload the translation | — | **Admin** “That file was rejected — too large, wrong type, or empty.” *(not built)* | — | **Admin** the files appear in the folder | Translation uploaded |
+| **11 · Translated** | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | **Admin** “There is no response file to send yet.” *(not built)* | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | **Customer** ⑥ feedback ready, stating the retention window<br>**Admin** the row moves to Delivered | Approved and sent |
+| **12 · Delivered** | Email the feedback | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | **Admin** a banner on the row — “They never received this. They do not know they have work waiting.” *(not built)* | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | **Customer** ⑥ feedback ready | Feedback emailed |
+|  | Customer downloads it | — | **Customer** the download is gone — an operator purged the folder early (410) | — | **Customer** the file downloads<br>**Admin** ⑦ collected — the customer has it | Customer downloaded it |
+| **13 · Collected** | Tell Admin they collected | `⑦ collected → Admin failed`<br>`⑦ collected → Admin bounced — hard`<br>`⑦ collected → Admin bounced — soft`<br>`⑦ collected → Admin bounced`<br>`⑦ collected → Admin complained` | **Admin** “That did not go through — try again.” *(not built)* | `⑦ collected → Admin`<br>`⑦ collected → Admin delivered` | **Admin** ⑦ collected | Collection announced |
+|  | Mark resolved | — | **Admin** “That did not go through — try again.” *(not built)* | — | **Customer** ⑧ thank you, carrying the deletion date<br>**Admin** the row moves to Resolved | Marked resolved |
+| **14 · Resolved** | Send the thank-you | `⑧ thank you → customer failed`<br>`⑧ thank you → customer bounced — hard`<br>`⑧ thank you → customer bounced — soft`<br>`⑧ thank you → customer bounced`<br>`⑧ thank you → customer complained` | **Admin** “That did not go through — try again.” *(not built)* | `⑧ thank you → customer`<br>`⑧ thank you → customer delivered` | **Customer** ⑧ thank you | Thank-you sent |
+|  | Warning falls due | `The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded` | **Admin** “The nightly sweep has not run since {date}.” *(not built)* | — | **Customer** ⑨ the deletion warning, a week out | Deletion warning due |
+| **15 · Deleting** | Send the warning | `⑨ deletion warning → customer failed`<br>`⑨ deletion warning → customer bounced — hard`<br>`⑨ deletion warning → customer bounced — soft`<br>`⑨ deletion warning → customer bounced`<br>`⑨ deletion warning → customer complained`<br>`Stamped even when the send failed — retrying nightly would turn one miss into seven` | **Admin** “The deletion warning to {customer} did not send. They have no notice, and it will not retry.” *(not built)* | `⑨ deletion warning → customer`<br>`⑨ deletion warning → customer delivered` | **Customer** ⑨ the deletion warning | Warning sent |
+|  | Delete the files | `Storage refused the delete — the locator stays and the sweep retries` *(not built)* | **Admin** “Storage refused the delete — {n} files are still there.” *(not built)* | — | **Customer** any link they kept now answers 410<br>**Admin** the filenames show struck through in the folders | Files deleted |
+| **16 · Purged** | Remove the bytes | — | — | — | **Admin** the filenames show struck through in the folders | Bytes removed from storage |
+|  | Clear the locators | — | — | — | **Customer** an old link answers 410 — gone, not missing | Locators cleared |
+|  | Keep the record | — | — | — | **Admin** the row still says what was sent, forever | Record kept — permanently |
 
 ### The breadcrumb library — two voices for one line
 
