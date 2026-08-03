@@ -59,12 +59,12 @@ export interface ChainLine {
   /** What has to be true, in the operator's words. Past voice — a condition met. */
   what: string;
   /**
-   * The same line before it happens, in future voice, naming who does it.
+   * The same line before it happens — terse, and in the other voice.
    *
-   * The checklist reads as conditions ("Payment cleared") because that's what it
-   * is. The trail reads as a story, and a story can't end on a past-tense line
-   * describing something that hasn't happened — so the closing entry needs its
-   * own words, not a restyling of these.
+   * `what` is a condition met; this is the thing to do. Same register, same
+   * length: "Payment cleared" against "Clear payment". A greyed-out past-tense
+   * line still reads as something that occurred, and a full sentence beside a
+   * column of clipped ones reads as a different kind of entry altogether.
    */
   next: string;
   /** How we know — the field, the file, or the event. Shown small. */
@@ -87,30 +87,30 @@ const reached = (status: SubmissionStatus) => (_s: Submission, f: ProgressFacts)
 
 export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   draft: [
-    { what: "Player details captured", next: "The customer fills in the player's details", from: "playerName · focus", met: (s) => !!s.playerName },
-    { what: "Email proven", next: "The customer proves their email", from: "emailVerifiedAt", act: "waitCustomer", met: (s) => !!s.emailVerifiedAt },
+    { what: "Player details captured", next: "Capture player details", from: "playerName · focus", met: (s) => !!s.playerName },
+    { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", act: "waitCustomer", met: (s) => !!s.emailVerifiedAt },
   ],
   awaiting_payment: [
-    { what: "Email proven", next: "The customer proves their email", from: "emailVerifiedAt", met: (s) => !!s.emailVerifiedAt },
-    { what: "At least one file attached", next: "The customer attaches a file", from: "intake", met: has("intake") },
-    { what: "Payment cleared", next: "The customer's payment clears", from: "paidAt", act: "waitCustomer", met: (s) => !!s.paidAt },
+    { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", met: (s) => !!s.emailVerifiedAt },
+    { what: "At least one file attached", next: "Attach a file", from: "intake", met: has("intake") },
+    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", met: (s) => !!s.paidAt },
   ],
   new: [
-    { what: "Payment cleared", next: "The customer's payment clears", from: "paidAt", met: (s) => !!s.paidAt },
-    { what: "Receipt sent to the customer", next: "The receipt goes to the customer", from: "②", met: sent("② receipt → customer") },
-    { what: "Arrival announced", next: "Yuta hears it arrived", from: "②", met: sent("② arrival → Yuta") },
-    { what: "Coach chosen", next: "Yuta picks a coach", from: "assignedCoachId", act: "assign", met: (s) => !!s.assignedCoachId },
+    { what: "Payment cleared", next: "Clear payment", from: "paidAt", met: (s) => !!s.paidAt },
+    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", met: sent("② receipt → customer") },
+    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", met: sent("② arrival → Yuta") },
+    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
-    { what: "Coach chosen", next: "Yuta picks a coach", from: "assignedCoachId", met: (s) => !!s.assignedCoachId },
+    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", met: (s) => !!s.assignedCoachId },
     {
-      what: "Coach's languages recorded", next: "Someone records this coach's languages",
+      what: "Coach's languages recorded", next: "Record the coach's languages",
       from: "coaches.languages",
       why: "without them, translation need can't be derived",
       met: (_s, f) => f.coachHasLanguages,
     },
     {
-      what: "Sent out for translation, if this coach needs it", next: "It goes out for translation, if this coach needs it",
+      what: "Sent out for translation, if this coach needs it", next: "Send for translation, if needed",
       from: "rung 5",
       why: "optional — an English-reading coach skips it",
       act: "sendForTranslation",
@@ -119,26 +119,26 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       met: (_s, f) => f.files.intake_translation > 0,
     },
-    { what: "Handed to the coach", next: "Yuta hands it to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
   ],
   intake_translating: [
     {
-      what: "Originals downloaded", next: "The originals get downloaded",
+      what: "Originals downloaded", next: "Download the originals",
       from: "off-platform",
       why: "nothing observes this — the upload is the proof",
       passive: true,
       met: () => false,
     },
-    { what: "Translated files uploaded", next: "The translated files are uploaded", from: "intake_translation", act: "uploadIntake", met: has("intake_translation") },
+    { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", met: has("intake_translation") },
   ],
   intake_translated: [
-    { what: "Translated set stored", next: "The translated set is stored", from: "intake_translation", met: has("intake_translation") },
-    { what: "Handed to the coach", next: "Yuta hands it to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
+    { what: "Translated set stored", next: "Store the translated set", from: "intake_translation", met: has("intake_translation") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
-    { what: "Hand-off emailed", next: "The hand-off email goes out", from: "③", met: sent("③ hand-off → coach") },
+    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", met: sent("③ hand-off → coach") },
     {
-      what: "Coach downloaded the files", next: "The coach downloads the files",
+      what: "Coach downloaded the files", next: "Coach downloads the files",
       from: "trail · in_review",
       why: "the only evidence the coach actually has it",
       act: "waitCoach",
@@ -146,41 +146,41 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   in_review: [
-    { what: "Coach has the files", next: "The coach gets the files", from: "trail · in_review", met: reached("in_review") },
-    { what: "Response uploaded", next: "The coach uploads their response", from: "response", act: "waitCoach", met: has("response") },
+    { what: "Coach has the files", next: "Coach opens the files", from: "trail · in_review", met: reached("in_review") },
+    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", met: has("response") },
   ],
   awaiting_approval: [
-    { what: "Response uploaded", next: "The coach uploads their response", from: "response", met: has("response") },
-    { what: "Yuta and the coach told", next: "Yuta and the coach are told", from: "⑤", met: sent("⑤ response submitted → Yuta + coach") },
+    { what: "Response uploaded", next: "Upload the response", from: "response", met: has("response") },
+    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", met: sent("⑤ response submitted → Yuta + coach") },
     {
-      what: "Sent out for translation, if the customer needs it", next: "It goes out for translation, if the customer needs it",
+      what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
       from: "rung 10",
       why: "optional — skipped when the response is already readable",
       act: "sendForTranslation",
       passive: true,
       met: (_s, f) => f.files.response_translation > 0,
     },
-    { what: "Approved and sent", next: "Yuta approves it and sends it on", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
   ],
   response_translating: [
     {
-      what: "Response downloaded", next: "The response gets downloaded",
+      what: "Response downloaded", next: "Download the response",
       from: "off-platform",
       why: "nothing observes this — the upload is the proof",
       passive: true,
       met: () => false,
     },
-    { what: "Translation uploaded", next: "The translation is uploaded", from: "response_translation", act: "uploadResponse", met: has("response_translation") },
+    { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", met: has("response_translation") },
   ],
   response_translated: [
-    { what: "Translation stored", next: "The translation is stored", from: "response_translation", met: has("response_translation") },
-    { what: "Approved and sent", next: "Yuta approves it and sends it on", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
+    { what: "Translation stored", next: "Store the translation", from: "response_translation", met: has("response_translation") },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [
-    { what: "Feedback emailed", next: "The feedback email goes out", from: "⑥", met: sent("⑥ feedback ready → customer") },
-    { what: "Delivery stamped", next: "Delivery gets stamped", from: "completedAt", met: (s) => !!s.completedAt },
+    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", met: sent("⑥ feedback ready → customer") },
+    { what: "Delivery stamped", next: "Stamp delivery", from: "completedAt", met: (s) => !!s.completedAt },
     {
-      what: "Customer downloaded it", next: "The customer downloads it",
+      what: "Customer downloaded it", next: "Customer downloads it",
       from: "collectedAt",
       why: "starts the retention clock — nothing is purged before this",
       act: "waitCustomer",
@@ -188,23 +188,23 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   collected: [
-    { what: "Customer has it", next: "The customer gets it", from: "collectedAt", met: (s) => !!s.collectedAt },
-    { what: "Collection announced", next: "Yuta hears the customer collected it", from: "⑦", met: sent("⑦ collected → Yuta") },
-    { what: "Marked resolved", next: "Yuta marks it resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
+    { what: "Customer has it", next: "Customer opens it", from: "collectedAt", met: (s) => !!s.collectedAt },
+    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", met: sent("⑦ collected → Yuta") },
+    { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
   ],
   resolved: [
-    { what: "Marked resolved", next: "Yuta marks it resolved", from: "trail · resolved", met: reached("resolved") },
-    { what: "Thank-you sent", next: "The thank-you goes out", from: "⑧", met: sent("⑧ thank you → customer") },
-    { what: "Deletion warning due", next: "The deletion warning falls due", from: "deletionWarnedAt", act: "waitCron", met: (s) => !!s.deletionWarnedAt },
+    { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", met: reached("resolved") },
+    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", met: sent("⑧ thank you → customer") },
+    { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", met: (s) => !!s.deletionWarnedAt },
   ],
   purge_imminent: [
-    { what: "Warning sent", next: "The warning goes out", from: "⑨", met: sent("⑨ deletion warning → customer") },
-    { what: "Files deleted", next: "The files are deleted", from: "filesPurgedAt", act: "waitCron", met: (s) => !!s.filesPurgedAt },
+    { what: "Warning sent", next: "Send the warning", from: "⑨", met: sent("⑨ deletion warning → customer") },
+    { what: "Files deleted", next: "Delete the files", from: "filesPurgedAt", act: "waitCron", met: (s) => !!s.filesPurgedAt },
   ],
   purged: [
-    { what: "Bytes removed from storage", next: "The sweep removes the bytes", from: "filesPurgedAt", met: (s) => !!s.filesPurgedAt },
-    { what: "Locators cleared", next: "The locators are cleared", from: "fileUrl = null", met: (s) => !!s.filesPurgedAt },
-    { what: "Record kept — permanently", next: "The record is kept, permanently", from: "the row survives", met: () => true },
+    { what: "Bytes removed from storage", next: "Remove the bytes", from: "filesPurgedAt", met: (s) => !!s.filesPurgedAt },
+    { what: "Locators cleared", next: "Clear the locators", from: "fileUrl = null", met: (s) => !!s.filesPurgedAt },
+    { what: "Record kept — permanently", next: "Keep the record", from: "the row survives", met: () => true },
   ],
 };
 

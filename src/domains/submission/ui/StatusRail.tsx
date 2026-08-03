@@ -53,11 +53,14 @@ export function StatusRail({
    */
   label?: string;
   /**
-   * A second line under the name: the latest breadcrumb.
+   * A second line under the name: the breadcrumb still outstanding.
    *
-   * The name answers *where* a submission is, and it can sit unchanged for
-   * days. This answers *what last happened* — a code rejected, a message
-   * delivered — which is the half you can't get from a rung.
+   * The name answers *where* a submission is, and can sit unchanged for days.
+   * This answers *what has to happen for it to move* — which is the question
+   * anyone scanning a queue is actually asking.
+   *
+   * **The same sentence that closes the trail below**, so the pill is the tail
+   * of that list hoisted into view rather than a second opinion about it.
    *
    * **A build-time readout, on trial.** It roughly doubles the row's height,
    * and once the flow is trusted the name alone is probably enough. Drop this

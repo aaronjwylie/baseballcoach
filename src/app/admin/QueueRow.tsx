@@ -58,12 +58,20 @@ export function QueueRow({
 }) {
   const [open, setOpen] = useState(false);
 
-  // The one line the submission is actually waiting on — a breadcrumb, not the
-  // next rung. A rung can be four of these away.
-  const pending = stage.find((line) => line.now);
+  /*
+    The one line the submission is waiting on — a breadcrumb, not the next rung.
+    A rung can be several of these away.
 
-  const last = latestBreadcrumb(events, rail.status);
-  const newest = last ? { ...describeEvent(last), note: last.note, at: last.at } : undefined;
+    **The same sentence serves both surfaces**: it closes the trail and it is
+    the pill's second line. The trail is then a list of things that happened,
+    each with its time, ending on the one that hasn't — and the pill is that
+    ending, hoisted to where it's visible without expanding the row.
+
+    Absent when every line of the stage is met. The submission is waiting on a
+    transition rather than on a person, and both surfaces say nothing rather
+    than invent a to-do.
+  */
+  const pending = stage.find((line) => line.now);
 
   return (
     <div className="border-b border-line last:border-0">
@@ -86,16 +94,7 @@ export function QueueRow({
             status={rail.status}
             needsTranslation={rail.needsTranslation}
             label={rail.label}
-            detail={
-              newest ? (
-                <>
-                  {newest.mark} {newest.text}
-                  {newest.note ? ` — ${newest.note}` : ""}
-                  {" · "}
-                  <LocalTime iso={newest.at} />
-                </>
-              ) : undefined
-            }
+            detail={pending ? `○ ${pending.next}` : undefined}
           />
         </span>
 
@@ -179,25 +178,6 @@ function describeEvent(e: SubmissionEvent): {
     bad: e.outcome === "bounced" || e.outcome === "failed" || e.ok === false,
     good: e.outcome === "delivered",
   };
-}
-
-/**
- * The latest breadcrumb worth showing beside the rung.
- *
- * Skips a status event that merely names the rung the pill already displays —
- * that's the most recent row the instant anything advances, and repeating the
- * headline underneath itself says nothing.
- */
-export function latestBreadcrumb(
-  events: SubmissionEvent[],
-  status: string,
-): SubmissionEvent | undefined {
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    const e = events[i];
-    if (e.kind === "status" && e.status === status) continue;
-    return e;
-  }
-  return undefined;
 }
 
 function Label({ children }: { children: ReactNode }) {

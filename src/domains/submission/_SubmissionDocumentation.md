@@ -913,8 +913,10 @@ event that occurred.
 
 So every chain line carries both. `what` is the condition, past voice, and it's
 what the checklist shows — a checklist is a list of conditions and should read
-like one. `next` is the same line before the fact, in future voice, **naming who
-does it**, and it's what closes the trail.
+like one. `next` is the same line before the fact — **terse, same register, same
+length** — and it's what closes the trail. "Payment cleared" against "Clear
+payment". A full sentence beside a column of clipped ones reads as a different
+kind of entry altogether.
 
 **43 lines across the sixteen rungs, 36 distinct.** Seven repeat because each
 rung opens by restating the condition that got it there — "Payment cleared" is
@@ -927,44 +929,44 @@ because they happen off-platform and we can't observe them. A passive line never
 holds the pointer, so it never becomes the trail's closing line and never asks
 anyone for something the system can't see.
 
-| Past — it happened | Future — it hasn't yet | Read from | Rungs |
+| Past — it happened | Future — it hasn't | Read from | Rungs |
 | --- | --- | --- | --- |
-| Approved and sent | Yuta approves it and sends it on | `feedbackEmailedAt` | 9, 11 |
-| Arrival announced | Yuta hears it arrived | `②` | 3 |
-| At least one file attached | The customer attaches a file | `intake` | 2 |
-| Bytes removed from storage | The sweep removes the bytes | `filesPurgedAt` | 16 |
-| Coach chosen | Yuta picks a coach | `assignedCoachId` | 3, 4 |
-| Coach downloaded the files | The coach downloads the files | `trail · in_review` | 7 |
-| Coach has the files | The coach gets the files | `trail · in_review` | 8 |
-| Coach's languages recorded | Someone records this coach's languages | `coaches.languages` | 4 |
-| Collection announced | Yuta hears the customer collected it | `⑦` | 13 |
-| Customer downloaded it | The customer downloads it | `collectedAt` | 12 |
-| Customer has it | The customer gets it | `collectedAt` | 13 |
-| Deletion warning due | The deletion warning falls due | `deletionWarnedAt` | 14 |
-| Delivery stamped | Delivery gets stamped | `completedAt` | 12 |
-| Email proven | The customer proves their email | `emailVerifiedAt` | 1, 2 |
-| Feedback emailed | The feedback email goes out | `⑥` | 12 |
-| Files deleted | The files are deleted | `filesPurgedAt` | 15 |
-| Hand-off emailed | The hand-off email goes out | `③` | 7 |
-| Handed to the coach | Yuta hands it to the coach | `③` | 4, 6 |
-| Locators cleared | The locators are cleared | `fileUrl = null` | 16 |
-| Marked resolved | Yuta marks it resolved | `trail · resolved` | 13, 14 |
-| Originals downloaded | The originals get downloaded | `off-platform` | 5 |
-| Payment cleared | The customer's payment clears | `paidAt` | 2, 3 |
-| Player details captured | The customer fills in the player's details | `playerName · focus` | 1 |
-| Receipt sent to the customer | The receipt goes to the customer | `②` | 3 |
-| Record kept — permanently | The record is kept, permanently | `the row survives` | 16 |
-| Response downloaded | The response gets downloaded | `off-platform` | 10 |
-| Response uploaded | The coach uploads their response | `response` | 8, 9 |
-| Sent out for translation, if the customer needs it | It goes out for translation, if the customer needs it | `rung 10` | 9 |
-| Sent out for translation, if this coach needs it | It goes out for translation, if this coach needs it | `rung 5` | 4 |
-| Thank-you sent | The thank-you goes out | `⑧` | 14 |
-| Translated files uploaded | The translated files are uploaded | `intake_translation` | 5 |
-| Translated set stored | The translated set is stored | `intake_translation` | 6 |
-| Translation stored | The translation is stored | `response_translation` | 11 |
-| Translation uploaded | The translation is uploaded | `response_translation` | 10 |
-| Warning sent | The warning goes out | `⑨` | 15 |
-| Yuta and the coach told | Yuta and the coach are told | `⑤` | 9 |
+| Approved and sent | Approve and send | `feedbackEmailedAt` | 9, 11 |
+| Arrival announced | Tell Yuta it arrived | `②` | 3 |
+| At least one file attached | Attach a file | `intake` | 2 |
+| Bytes removed from storage | Remove the bytes | `filesPurgedAt` | 16 |
+| Coach chosen | Pick a coach | `assignedCoachId` | 3, 4 |
+| Coach downloaded the files | Coach downloads the files | `trail · in_review` | 7 |
+| Coach has the files | Coach opens the files | `trail · in_review` | 8 |
+| Coach's languages recorded | Record the coach's languages | `coaches.languages` | 4 |
+| Collection announced | Tell Yuta they collected | `⑦` | 13 |
+| Customer downloaded it | Customer downloads it | `collectedAt` | 12 |
+| Customer has it | Customer opens it | `collectedAt` | 13 |
+| Deletion warning due | Warning falls due | `deletionWarnedAt` | 14 |
+| Delivery stamped | Stamp delivery | `completedAt` | 12 |
+| Email proven | Prove the email | `emailVerifiedAt` | 1, 2 |
+| Feedback emailed | Email the feedback | `⑥` | 12 |
+| Files deleted | Delete the files | `filesPurgedAt` | 15 |
+| Hand-off emailed | Email the hand-off | `③` | 7 |
+| Handed to the coach | Hand to the coach | `③` | 4, 6 |
+| Locators cleared | Clear the locators | `fileUrl = null` | 16 |
+| Marked resolved | Mark resolved | `trail · resolved` | 13, 14 |
+| Originals downloaded | Download the originals | `off-platform` | 5 |
+| Payment cleared | Clear payment | `paidAt` | 2, 3 |
+| Player details captured | Capture player details | `playerName · focus` | 1 |
+| Receipt sent to the customer | Send the receipt | `②` | 3 |
+| Record kept — permanently | Keep the record | `the row survives` | 16 |
+| Response downloaded | Download the response | `off-platform` | 10 |
+| Response uploaded | Upload the response | `response` | 8, 9 |
+| Sent out for translation, if the customer needs it | Send for translation, if needed | `rung 10` | 9 |
+| Sent out for translation, if this coach needs it | Send for translation, if needed | `rung 5` | 4 |
+| Thank-you sent | Send the thank-you | `⑧` | 14 |
+| Translated files uploaded | Upload the translated files | `intake_translation` | 5 |
+| Translated set stored | Store the translated set | `intake_translation` | 6 |
+| Translation stored | Store the translation | `response_translation` | 11 |
+| Translation uploaded | Upload the translation | `response_translation` | 10 |
+| Warning sent | Send the warning | `⑨` | 15 |
+| Yuta and the coach told | Tell Yuta and the coach | `⑤` | 9 |
 
 **The other three vocabularies** a breadcrumb can be drawn from, all past-voice
 because all three are observations rather than intentions:
@@ -979,20 +981,31 @@ because all three are observations rather than intentions:
 Only the chain lines need a future voice. An event is something that happened;
 you can't write the past-tense record of a send that hasn't gone out.
 
-### The pill carries a second line — on trial
+### The trail ends in the future, and the pill is that ending
 
-Line one is the rung, which can sit unchanged for days. Line two is **the latest
-breadcrumb**: a code rejected, a message delivered, with its time. The rung
-answers *where* a submission is; only the trail answers *what last happened*,
-and that was a click away inside the expanded panel.
+The shape, settled 2026-08-02:
 
-It skips a status event that merely names the rung already shown above it —
-which is the newest row the instant anything advances, and repeating the
-headline underneath itself says nothing.
+> The trail is a list of **past-tense entries, each with a timestamp**, closing
+> on **one future-tense entry with no timestamp** — the next breadcrumb. That
+> closing line is also **the pill's second line**.
 
-`describeEvent` is shared with the trail, so the pill's second line and the last
-row of the list underneath it read identically. Two formatters would have drifted
-the first time either changed.
+So the pill is the tail of the trail hoisted into view, not a second opinion
+about it. One sentence, rendered twice, from one place: line one says where the
+submission is, line two says what has to happen for it to move — which is the
+question anyone scanning a queue is actually asking.
+
+The missing timestamp is doing work. Every other line earned one by happening;
+this one hasn't happened, and giving it a time would be the same lie as writing
+it in past tense.
+
+**The pill showed the *latest* breadcrumb first**, which was the wrong half. A
+row that says "code accepted" tells you what you already watched happen; a row
+that says "The customer attaches a file" tells you what you're waiting on. Both
+are one line, and only one of them is worth the height.
+
+Absent on both surfaces when every line of a stage is met — the submission is
+waiting on a transition rather than on a person, and inventing a to-do would be
+a lie of a different kind.
 
 **Explicitly a build-time readout.** It roughly doubles the row's height, and
 once the flow is trusted the rung's name alone is likely enough. Removing it is
