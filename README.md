@@ -66,6 +66,14 @@ cp .env.example .env.local
 #   RESEND_API_KEY: needed to walk the flow in a browser — the code is emailed.
 #                   `npm run flow` exercises that path without it.
 
+# Checking your work
+#   npm run simulate   walks all 16 rungs, both translation paths, 116 checks.
+#                      Ten seconds, and it is the only thing that catches a guard
+#                      that stopped matching when the ladder grew — the compiler
+#                      cannot see those, and it has already found three.
+#   npm run flow       the customer's half, end to end
+#   npm run db:ladder  seeds one submission per rung, for driving the queue
+
 # 3. Install, migrate, seed
 #   Migrations run to 0010. Two are hand-corrected (0008, 0010) — apply them,
 #   don't regenerate: drizzle emits a cast that fails on existing rows, and it

@@ -40,6 +40,14 @@ flowchart LR
 
 ---
 
+## 2b · Fixed 2026-08-02
+
+- 🔴 **The hand-off refused translated submissions.** `notifyCoachAction` only
+  accepted `assigned`, but a translated intake sits at `intake_translated` — so
+  the button appeared, the action returned, and nothing happened. Silently, for
+  exactly the submissions that needed translating. Found by simulation, not by
+  review.
+
 ## 2 · Where we are now — 2026-08-01
 
 **Phases 3–4 of the rollout landed here.**

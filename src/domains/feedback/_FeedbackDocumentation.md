@@ -85,6 +85,17 @@ flowchart LR
 > exist. This is the sibling of the flow's upload-gating verification, for a different purpose:
 > proving inbox control to *release* feedback rather than to *accept* an upload.
 
+## 2b · Fixed 2026-08-02
+
+- 🔴 **Approval refused translated responses.** The mirror of the hand-off bug:
+  a translated response sits at `response_translated`, and `approveAndComplete`
+  only accepted `awaiting_approval` — so a review could be translated and then
+  never sent.
+- ✅ **The bounce message names the kind of failure.** `hard` says the address
+  doesn't exist, `soft` says the inbox couldn't take it, and an unrecognised
+  classification gets wording true of both. Telling someone with a full mailbox
+  to check for a typo sends them hunting for a mistake they didn't make.
+
 ## 2 · Where we are now — 2026-08-01
 
 This slice grew from "the coach's response" into **the response's whole life after

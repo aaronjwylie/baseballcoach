@@ -1036,6 +1036,11 @@ Read this section before coding. These have bitten *this* project.
 A feature is "done" when:
 
 1. Code compiles with no TypeScript errors and no ESLint warnings
+1b. **`npm run simulate` passes.** It walks all sixteen rungs through the real
+   domain functions, and it is the only check that catches a guard which stopped
+   matching when the ladder grew — a comparison against one literal status stays
+   valid TypeScript forever. It has already found three such bugs, two of which
+   made the translation path impossible to complete.
 2. Feature works end-to-end in dev (manual test)
 3. Error states are handled (network failure, validation failure, edge cases)
 4. Loading states show clear user feedback
