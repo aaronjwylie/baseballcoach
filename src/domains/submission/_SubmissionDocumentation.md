@@ -1031,47 +1031,48 @@ history and wondering why it's silent.
 
 Column two is the line that closes the trail and sits under the rung on the
 pill. **Those are the same string** — one `next` per substep, rendered twice.
-Column three is what the trail records once it happens. Column four is what the
-chain used to say nothing about at all, which is how `② arrival → Yuta` failing
-managed to hide the assign control for a day.
+Column three is what the chain used to say nothing about at all, which is how
+`② arrival → Yuta` failing managed to hide the assign control for a day. Column
+four is what the trail records once it goes right — **last, because it is the
+one outcome that needs no attention.**
 
 Generated from `STAGE_CHAIN`, not hand-maintained.
 
-| Step | Substep — to do | Substep — done | Substep — gone wrong |
+| Step | Substep — to do | Substep — gone wrong | Substep — done |
 | --- | --- | --- | --- |
-| **1 · Draft** | Send the code | Code sent to the customer | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Prove the email | Email proven | Wrong code — an attempt spent<br>Rejected — five attempts spent<br>Rejected — the window had closed<br>Rejected — no code outstanding<br>† Abandoned — the row and its files are deleted outright |
-| **2 · Upload** | Attach a file | At least one file attached | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty<br>† Refused — the flow session had expired |
-|  | Clear payment | Payment cleared | Card declined — a way back in was emailed<br>Declined, with no row of its own *(not built)* — only the notice is written down<br>† Abandoned — the row and its files are deleted outright |
-| **3 · New** | Send the receipt | Receipt sent to the customer | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Tell Yuta it arrived | Arrival announced | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Pick a coach | Coach chosen | † Refused — already handed off, so a stale tab can't reassign |
-| **4 · Assigned** | Record the coach's languages | Coach's languages recorded | None recorded — translation need can't be derived, and the queue says which side is missing |
-|  | Send for translation, if needed | Sent out for translation, if this coach needs it | *nothing can* |
-|  | Hand to the coach | Handed to the coach | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>† Refused — a stale tab tried to reassign after hand-off |
-| **5 · Translating** | Download the originals | Originals downloaded | † Unobservable — a translator who never downloads looks identical to one who did |
-|  | Upload the translated files | Translated files uploaded | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty |
-| **6 · Translated** | Hand to the coach | Handed to the coach | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>† Refused — a stale tab tried to reassign after hand-off |
-| **7 · Sent** | Email the hand-off | Hand-off emailed | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Coach downloads the files | Coach downloaded the files | Gone — the folder was purged before they collected (410)<br>† Refused — a different coach asked (403) |
-| **8 · Reviewing** | Upload the response | Response uploaded | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty |
-| **9 · Submitted** | Tell Yuta and the coach | Yuta and the coach told | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Send for translation, if needed | Sent out for translation, if the customer needs it | *nothing can* |
-|  | Approve and send | Approved and sent | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Refused — there is no response file to send |
-| **10 · Translating** | Download the response | Response downloaded | † Unobservable — the upload is the only proof |
-|  | Upload the translation | Translation uploaded | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty |
-| **11 · Translated** | Approve and send | Approved and sent | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Refused — there is no response file to send |
-| **12 · Delivered** | Email the feedback | Feedback emailed | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Customer downloads it | Customer downloaded it | Gone — an operator purged the folder early (410) |
-| **13 · Collected** | Tell Yuta they collected | Collection announced | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Mark resolved | Marked resolved | *nothing can* |
-| **14 · Resolved** | Send the thank-you | Thank-you sent | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam |
-|  | Warning falls due | Deletion warning due | The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded |
-| **15 · Deleting** | Send the warning | Warning sent | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Stamped even when the send failed — retrying nightly would turn one miss into seven |
-|  | Delete the files | Files deleted | Storage refused the delete — the locator stays and the sweep retries *(not built)* |
-| **16 · Purged** | Remove the bytes | Bytes removed from storage | *nothing can* |
-|  | Clear the locators | Locators cleared | *nothing can* |
-|  | Keep the record | Record kept — permanently | *nothing can* |
+| **1 · Draft** | Send the code | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Code sent to the customer |
+|  | Prove the email | Wrong code — an attempt spent<br>Rejected — five attempts spent<br>Rejected — the window had closed<br>Rejected — no code outstanding<br>† Abandoned — the row and its files are deleted outright | Email proven |
+| **2 · Upload** | Attach a file | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty<br>† Refused — the flow session had expired | At least one file attached |
+|  | Clear payment | Card declined — a way back in was emailed<br>Declined, with no row of its own *(not built)* — only the notice is written down<br>† Abandoned — the row and its files are deleted outright | Payment cleared |
+| **3 · New** | Send the receipt | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Receipt sent to the customer |
+|  | Tell Yuta it arrived | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Arrival announced |
+|  | Pick a coach | † Refused — already handed off, so a stale tab can't reassign | Coach chosen |
+| **4 · Assigned** | Record the coach's languages | None recorded — translation need can't be derived, and the queue says which side is missing | Coach's languages recorded |
+|  | Send for translation, if needed | *nothing can* | Sent out for translation, if this coach needs it |
+|  | Hand to the coach | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>† Refused — a stale tab tried to reassign after hand-off | Handed to the coach |
+| **5 · Translating** | Download the originals | † Unobservable — a translator who never downloads looks identical to one who did | Originals downloaded |
+|  | Upload the translated files | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty | Translated files uploaded |
+| **6 · Translated** | Hand to the coach | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>† Refused — a stale tab tried to reassign after hand-off | Handed to the coach |
+| **7 · Sent** | Email the hand-off | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Hand-off emailed |
+|  | Coach downloads the files | Gone — the folder was purged before they collected (410)<br>† Refused — a different coach asked (403) | Coach downloaded the files |
+| **8 · Reviewing** | Upload the response | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty | Response uploaded |
+| **9 · Submitted** | Tell Yuta and the coach | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Yuta and the coach told |
+|  | Send for translation, if needed | *nothing can* | Sent out for translation, if the customer needs it |
+|  | Approve and send | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Refused — there is no response file to send | Approved and sent |
+| **10 · Translating** | Download the response | † Unobservable — the upload is the only proof | Response downloaded |
+|  | Upload the translation | † Refused — over the file-count limit<br>† Refused — over the size limit<br>† Refused — that file type isn't supported<br>† Refused — the file was empty | Translation uploaded |
+| **11 · Translated** | Approve and send | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Refused — there is no response file to send | Approved and sent |
+| **12 · Delivered** | Email the feedback | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Feedback emailed |
+|  | Customer downloads it | Gone — an operator purged the folder early (410) | Customer downloaded it |
+| **13 · Collected** | Tell Yuta they collected | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Collection announced |
+|  | Mark resolved | *nothing can* | Marked resolved |
+| **14 · Resolved** | Send the thank-you | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam | Thank-you sent |
+|  | Warning falls due | The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded | Deletion warning due |
+| **15 · Deleting** | Send the warning | Send refused by the mail provider<br>Bounced — the address doesn't exist<br>Bounced — the mailbox wouldn't take it<br>Marked as spam<br>Stamped even when the send failed — retrying nightly would turn one miss into seven | Warning sent |
+|  | Delete the files | Storage refused the delete — the locator stays and the sweep retries *(not built)* | Files deleted |
+| **16 · Purged** | Remove the bytes | *nothing can* | Bytes removed from storage |
+|  | Clear the locators | *nothing can* | Locators cleared |
+|  | Keep the record | *nothing can* | Record kept — permanently |
 
 ### The breadcrumb library — two voices for one line
 
