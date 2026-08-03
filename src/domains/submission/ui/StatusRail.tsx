@@ -110,11 +110,22 @@ export function StatusRail({
           const past = i < at;
           const now = i === at;
           return (
+            /*
+              Its own label rather than `title`.
+
+              A native tooltip waits about a second, can't be styled, and never
+              appears on touch — which made the sixteen dots effectively
+              unlabelled, since the pill names only the rung you're already on.
+              This one shows the instant the pointer lands.
+
+              The dot itself stays the hover target and the label is
+              `pointer-events-none`, so a tooltip can never sit between the
+              cursor and the thing it describes.
+            */
             <span
               key={rung}
-              title={RUNG_LABEL[rung]}
               className={[
-                "relative flex-none rounded-full",
+                "group relative flex-none rounded-full",
                 now ? "h-[9px] w-[9px] outline outline-[3px] outline-white" : "h-[7px] w-[7px]",
                 now
                   ? warn
@@ -127,7 +138,14 @@ export function StatusRail({
                     : "bg-white ring-1 ring-inset " + (optional ? "ring-band" : "ring-line"),
                 optional && !needsTranslation ? "opacity-35" : "",
               ].join(" ")}
-            />
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-ink px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white group-hover:block"
+              >
+                {i + 1} · {RUNG_LABEL[rung]}
+              </span>
+            </span>
           );
         })}
       </div>

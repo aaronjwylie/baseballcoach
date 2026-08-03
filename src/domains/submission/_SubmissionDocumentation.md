@@ -947,6 +947,21 @@ throttle a burst of downloads from one gesture and drop the tail silently.
 Swept files are listed but not counted toward the button — their rows outlive
 their bytes, so offering them would promise a download that 410s.
 
+### The rail's dots name themselves on hover
+
+Sixteen dots, and the pill names only the one you're already on — so fifteen of
+them were unlabelled. A native `title` was carrying that, which waits about a
+second, can't be styled, and never appears on touch.
+
+Its own label now, shown the instant the pointer lands, and numbered
+(`7 · Sent`) because four rungs share two names and position is the only thing
+that tells them apart.
+
+The dot stays the hover target and the label is `pointer-events-none`, so a
+tooltip can never sit between the cursor and the thing it describes. The rail's
+`aria-label` is unchanged and still carries "Step 3 of 16: New" for anyone not
+using a pointer at all.
+
 ### An open row stays open across a reload
 
 An override or an assignment reloads the page, and the row being worked in
@@ -1029,7 +1044,7 @@ columns of operator vocabulary":
 
 | Column | Where it renders |
 | --- | --- |
-| **Step** | • the pill's top line<br>• every rail dot's tooltip<br>• the rail's screen-reader label<br>• status rows in the trail<br>• the queue's filter tabs<br>• the override's **Move back to**, numbered |
+| **Step** | • the pill's top line<br>• every rail dot's hover label, numbered<br>• the rail's screen-reader label<br>• status rows in the trail<br>• the queue's filter tabs<br>• the override's **Move back to**, numbered |
 | **Still to do** | • the pill's second line<br>• the last line of the trail<br>*one string, rendered twice* |
 | **Written when it fails** | • the trail, in the drawer |
 | **Written when it works** | • the trail, in the drawer |
