@@ -91,8 +91,48 @@ export interface ChainLine {
   passive?: boolean;
   /** The control that satisfies it, if a person can. */
   act?: ChainAction;
+  /**
+   * Every way this line can go wrong, in the past voice the trail would use.
+   *
+   * The chain says what has to be true. It said nothing about the other
+   * outcome, and the other outcome is the one somebody has to do something
+   * about — `② arrival → Yuta` failing is what hid the assign control for a
+   * day, and no list anywhere said that was a thing that could happen.
+   *
+   * **A dagger (†) means it never reaches the trail** — the person in front of
+   * it is told and nothing is written down. That distinction is the point of
+   * inventorying these together: an operator reading a submission's history
+   * needs to know which silences are meaningful.
+   */
+  failures?: string[];
   met: (submission: Submission, facts: ProgressFacts) => boolean;
 }
+
+/**
+ * What can befall a message. One list, because every send fails the same four
+ * ways and writing them out per line would guarantee they drift apart.
+ *
+ * `sent` only ever means Resend accepted it. The rest arrive by webhook, which
+ * is the whole reason the delivery tracking exists.
+ */
+const SEND_FAILED = [
+  "Send refused by the mail provider",
+  "Bounced — the address doesn't exist",
+  "Bounced — the mailbox wouldn't take it",
+  "Marked as spam",
+];
+
+/**
+ * What can befall an upload. All four are refusals at the door, so **none of
+ * them reach the trail** — there is no submission-level event for a file that
+ * was never accepted, only a message to whoever tried.
+ */
+const UPLOAD_REFUSED = [
+  "† Refused — over the file-count limit",
+  "† Refused — over the size limit",
+  "† Refused — that file type isn't supported",
+  "† Refused — the file was empty",
+];
 
 const sent = (label: string) => (_s: Submission, f: ProgressFacts) =>
   f.emails.get(label) === true;
@@ -129,23 +169,24 @@ const reached = (status: SubmissionStatus) => (_s: Submission, f: ProgressFacts)
  */
 export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   draft: [
-    { what: "Code sent to the customer", next: "Send the code", from: "①", passive: true, met: sent("① code → customer") },
-    { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", act: "waitCustomer", met: (s) => !!s.emailVerifiedAt },
+    { what: "Code sent to the customer", next: "Send the code", from: "①", passive: true, failures: [...SEND_FAILED], met: sent("① code → customer") },
+    { what: "Email proven", next: "Prove the email", from: "emailVerifiedAt", act: "waitCustomer", failures: ["Wrong code — an attempt spent", "Rejected — five attempts spent", "Rejected — the window had closed", "Rejected — no code outstanding", "† Abandoned — the row and its files are deleted outright"], met: (s) => !!s.emailVerifiedAt },
   ],
   awaiting_payment: [
-    { what: "At least one file attached", next: "Attach a file", from: "intake", met: has("intake") },
-    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", met: (s) => !!s.paidAt },
+    { what: "At least one file attached", next: "Attach a file", from: "intake", failures: [...UPLOAD_REFUSED, "† Refused — the flow session had expired"], met: has("intake") },
+    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", failures: ["Card declined — a way back in was emailed", "Declined, with no row of its own *(not built)* — only the notice is written down", "† Abandoned — the row and its files are deleted outright"], met: (s) => !!s.paidAt },
   ],
   new: [
-    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, met: sent("② receipt → customer") },
-    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", passive: true, met: sent("② arrival → Yuta") },
-    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", met: (s) => !!s.assignedCoachId },
+    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, failures: [...SEND_FAILED], met: sent("② receipt → customer") },
+    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", passive: true, failures: [...SEND_FAILED], met: sent("② arrival → Yuta") },
+    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", failures: ["† Refused — already handed off, so a stale tab can't reassign"], met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
     {
       what: "Coach's languages recorded", next: "Record the coach's languages",
       from: "coaches.languages",
       why: "without them, translation need can't be derived",
+      failures: ["None recorded — translation need can't be derived, and the queue says which side is missing"],
       met: (_s, f) => f.coachHasLanguages,
     },
     {
@@ -158,7 +199,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       met: (_s, f) => f.files.intake_translation > 0,
     },
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", failures: [...SEND_FAILED, "† Refused — a stale tab tried to reassign after hand-off"], met: sent("③ hand-off → coach") },
   ],
   intake_translating: [
     {
@@ -166,28 +207,30 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       from: "off-platform",
       why: "nothing observes this — the upload is the proof",
       passive: true,
+      failures: ["† Unobservable — a translator who never downloads looks identical to one who did"],
       met: () => false,
     },
-    { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", met: has("intake_translation") },
+    { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", failures: [...UPLOAD_REFUSED], met: has("intake_translation") },
   ],
   intake_translated: [
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", failures: [...SEND_FAILED, "† Refused — a stale tab tried to reassign after hand-off"], met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
-    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, met: sent("③ hand-off → coach") },
+    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, failures: [...SEND_FAILED], met: sent("③ hand-off → coach") },
     {
       what: "Coach downloaded the files", next: "Coach downloads the files",
       from: "trail · in_review",
       why: "the only evidence the coach actually has it",
       act: "waitCoach",
+      failures: ["Gone — the folder was purged before they collected (410)", "† Refused — a different coach asked (403)"],
       met: reached("in_review"),
     },
   ],
   in_review: [
-    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", met: has("response") },
+    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", failures: [...UPLOAD_REFUSED], met: has("response") },
   ],
   awaiting_approval: [
-    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", passive: true, met: sent("⑤ response submitted → Yuta + coach") },
+    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", passive: true, failures: [...SEND_FAILED], met: sent("⑤ response submitted → Yuta + coach") },
     {
       what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
       from: "rung 10",
@@ -196,7 +239,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       met: (_s, f) => f.files.response_translation > 0,
     },
-    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", failures: [...SEND_FAILED, "Refused — there is no response file to send"], met: (s) => !!s.feedbackEmailedAt },
   ],
   response_translating: [
     {
@@ -204,34 +247,36 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       from: "off-platform",
       why: "nothing observes this — the upload is the proof",
       passive: true,
+      failures: ["† Unobservable — the upload is the only proof"],
       met: () => false,
     },
-    { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", met: has("response_translation") },
+    { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", failures: [...UPLOAD_REFUSED], met: has("response_translation") },
   ],
   response_translated: [
-    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
+    { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", failures: [...SEND_FAILED, "Refused — there is no response file to send"], met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [
-    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, met: sent("⑥ feedback ready → customer") },
+    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, failures: [...SEND_FAILED], met: sent("⑥ feedback ready → customer") },
     {
       what: "Customer downloaded it", next: "Customer downloads it",
       from: "collectedAt",
       why: "starts the retention clock — nothing is purged before this",
       act: "waitCustomer",
+      failures: ["Gone — an operator purged the folder early (410)"],
       met: (s) => !!s.collectedAt,
     },
   ],
   collected: [
-    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", passive: true, met: sent("⑦ collected → Yuta") },
+    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", passive: true, failures: [...SEND_FAILED], met: sent("⑦ collected → Yuta") },
     { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
   ],
   resolved: [
-    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, met: sent("⑧ thank you → customer") },
-    { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", met: (s) => !!s.deletionWarnedAt },
+    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, failures: [...SEND_FAILED], met: sent("⑧ thank you → customer") },
+    { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", failures: ["The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded"], met: (s) => !!s.deletionWarnedAt },
   ],
   purge_imminent: [
-    { what: "Warning sent", next: "Send the warning", from: "⑨", passive: true, met: sent("⑨ deletion warning → customer") },
-    { what: "Files deleted", next: "Delete the files", from: "filesPurgedAt", act: "waitCron", met: (s) => !!s.filesPurgedAt },
+    { what: "Warning sent", next: "Send the warning", from: "⑨", passive: true, failures: [...SEND_FAILED, "Stamped even when the send failed — retrying nightly would turn one miss into seven"], met: sent("⑨ deletion warning → customer") },
+    { what: "Files deleted", next: "Delete the files", from: "filesPurgedAt", act: "waitCron", failures: ["Storage refused the delete — the locator stays and the sweep retries *(not built)*"], met: (s) => !!s.filesPurgedAt },
   ],
   purged: [
     { what: "Bytes removed from storage", next: "Remove the bytes", from: "filesPurgedAt", met: (s) => !!s.filesPurgedAt },
