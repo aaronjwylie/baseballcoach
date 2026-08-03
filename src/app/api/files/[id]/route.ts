@@ -24,7 +24,7 @@ export const maxDuration = 60;
  * ever get that the coach actually has the work — there is no "I've started"
  * button, and asking for one would be a button nobody presses. So the first time
  * the assigned coach collects an intake file, the submission moves to
- * `in_review` and Yuta is told the hand-off closed.
+ * `in_review` and the admin is told the hand-off closed.
  */
 export async function GET(
   _request: Request,

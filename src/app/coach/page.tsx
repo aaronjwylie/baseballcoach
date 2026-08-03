@@ -35,7 +35,7 @@ export default async function CoachHomePage() {
   // flow reads.
   const uploadMode: UploadMode = storage.supportsDirectUpload ? "blob" : "proxy";
 
-  // A coach's work is "open" until they hand it to Yuta; once sent it's awaiting
+  // A coach's work is "open" until they hand it to the admin; once sent it's awaiting
   // approval (or delivered), and out of their hands.
   const open = submissions.filter(
     isWithCoach,

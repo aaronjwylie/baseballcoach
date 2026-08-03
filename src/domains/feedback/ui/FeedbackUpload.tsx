@@ -22,7 +22,7 @@ interface FeedbackFile {
 
 /**
  * A coach attaches one or more feedback files to a submission, then hands the set
- * to Yuta for approval.
+ * to the admin for approval.
  *
  * Uploads reuse the customer's transport (`uploadFile`) with the operator-gated
  * feedback endpoints — direct-to-Blob in prod, proxied to disk in dev — so a

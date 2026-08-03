@@ -2,7 +2,7 @@
  * Delivering feedback — a two-step hand-off, now multi-file.
  *
  * A coach attaches **one or more** response files to a submission (each a row in
- * `submission_files` with `kind = "feedback"`), then hands the set to Yuta:
+ * `submission_files` with `kind = "feedback"`), then hands the set to the admin:
  *
  * 1. Files arrive one at a time — `saveFeedbackFile` (dev proxy) or
  *    `recordFeedbackFile` (prod direct-to-Blob). Attaching a file does **not**
@@ -69,7 +69,7 @@ export async function recordFeedbackFile(
 }
 
 /**
- * Coach hands their breakdown to Yuta. Requires at least one feedback file, so a
+ * Coach hands their breakdown to the admin. Requires at least one feedback file, so a
  * stray click can't park an empty review for approval. No customer email here.
  */
 export async function sendFeedbackForApproval(
@@ -83,7 +83,7 @@ export async function sendFeedbackForApproval(
 
     The coach's ownership was already checked by the caller; the *status* wasn't,
     which meant a stale tab could deliver twice, or deliver work on a submission
-    Yuta had already approved — walking it backwards over its own completion.
+    the admin had already approved — walking it backwards over its own completion.
     Unreachable by clicking, which is exactly why it was worth closing.
   */
   const current = await getSubmission(submissionId);
@@ -93,7 +93,7 @@ export async function sendFeedbackForApproval(
     status: "awaiting_approval",
   });
 
-  // ⑤ — tell Yuta it's waiting, and the coach that it arrived. Best-effort: the
+  // ⑤ — tell the admin it's waiting, and the coach that it arrived. Best-effort: the
   // work is delivered either way, and a webhook must never fail on mail.
   const coach = updated.assignedCoachId
     ? await getCoach(updated.assignedCoachId)
@@ -106,13 +106,13 @@ export async function sendFeedbackForApproval(
     fileCount: files.length,
     reviewUrl: `${env.siteUrl}/admin`,
   });
-  void noteEmailSent(submissionId, "⑤ response submitted → Yuta + coach", submitted);
+  void noteEmailSent(submissionId, "⑤ response submitted → Admin + coach", submitted);
 
   return updated;
 }
 
 /**
- * Step 15 — Yuta closes the job, and thanks the customer.
+ * Step 15 — the admin closes the job, and thanks the customer.
  *
  * **Deliberately manual.** The objection was always "he'll forget, and the
  * thank-you never goes" — which is answered not by automating it but by step 14
@@ -146,7 +146,7 @@ export async function resolveSubmission(
 }
 
 /**
- * The customer collected their feedback — stamp it, and tell Yuta.
+ * The customer collected their feedback — stamp it, and tell the admin.
  *
  * Called from every route that hands a response file over. **Idempotent**: only
  * the first collection moves the status, so a re-download can't restart the
@@ -166,11 +166,11 @@ export async function noteCustomerCollected(
     playerName: collected.playerName,
     submissionUrl: `${env.siteUrl}/admin`,
   });
-  void noteEmailSent(submissionId, "⑦ collected → Yuta", result);
+  void noteEmailSent(submissionId, "⑦ collected → Admin", result);
 }
 
 /**
- * Yuta approves the coach's work: complete the submission and tell the customer
+ * the admin approves the coach's work: complete the submission and tell the customer
  * their feedback is ready. Only acts on a submission that's actually awaiting
  * approval and has at least one feedback file, so a stray click can't email an
  * empty review.

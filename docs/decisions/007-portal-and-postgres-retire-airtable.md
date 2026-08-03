@@ -2,7 +2,7 @@
 
 **Status:** Accepted (2026-07-29, Aaron) · **Major pivot** — reverses the "not a
 SaaS platform" premise (CLAUDE.md §1), retires [ADR 001](001-airtable-as-db.md)
-and [ADR 002](002-passthrough-holds-record-id.md) · **Needs Yuta + Ben
+and [ADR 002](002-passthrough-holds-record-id.md) · **Needs the admin + Ben
 sign-off on the operating-model change before build starts**
 
 ## Problem
@@ -14,7 +14,7 @@ locally** ([ADR 006](006-object-storage-over-mux.md)).
 
 The original design ran the operator side on **Airtable** specifically to *avoid
 building an admin UI* — the whole "productized service, not a SaaS platform"
-northstar rested on that. We've now decided the opposite: **Yuta and the coaches
+northstar rested on that. We've now decided the opposite: **the admin and the coaches
 should log into a portal to manage and respond to submissions.**
 
 Once you're building the admin UI, Airtable is redundant — the portal *is* the
@@ -24,7 +24,7 @@ would be double-bookkeeping.
 ## Decision
 
 1. **Build a role-based operator portal** in the same Next.js app:
-   - **Admin (Yuta):** sees all submissions, manages coaches, assigns work,
+   - **Admin (the admin):** sees all submissions, manages coaches, assigns work,
      oversees the queue.
    - **Coach:** sees assigned submissions, downloads the video, uploads feedback,
      marks complete.
@@ -37,7 +37,7 @@ would be double-bookkeeping.
 
 This is a deliberate move up the original "upgrade path," from thin-layer service
 toward a real platform. It trades the lean-MVP speed the Airtable shortcut bought
-for an operator experience Yuta owns.
+for an operator experience the admin owns.
 
 ## What this retires / reworks
 
@@ -55,7 +55,7 @@ for an operator experience Yuta owns.
 ## New data model (Postgres — sketch, finalize at build)
 
 - **users** — `id`, `email`, `passwordHash` (or provider id), `role`
-  (`admin` | `coach`), `createdAt`. Backs auth for Yuta + coaches only.
+  (`admin` | `coach`), `createdAt`. Backs auth for the admin + coaches only.
 - **coaches** — `id`, `userId`, `name`, `specialties`, `languages`, `active`.
 - **submissions** — `id`, `customerEmail` (lowercased), `playerName`,
   `playerAge`, `focus`, `customerNotes`, `internalNotes`, `status`,
@@ -71,7 +71,7 @@ An **ORM is now warranted** (previously banned) — **Drizzle** preferred
 
 ## Auth — open sub-decision
 
-Don't hand-roll it. It's a small **two-role** portal (Yuta + a few coaches), not
+Don't hand-roll it. It's a small **two-role** portal (the admin + a few coaches), not
 customer-facing auth at scale. Candidates:
 
 - **Auth.js (NextAuth)** — in-house, free, no new vendor; more wiring.
@@ -100,12 +100,12 @@ picked Vercel Blob in ADR 006). Final call at build.
   email); only the operator side and the persistence layer change.
 - **Go-live / OPERATIONS.md** simplifies further: no Airtable base, no Make.com;
   add Postgres provisioning + seeding the first admin user.
-- **Operating-model alignment.** Yuta moves from a spreadsheet he knows to a
-  portal we build. That's a client-experience change — **confirm with Yuta before
+- **Operating-model alignment.** the admin moves from a spreadsheet he knows to a
+  portal we build. That's a client-experience change — **confirm with the admin before
   building**, and budget for basic operator onboarding.
 
 ## Sequencing
 
-Build is **paused pending Aaron's word** (and Yuta/Ben sign-off). When it starts,
+Build is **paused pending Aaron's word** (and the admin/Ben sign-off). When it starts,
 this becomes the dominant workstream: schema + auth first, then the two portal
 surfaces, then retire the Airtable code paths.

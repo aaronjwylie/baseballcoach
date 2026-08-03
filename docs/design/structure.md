@@ -40,7 +40,7 @@ domains/
   feedback/     the coach's response coming back
   account/      operator identity — who logs into the portal
   coach/        the reviewers, and assigning work to them
-  settings/     the limits Yuta tunes without a deploy
+  settings/     the limits the admin tunes without a deploy
   landing/      the sales pitch
 ```
 

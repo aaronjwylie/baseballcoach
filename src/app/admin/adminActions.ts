@@ -56,19 +56,19 @@ export async function unarchiveSubmissionAction(
 }
 
 /**
- * Yuta approves the coach's uploaded feedback: complete the submission and send
+ * the admin approves the coach's uploaded feedback: complete the submission and send
  * the customer their download link. Guarded to `awaiting_approval` inside
  * `approveAndComplete`, so it's safe to call from a button.
  */
 /**
- * Steps 6–7 and 11–12 — Yuta puts a translation back.
+ * Steps 6–7 and 11–12 — the admin puts a translation back.
  *
  * Both directions are one action because they are one act: the only difference
  * is which folder it lands in, which is the `kind` the caller names. Writing it
  * twice would be two chances to get the retention or the guard wrong.
  *
  * Translations don't count against the customer's upload limit — that limit is a
- * promise about what *they* may send, and Yuta's working copies must not eat
+ * promise about what *they* may send, and the admin's working copies must not eat
  * into it.
  */
 export async function uploadTranslationAction(
@@ -115,7 +115,7 @@ export async function uploadTranslationAction(
     The status follows the folder, and only from the rung that makes sense.
 
     A translation arriving on a submission that has already moved past its
-    translation step is filed without disturbing where it is — Yuta adding a
+    translation step is filed without disturbing where it is — the admin adding a
     late copy shouldn't walk a released submission backwards.
   */
   /*
@@ -194,10 +194,10 @@ export async function purgeFolderAction(formData: FormData): Promise<void> {
  *
  * **The only route backwards, and the answer to "what can be undone".** Not a
  * set of per-stage undo buttons: one general handle an operator can reach for
- * beats eleven specific ones nobody remembers exist. Work Yuta won't accept goes
+ * beats eleven specific ones nobody remembers exist. Work the admin won't accept goes
  * back to `in_review`; a mis-picked language set goes back to `assigned`.
  *
- * If Yuta isn't satisfied with a coach's work he'll speak to them directly — the
+ * If the admin isn't satisfied with a coach's work he'll speak to them directly — the
  * system's job is to let him put the submission back where it needs to be, not
  * to model the conversation.
  *
@@ -263,7 +263,7 @@ async function noteSubmissionAction(
 }
 
 /**
- * Step 15 — Yuta closes the job.
+ * Step 15 — the admin closes the job.
  *
  * Manual by decision, not by omission: the `collected` status makes the pending
  * work a list he can pull up, which is what the "he'll forget" objection actually
@@ -286,7 +286,7 @@ export async function resolveSubmissionAction(
  *
  * **These rungs were unreachable.** Nothing in the app wrote them: uploading a
  * translation jumped straight from `assigned` to `intake_translated`, so a
- * submission sitting on Yuta's laptop for two days was indistinguishable from
+ * submission sitting on the admin's laptop for two days was indistinguishable from
  * one he hadn't started. That is the exact thing the rung exists to show.
  *
  * It needs an explicit action because the download can't be it — an admin

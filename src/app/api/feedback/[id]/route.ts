@@ -19,7 +19,7 @@ export const maxDuration = 60;
  * **Public once the submission is complete** — the customer isn't logged in and
  * reaches this from their status lookup (the id is an unguessable uuid, the same
  * URL-as-capability trade-off the status page makes). **Operators can download
- * at any status**, so Yuta can review the coach's material while it's still
+ * at any status**, so the admin can review the coach's material while it's still
  * `awaiting_approval`, before the customer is ever emailed.
  *
  * The id must name a `feedback` file — a customer upload downloaded through here
@@ -40,7 +40,7 @@ export async function GET(
   /*
     Step 14, observed rather than declared — the mirror of step 9.
 
-    Only a customer's download counts: Yuta opening the file to check it is not
+    Only a customer's download counts: the admin opening the file to check it is not
     the customer collecting it, and letting that start the retention clock would
     delete their feedback thirty days after *he* looked at it.
 

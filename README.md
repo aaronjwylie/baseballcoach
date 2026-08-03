@@ -5,7 +5,7 @@ clips of their kid batting or pitching, plus any stills or documents that help �
 and get an expert coach's feedback back. Two audiences:
 
 - **Customers** — a public funnel: land → verify email → upload → pay → check status → download feedback. No account, ever.
-- **Operators** — Yuta (admin) and coaches log into a portal to run the coaching workflow.
+- **Operators** — the admin (admin) and coaches log into a portal to run the coaching workflow.
 
 Built with **Next.js 16** (App Router, Turbopack), React 19, Tailwind v4,
 **Postgres** via **Drizzle**, and object **storage** (local disk in dev, Vercel
@@ -25,7 +25,7 @@ CUSTOMER (public, no login)
   4.5 MB and a phone video doesn't (ADR 011).
 
 OPERATOR PORTAL (login)
-  admin (Yuta): /admin queue · assign a coach · /admin/coaches · /admin/settings (limits + retention)
+  admin (the admin): /admin queue · assign a coach · /admin/coaches · /admin/settings (limits + retention)
   coach: /coach assigned reviews · download the files · upload feedback → complete → emails the customer
 
 NIGHTLY

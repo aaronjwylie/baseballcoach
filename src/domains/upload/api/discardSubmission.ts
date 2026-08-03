@@ -1,7 +1,7 @@
 /**
  * Throw away an unfinished submission — files and record together.
  *
- * **Only a completed payment earns retention** (Yuta, 2026-07-30). Until the
+ * **Only a completed payment earns retention** (the client, 2026-07-30). Until the
  * money clears, a submission is a scratch pad: a refresh, a timeout, or the
  * customer pressing "Start over" discards it outright.
  *

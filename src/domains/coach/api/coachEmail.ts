@@ -86,7 +86,7 @@ export function sendAssignmentEmail(opts: AssignmentEmailInput) {
 }
 
 /**
- * ④ — the coach has collected the files. To Yuta.
+ * ④ — the coach has collected the files. To the admin.
  *
  * The hand-off is the one step in the pipeline that waits on a person outside
  * the building, and until this exists the only way to know whether it landed is

@@ -14,7 +14,7 @@
  * The asymmetry is the point. A paid submission's history matters — the receipt
  * and the portal still have to say what was sent. Nothing was ever bought in the
  * abandoned case, so there is no history to preserve and a kept row is just
- * noise in the queue. **Only payment earns retention** (Yuta, 2026-07-30).
+ * noise in the queue. **Only payment earns retention** (the client, 2026-07-30).
  *
  * **The coach's feedback file is never swept.** The customer's only route to what
  * they bought is the link in their email, and that link has to keep working.

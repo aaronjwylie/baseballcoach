@@ -79,7 +79,7 @@ flowchart LR
   decline *is* the extension; that's why it's a write rather than a log line.
   Guarded on paid-ness, so a decline arriving after a successful retry can't
   disturb a submission that has since gone through.
-- ✅ **② goes to Yuta as well as the customer.** A queue that doesn't announce its
+- ✅ **② goes to the admin as well as the customer.** A queue that doesn't announce its
   own arrivals has to be watched instead of used. Gated on `justPaid` like the
   receipt, so a redelivered webhook announces nothing twice.
 - 🔶 **The decline email is deliberately vague about the reason.** Stripe's own

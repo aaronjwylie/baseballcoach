@@ -15,10 +15,10 @@ emails exist and which don't" is a question no single domain can answer.
 
 **All nine built**, plus two off-spine messages. The set grew from six this
 morning when the northstar path added two download confirmations and a deletion
-warning; all three landed the same day, along with the four that tell Yuta
+warning; all three landed the same day, along with the four that tell the admin
 something.
 
-**The pattern worth keeping:** five of the nine tell Yuta something, and the
+**The pattern worth keeping:** five of the nine tell the admin something, and the
 reason they exist is that a queue which doesn't announce its own arrivals has to
 be *watched* instead of used.
 
@@ -45,11 +45,11 @@ real work.
 
 ## Who gets told what
 
-**Status: partly built.** This is the agreed target (Yuta, 2026-07-30, extended
+**Status: partly built.** This is the agreed target (the admin, 2026-07-30, extended
 2026-08-01), pinned here so the gaps are visible rather than remembered.
 **Four of the nine exist.**
 
-**Yuta is the notable pattern.** Five of the nine tell him something, and four of
+**the admin is the notable pattern.** Five of the nine tell him something, and four of
 those five don't exist. Today he learns that a payment landed, that a coach picked
 the work up, that a response is waiting, and that a customer collected — by
 *looking*. Every one of those is a moment the pipeline moved without him, which is
@@ -73,13 +73,13 @@ Numbered to match the path table's ①–⑨, so the two can be read side by sid
 | # | Step | Trigger | To | Status |
 |---|---|---|---|---|
 | ① | 1 | Email verification code | customer | ✅ **built** — `domains/verification/api/verificationEmail.ts` |
-| ② | 4 | Payment succeeded, submission accepted | customer **+ Yuta** | ✅ **built** — receipt to the customer, arrival notice to Yuta |
+| ② | 4 | Payment succeeded, submission accepted | customer **+ the admin** | ✅ **built** — receipt to the customer, arrival notice to the admin |
 | ③ | 8 | Handed to the coach | coach | ✅ **built** — `domains/coach/api/coachEmail.ts`, carries the customer details and a per-file download link |
-| ④ | 9 | **Coach picked the work up** | Yuta | ✅ **built** — fires on the coach's first download |
-| ⑤ | 10 | Coach submitted their response | Yuta **+ coach** | ✅ **built** — `domains/feedback`, to Yuta and the coach |
-| ⑥ | 13 | Yuta approved the response → released | customer | ✅ **built** — and it **states the retention window** at delivery |
-| ⑦ | 14 | **Customer collected their feedback** | Yuta | ✅ **built** — fires on the customer's first download |
-| ⑧ | 15 | Yuta marks the submission resolved | customer | ✅ **built** — on “Mark resolved”, carrying the retention deadline |
+| ④ | 9 | **Coach picked the work up** | the admin | ✅ **built** — fires on the coach's first download |
+| ⑤ | 10 | Coach submitted their response | the admin **+ coach** | ✅ **built** — `domains/feedback`, to the admin and the coach |
+| ⑥ | 13 | the admin approved the response → released | customer | ✅ **built** — and it **states the retention window** at delivery |
+| ⑦ | 14 | **Customer collected their feedback** | the admin | ✅ **built** — fires on the customer's first download |
+| ⑧ | 15 | the admin marks the submission resolved | customer | ✅ **built** — on “Mark resolved”, carrying the retention deadline |
 | ⑨ | 16 | **Uploads will be deleted in a week** | customer | ✅ **built** — the only *scheduled* message in the set, stamped so it can't send twice |
 
 Three of these are new on 2026-08-01: ④, ⑦ and ⑨.
@@ -140,7 +140,7 @@ any files to scrub. The row is simply unverifiable, therefore unpayable, and the
 abandonment sweep collects it like any other dead attempt.
 
 **On anything after payment, it does nothing automatic.** A receipt or a feedback
-link bouncing is a real problem and it is **Yuta's** — it shows in the trail and
+link bouncing is a real problem and it is **the admin's** — it shows in the trail and
 in the row, and nothing here acts destructively on a submission somebody paid for.
 
 ### Off the spine
@@ -215,10 +215,10 @@ These were never two templates. Together they inserted **an approval step into
 the coach workflow**, which is now in place:
 
 **Before:** the coach uploaded their feedback file and it went straight to the
-customer. Yuta never saw it.
+customer. the admin never saw it.
 
-**Now:** the coach uploads → the submission sits at `awaiting_approval` → Yuta
-approves → the customer is told. The one piece still missing is *telling* Yuta
+**Now:** the coach uploads → the submission sits at `awaiting_approval` → the admin
+approves → the customer is told. The one piece still missing is *telling* the admin
 it's waiting (#4); today he has to spot it in the queue.
 
 What it took:
@@ -230,7 +230,7 @@ What it took:
 3. ✅ **An admin approve action** — `approveAndComplete` sets `complete`, stamps
    `completedAt`, and sends message #5.
 4. ✅ **Message #3 on assignment** — `assignCoachAction` sends it.
-5. ❌ **Message #4** — nobody tells Yuta the response is waiting.
+5. ❌ **Message #4** — nobody tells the admin the response is waiting.
 
 Until (2) exists, `feedbackEmailedAt` and the customer email fire from the wrong
 place. Note the ordering trap: `completedAt` is what the retention sweep counts
@@ -241,9 +241,9 @@ completed submissions were never swept.
 
 ---
 
-## Decided 2026-07-30 (Yuta + Ben)
+## Decided 2026-07-30 (the admin + Ben)
 
-**#6 fires when Yuta marks the submission resolved** — a portal action, not a
+**#6 fires when the admin marks the submission resolved** — a portal action, not a
 timer and not a customer confirmation. It keeps the judgement with the person who
 can actually make it, at the cost of one more thing to remember.
 
@@ -253,11 +253,11 @@ The lifecycle is already six states and the queue doesn't need a seventh —
 `completedAt` / `paidAt` set the precedent.
 
 ⚠️ **It collides with retention.** Files are swept 24h after `completedAt`, so by
-the time Yuta resolves a submission the uploads are usually gone. The resolved
+the time the admin resolves a submission the uploads are usually gone. The resolved
 email must not promise access to them, and the portal should say plainly that
 it's resolving a submission whose files have been deleted.
 
-**"Yuta" resolves to the `admin` user's own email**, read from the `users` row —
+**"the admin" resolves to the `admin` user's own email**, read from the `users` row —
 one home for the fact, and it survives a change of operator with no redeploy.
 `site.email` (`contact@baseball-sensei.com`) stays the *public* contact address,
 and `EMAIL_FROM` is who mail is sent *as*. Three jobs, three homes; collapsing
@@ -276,7 +276,7 @@ upload continues to complete the submission and email the customer directly.
 The domain that owns the *event* owns the send — not a central mailer:
 
 - `verification/` → the code
-- `payment/` → the receipt (and Yuta's copy of it)
+- `payment/` → the receipt (and the admin's copy of it)
 - `coach/` → assignment
 - `feedback/` → coach-submitted, approved-and-released, resolved
 

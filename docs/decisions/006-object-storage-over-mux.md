@@ -72,7 +72,7 @@ switching is a driver change, not a rewrite.
 - **Webhook removed:** no transcode step to await, so `webhooks/mux` goes away —
   Blob's `onUploadCompleted` callback (or a small complete endpoint) flips the row
   to "New" and stores the blob key/URL. Simpler than today.
-- **Schema migration** on Yuta's live base: the three `Mux …` columns become a
+- **Schema migration** on the admin's live base: the three `Mux …` columns become a
   `Video URL` (coach-facing download link) + optional `Video Key`. **Fold into
   the Step-1 naming sweep** so it's one migration of the live base, not two —
   same discipline as [ADR 005](005-stripe-elements-over-checkout.md). Coordinate

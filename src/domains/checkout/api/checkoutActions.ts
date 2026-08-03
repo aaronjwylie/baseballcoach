@@ -248,7 +248,7 @@ export async function resendCodeAction(): Promise<ActionResult> {
  * the verify and the resend path ask.
  *
  * Scoped to ① and to unpaid submissions on purpose. A receipt or a feedback
- * link bouncing is a real problem, but it is **Yuta's** problem: those arrive
+ * link bouncing is a real problem, but it is **the admin's** problem: those arrive
  * after money has changed hands, and nothing here may act destructively on a
  * paid submission.
  */
@@ -334,7 +334,7 @@ export async function listFlowFilesAction(): Promise<
  * Mint the PaymentIntent for this submission.
  *
  * Refuses if nothing has been uploaded: paying for an empty submission is a
- * dead end for the customer and a support ticket for Yuta.
+ * dead end for the customer and a support ticket for the admin.
  */
 export async function createIntentAction(): Promise<ActionResult<CreatedIntent>> {
   const submissionId = await readFlowSession();

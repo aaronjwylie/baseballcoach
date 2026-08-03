@@ -1,6 +1,6 @@
 "use server";
 /**
- * The coach's action on their own feedback: hand the attached files to Yuta for
+ * The coach's action on their own feedback: hand the attached files to the admin for
  * approval. Operator-gated and ownership-checked here — a coach may only send
  * their own assignments, the admin may send anyone's — because a Server Action is
  * a public endpoint, not a trusted call from the page that rendered it.

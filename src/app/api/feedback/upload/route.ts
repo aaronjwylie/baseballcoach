@@ -7,7 +7,7 @@ import { saveFeedbackFile } from "@/domains/feedback";
 /**
  * The **development** feedback path: the bytes come through us onto local disk,
  * because there's no Blob store. Records one `feedback` file and returns it; it
- * does **not** advance the submission — the coach hands the set to Yuta with a
+ * does **not** advance the submission — the coach hands the set to the admin with a
  * separate "send for approval" action. A coach may only deliver for their own
  * assignments; the admin may deliver for anyone.
  */

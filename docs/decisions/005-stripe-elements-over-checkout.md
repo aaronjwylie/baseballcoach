@@ -39,7 +39,7 @@ new `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Roughly a Sprint-2 redo.
 
 **One migration, not two.** The linkage key changes from `Stripe Session ID` to
 a payment-intent ID — which is already a column rename inside the Step 1 naming
-sweep. Doing Elements now folds it into that single migration of Yuta's live
+sweep. Doing Elements now folds it into that single migration of the admin's live
 base instead of requiring a second one later.
 
 **PCI posture is unchanged.** Elements iframes the card fields, so SAQ-A still

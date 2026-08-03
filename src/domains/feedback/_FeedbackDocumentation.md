@@ -50,14 +50,14 @@ flowchart LR
 >   their email, so sweeping `feedbackUrl` would delete the deliverable
 >   ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)).
 >
-> - **Yuta's approval gate landed.** A coach's upload now moves the submission to
+> - **the admin's approval gate landed.** A coach's upload now moves the submission to
 >   `awaiting_approval` rather than completing it; `approveAndComplete` is what sets
 >   `complete`, stamps `completedAt`, and emails the customer. The coach no longer reaches the
->   customer directly. Still missing: anything that *tells* Yuta a response is waiting — see
+>   customer directly. Still missing: anything that *tells* the admin a response is waiting — see
 >   [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
 >
 > **Updated 2026-08-01 · feedback is multi-file now.** A coach can attach **several** files
-> and hand the set to Yuta. Each file is a row in `submission_files` with `kind = "feedback"`
+> and hand the set to the admin. Each file is a row in `submission_files` with `kind = "feedback"`
 > (the old single `feedbackUrl` column is unused), uploaded through the customer's own
 > transport with operator-gated endpoints — direct-to-Blob in prod (`/api/feedback/blob` +
 > `/api/feedback/complete`), proxied to disk in dev (`/api/feedback/upload`). Attaching a file
@@ -102,7 +102,7 @@ This slice grew from "the coach's response" into **the response's whole life aft
 delivery** — collected, resolved, warned, purged — because all four are about the
 thing it produces.
 
-- ✅ **⑤ on delivery** — Yuta *and* the coach are told a review is waiting for
+- ✅ **⑤ on delivery** — the admin *and* the coach are told a review is waiting for
   approval. The approval gate means delivered work sits still until a person looks
   at it, and until this existed the only person who could release it had no idea.
 - ✅ **Step 13 carries a language choice** and records what the customer was sent.
@@ -112,8 +112,8 @@ thing it produces.
   swept together, so this line and ⑨ are the only protection against a parent
   losing a review they can't recreate.
 - ✅ **`noteCustomerCollected`** — the customer's first download starts the
-  retention clock and tells Yuta the job is visibly finished. Gated on the caller
-  *not* being an operator: Yuta opening a response to check it would otherwise
+  retention clock and tells the admin the job is visibly finished. Gated on the caller
+  *not* being an operator: the admin opening a response to check it would otherwise
   delete their feedback thirty days after **he** looked at it.
 - ✅ **`resolveSubmission`** — step 15, and ⑧. Only a `collected` submission can
   be resolved, so a thank-you can't go out for something the customer hasn't seen.
@@ -121,7 +121,7 @@ thing it produces.
   system, stamped whether or not the send worked — retrying nightly would turn
   one missed email into seven.
 - ✅ **Delivery is guarded on status**, not just ownership: a stale tab could
-  previously deliver twice, or deliver onto a submission Yuta had already
+  previously deliver twice, or deliver onto a submission the admin had already
   approved, walking it backwards over its own completion.
 
 
@@ -160,7 +160,7 @@ Decisions taken, with their reasoning:
   removed the one scenario that justified a Make.com subscription — which is why dropping
   Make.com entirely is now recommended in OPERATIONS.md.
 - **`Feedback Emailed` checkbox → `Feedback Emailed At` timestamp** (Step 1). Same
-  truthiness, but it tells Yuta *when* — useful when a customer says they never got it.
+  truthiness, but it tells the admin *when* — useful when a customer says they never got it.
 - **The notify flow moved out of the route (Step 2b).** The constant-time secret check lives
   beside what it guards rather than in a general-purpose helper — this is the one webhook
   without an SDK signature to verify, so that comparison *is* the endpoint's defence, and it

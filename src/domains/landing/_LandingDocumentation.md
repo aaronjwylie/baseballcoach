@@ -31,7 +31,7 @@ shows a sample review as the last thing before the ask.
 
 - **Copy is data, never JSX.** Every word the client might change lives in `model/copy.ts`
   or `shared/config/site.ts`. A section component maps over a value; it never contains a
-  sentence. This is what makes "Yuta wants to reword the FAQ" a one-file change by someone
+  sentence. This is what makes "the admin wants to reword the FAQ" a one-file change by someone
   who doesn't write React.
 - **The split between the two copy homes is by scope, not convenience.** Facts true of the
   whole business — name, price, turnaround — are in `shared/config/site.ts`, because the
@@ -67,7 +67,7 @@ anything in the code.
 - 🔶 **Placeholder content throughout, and it cannot go live as written.** The coach section
   literally says "Meet your coach name and his expert team" with a lorem bio, because that
   is what the wireframe says; the four stat chips (NPB, 12 yrs, EN/JP, Hit·Pitch) are
-  unsourced. All of it needs Yuta's real name, record, and headshot.
+  unsourced. All of it needs the admin's real name, record, and headshot.
 - 🔶 **No photography.** Three `MediaFrame` blocks stand in for the hero image, the coach
   headshot, and the example feedback clip. They render a plain label, deliberately *not* the
   wireframe's note to the asset sourcer ("Inspirational image kids playing… with fun badges,
@@ -99,7 +99,7 @@ Each of these is a deliberate choice, not an oversight. **All want Audrey's sign
 **The pricing card sells a "Written summary of notes", and the pipeline cannot deliver it.**
 A submission carries exactly one `feedbackUrl`, so a coach uploads one file — a video *or* a
 document, not both. The claim is rendered because it is in the approved design, but it needs
-one of two decisions from Yuta:
+one of two decisions from the admin:
 
 1. **Change the copy** — drop the line, or fold it into the video walkthrough. Free.
 2. **Change the system** — a second file per submission is a schema change, a migration, a

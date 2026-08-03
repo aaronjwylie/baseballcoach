@@ -124,14 +124,14 @@ export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach>
     currentEmail = u.email;
   }
 
-  // An admin reset — no current-password check; Yuta's authority is the guard.
+  // An admin reset — no current-password check; the admin's authority is the guard.
   if (password) await setUserPassword(row.userId, password);
 
   return toCoach(row, currentEmail);
 }
 
 /**
- * Step 9 — the coach has collected the intake. Stamp it and tell Yuta.
+ * Step 9 — the coach has collected the intake. Stamp it and tell the admin.
  *
  * **The submission must be this coach's**, not merely any coach's: the download
  * route can only see that *a* coach is logged in, and someone opening a
@@ -164,7 +164,7 @@ export async function noteCoachCollected(
       playerName: collected.playerName,
       submissionUrl: `${env.siteUrl}/admin`,
     });
-    void noteEmailSent(submissionId, "④ picked up → Yuta", result);
+    void noteEmailSent(submissionId, "④ picked up → Admin", result);
   } catch (err) {
     console.error("[coach] recording a collection failed:", err);
   }

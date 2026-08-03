@@ -73,7 +73,7 @@ export const submissionStatus = pgEnum("submission_status", [
  * axes, no ambiguity at the call site.
  *
  * `intake` = what the customer sent · `response` = what the coach wrote back.
- * Each has a translated counterpart, uploaded by Yuta and stored beside the
+ * Each has a translated counterpart, uploaded by the admin and stored beside the
  * original rather than replacing it.
  */
 export const fileKind = pgEnum("file_kind", [
@@ -234,7 +234,7 @@ export const submissions = pgTable(
 
     submittedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp({ withTimezone: true }),
-    // When Yuta archived a completed submission out of the active queue. Null
+    // When the admin archived a completed submission out of the active queue. Null
     // means live; a timestamp moves it to the Archived view and out of "All".
     archivedAt: timestamp({ withTimezone: true }),
     updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
@@ -278,7 +278,7 @@ export const submissionFiles = pgTable(
 /**
  * The operator's knobs — one row, always.
  *
- * These are limits Yuta tunes from the admin portal without a deploy, which is
+ * These are limits the admin tunes from the admin portal without a deploy, which is
  * why they're in Postgres and not in `shared/config/env.ts`: env vars are the
  * developer's configuration, these are the operator's. `id` is fixed so the
  * table cannot grow a second row.
@@ -287,7 +287,7 @@ export const submissionFiles = pgTable(
  * One row per status transition — **the trail**.
  *
  * Chosen over sixteen nullable `*At` columns on `submissions`, and it answers
- * strictly more: a column can only remember one moment, so a submission Yuta
+ * strictly more: a column can only remember one moment, so a submission the admin
  * resets and which then reaches the same rung twice loses one of them. This
  * keeps both, in order, with who caused each.
  *

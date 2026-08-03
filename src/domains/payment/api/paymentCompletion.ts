@@ -65,7 +65,7 @@ export async function completePayment({
     fileCount: files.length,
     queueUrl: `${env.siteUrl}/admin`,
   });
-  void noteEmailSent(submission.id, "② arrival → Yuta", arrival);
+  void noteEmailSent(submission.id, "② arrival → Admin", arrival);
 }
 
 /**

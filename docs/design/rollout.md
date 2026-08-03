@@ -117,7 +117,7 @@ vocabularies never coexist in a deployed state.
 Three rules decided the sequence, in this priority:
 
 1. **Nothing destructive ships before the handle that undoes it.** Operator
-   override (Phase 5) precedes the retention rework (Phase 6). Yuta gets the manual
+   override (Phase 5) precedes the retention rework (Phase 6). the admin gets the manual
    purge and the status reset *before* the system starts deleting more, on a longer
    clock, with a warning email.
 2. **The record before the behaviour.** Phase 1 is schema only — no visible change,
@@ -259,7 +259,7 @@ submission due for sweeping stops being due the moment a failed payment touches 
 
 ## Phase 3 · Make the queue tell the truth — ✅ **shipped 2026-08-01**
 
-**Yuta's visibility.** Five of the nine emails tell him something and four didn't
+**the admin's visibility.** Five of the nine emails tell him something and four didn't
 exist, so he learned that a payment landed, that a coach picked work up, that a
 response was waiting, and that a customer collected — **by looking.**
 
@@ -267,9 +267,9 @@ response was waiting, and that a customer collected — **by looking.**
 | --- | --- | --- |
 | 3.1 | Step 8 sets `sent_to_coach`, not `in_review` | ✅ |
 | 3.2 | **Step 9** — the coach's first download stamps, moves to `in_review`, emails ④ | ✅ |
-| 3.3 | Step 10 emails ⑤ — Yuta *and* the coach | ✅ |
+| 3.3 | Step 10 emails ⑤ — the admin *and* the coach | ✅ |
 | 3.4 | **Step 14** — the customer's first download stamps, moves to `collected`, emails ⑦ | ✅ |
-| 3.5 | Step 4's ② also goes to Yuta | ✅ |
+| 3.5 | Step 4's ② also goes to the admin | ✅ |
 | 3.6 | Server-side status guards on steps 5 and 10 | ✅ |
 
 ### What the build surfaced that the plan didn't
@@ -277,7 +277,7 @@ response was waiting, and that a customer collected — **by looking.**
 **A download says who, and that turned out to matter twice.** The plan treated
 "observe a download" as one problem; it's really "observe *the right person's*
 download". An admin opening an intake file is checking on the work, not starting
-it — counting it would make `in_review` meaningless again. Yuta opening a response
+it — counting it would make `in_review` meaningless again. the admin opening a response
 to check it is not the customer collecting it — counting it would delete their
 feedback thirty days after *he* looked. Both stamps are gated on the actor, and
 step 9's additionally on it being **that coach's** submission, since the route can
@@ -436,7 +436,7 @@ So the plan order stands, and two things in it are now confirmed rather than ass
 
 **Phase 4 remains the honest cut if time runs short**, but with a caveat that wasn't
 there before: cutting it doesn't cost a feature, it costs *a subset of the coaching
-roster*. Yuta can only assign English-reading coaches until it lands.
+roster*. the admin can only assign English-reading coaches until it lands.
 
 ### ✅ 2 · Is there production data to preserve? — **No real customers yet.**
 
@@ -483,7 +483,7 @@ the warning, the first customer to lose a review will be right to be annoyed.
 ### ✅ 4 · Sixteen statuses — **All sixteen, as settled.**
 
 The cheaper four-status version is recorded here and deliberately not taken. Each
-rung is a filter Yuta can pull up, and each exists because a submission can stall
+rung is a filter the admin can pull up, and each exists because a submission can stall
 there — which is the test that separates a status from decoration.
 
 Combined with answer 2, the cost argument mostly dissolves: the expensive part of a

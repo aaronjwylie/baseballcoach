@@ -245,17 +245,17 @@ What each column holds:
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | `draft` | customer | Details captured, nothing proven. A scratch pad | **“Continue to email verification”** → `startSubmissionAction` | Discard any earlier unpaid attempt — files and row | Tidy up stale abandoned submissions elsewhere *(best-effort; never blocks this customer)* | Create the submission and give it its permanent id | Open a **30-minute sliding window** — the only clock in the flow | Mint a 6-digit code; store only its hash | **Confirm the code was accepted for delivery** before advancing them, and record what became of it | **Done** when the customer enters the code | ① code → customer | scratch pad — discardable at any moment |
 | 2 | **`uploading`** *(not built)*<br>*(today `awaiting_payment`)* | customer | **The address is proven and the upload gate is open.** Spans uploading *and* paying — the customer's own half of the work | the code matches, within the window, under 5 attempts | Count the attempt *before* comparing, so abandoning a request still spends one | Mark the address proven and burn the code — single-use | Take **each file on its own** — no confirm button; one card can fail without taking the others | Let the browser upload **straight to storage**, so size isn't bounded by our server | Record each file as **intake** and slide the window forward | Confirm the card with the payment provider | **Done** when their payment clears |  | scratch pad — nothing here is retained |
-| 3 | `new` | **admin** | **Paid.** The boundary: before it a scratch pad, after it a record | the payment clears — inline, on return from 3-D Secure, or by webhook, whichever arrives first | Mark the submission paid **exactly once**, however many confirmations arrive | Send a receipt listing every file, carrying the status link and the retention window | **Tell Yuta a paid submission has arrived** | Release the flow session — its job is done |  |  | **Done** when a coach is chosen | ② receipt → customer **and Yuta** | **retained from here on** |
-| 4 | `assigned` | **admin** | A coach is chosen, and translation need becomes derivable | the coach dropdown | Record the coach against the submission | **Derive whether translation is needed** — the platform is English, so it's needed exactly when this coach doesn't read it *(not built)* | If it is, say so in the queue — the translation rungs become a prompt rather than something Yuta must remember *(not built)* |  |  |  | **Done** when the files go out for translation — or straight to the hand-off |  | retained |
+| 3 | `new` | **admin** | **Paid.** The boundary: before it a scratch pad, after it a record | the payment clears — inline, on return from 3-D Secure, or by webhook, whichever arrives first | Mark the submission paid **exactly once**, however many confirmations arrive | Send a receipt listing every file, carrying the status link and the retention window | **Tell the admin a paid submission has arrived** | Release the flow session — its job is done |  |  | **Done** when a coach is chosen | ② receipt → customer **and the admin** | **retained from here on** |
+| 4 | `assigned` | **admin** | A coach is chosen, and translation need becomes derivable | the coach dropdown | Record the coach against the submission | **Derive whether translation is needed** — the platform is English, so it's needed exactly when this coach doesn't read it *(not built)* | If it is, say so in the queue — the translation rungs become a prompt rather than something the admin must remember *(not built)* |  |  |  | **Done** when the files go out for translation — or straight to the hand-off |  | retained |
 | 5 | `intake_translating` *(optional)* | translator | The customer's files have gone out. **Off-platform — nothing observes the work** | **“Send for translation →”** | Translate off-platform; the status records that it left, so a submission can't sit here unnoticed |  |  |  |  |  | **Done** when the translated files come back |  | *(unchanged)* |
 | 6 | `intake_translated` *(optional)* | **admin** | The Japanese set is back and stored beside the originals | **upload** into the *client translated* folder | Record each file as **intake_translation**, so the sets never blur | Keep both languages available; the hand-off sends whichever set is chosen |  |  |  |  | **Done** when the hand-off is sent |  | swept with the originals — same content, same clock |
 | 7 | `sent_to_coach` *(not built)* | coach | **Emailed, but not picked up.** The one rung that means *chase somebody* | **radio: English · Japanese · both** + **“Send email →”** | Re-read the submission and refuse anything already past this point | **Record the chosen set** — what the coach was sent outlives the click *(not built)* | Offer only the sets that exist, and hide the control when there's nothing to choose *(not built)* | Email the coach the customer's details and a download link per file — **only the chosen set** *(not built)* | Mark the submission as sent, so the gap between *told* and *started* is visible |  | **Done** when the coach downloads a file | ③ hand-off → coach | retained |
-| 8 | `in_review` | coach | **The coach actually has the files** — earned by a download, not by an email being sent | their first successful download *(not built)* | Stamp the first successful download | **Tell Yuta the coach picked it up** — the hand-off is closed *(not built)* | Ignore a re-download — first success only |  |  |  | **Done** when the coach delivers their response | ④ picked up → Yuta *(not built)* | retained |
-| 9 | `awaiting_approval` | **admin** | A response exists. **The customer can't see it** — the gate that makes this rung worth having | **“Send feedback”** → stores the response | Save the response to the *coach* folder | Mark the submission as having a response | **Start no clock** — unapproved work must not begin any countdown | **Tell Yuta and the coach it's waiting** *(not built)* |  |  | **Done** when the response goes out for translation — or straight to approval | ⑤ response submitted → Yuta + coach *(not built)* | retained |
+| 8 | `in_review` | coach | **The coach actually has the files** — earned by a download, not by an email being sent | their first successful download *(not built)* | Stamp the first successful download | **Tell the admin the coach picked it up** — the hand-off is closed *(not built)* | Ignore a re-download — first success only |  |  |  | **Done** when the coach delivers their response | ④ picked up → the admin *(not built)* | retained |
+| 9 | `awaiting_approval` | **admin** | A response exists. **The customer can't see it** — the gate that makes this rung worth having | **“Send feedback”** → stores the response | Save the response to the *coach* folder | Mark the submission as having a response | **Start no clock** — unapproved work must not begin any countdown | **Tell the admin and the coach it's waiting** *(not built)* |  |  | **Done** when the response goes out for translation — or straight to approval | ⑤ response submitted → the admin + coach *(not built)* | retained |
 | 10 | `response_translating` *(optional)* | translator | The response has gone out. **Off-platform** | **“Send for translation →”** | Translate off-platform; the status records that it left — the mirror of rung 5 |  |  |  |  |  | **Done** when the translation comes back |  | *(unchanged)* |
 | 11 | `response_translated` *(optional)* | **admin** | The English version is back, beside the coach's original | **upload** into the *coach translated* folder | Record it as **response_translation** — beside the original, never replacing it | Keep both versions; approval chooses which the customer receives |  |  |  |  | **Done** when it's approved and sent |  | swept with everything else |
 | 12 | `complete` | customer | **Released.** The moment it reaches the customer — and the clock still hasn't started | **radio: English · Japanese · both** + **“Approve &amp; send →”** | Refuse anything without a delivered response | **the chosen set is recorded** *(not built)* | Mark the submission complete and stamp the delivery | Email the customer a link for **only the chosen set**, and tell them how long the files are kept |  |  | **Done** when the customer downloads it | ⑥ feedback ready → customer | **no clock starts here** — the countdown waits for collection |
-| 13 | `collected` *(not built)* | **admin** | **The customer has it.** This is what starts the retention clock | their first successful download *(not built)* | Stamp the first successful download; a re-download doesn't restart it | **Tell Yuta they collected** — the job is visibly finished *(not built)* |  |  |  |  | **Done** when Yuta marks it resolved | ⑦ collected → Yuta *(not built)* | **30 days from collection**, or 90 from delivery — whichever is later |
+| 13 | `collected` *(not built)* | **admin** | **The customer has it.** This is what starts the retention clock | their first successful download *(not built)* | Stamp the first successful download; a re-download doesn't restart it | **Tell the admin they collected** — the job is visibly finished *(not built)* |  |  |  |  | **Done** when the admin marks it resolved | ⑦ collected → the admin *(not built)* | **30 days from collection**, or 90 from delivery — whichever is later |
 | 14 | `resolved` *(not built)* | the sweep | Closed. Everything after this is a clock, not a person | **“Mark resolved”** — deliberately manual *(not built)* | Stamp the submission resolved | Send a thank-you and an invitation to come back **while they still have their files** |  |  |  |  | **Done** when the deletion warning falls due | ⑧ thank you → customer *(not built)* | unchanged — the countdown keeps running |
 | 15 | `purge_imminent` *(not built)* | the sweep | Deletion is a week away, and the customer has been told | the scheduled sweep, running *before* the purge and against a nearer cutoff *(not built)* | Tell the customer their files go in a week | Stamp the warning so it can never send twice — **even if the send failed**, because retrying nightly turns one missed email into seven |  |  |  |  | **Done** when the countdown expires | ⑨ deletion warning → customer *(not built)* | unchanged — nothing is deleted yet |
 | 16 | `purged` *(not built)* | the sweep | **The bytes are gone; the record is permanent** | the scheduled sweep *(not built)* | **Delete every file — all four sets**, the customer's and the coach's alike *(one failure is logged; the rest continue)* | Keep the file **records**, clearing their locators, so the portal can still say what was sent | **Keep the submission itself forever** — the history is the point; only the bytes go | Stamp the sweep, making a re-run a no-op |  |  | **Never.** This is the end — the record is permanent |  | nothing stored; everything remembered |
@@ -275,7 +275,7 @@ was shorter, never widened when it grew.**
 | 🔴 **Two rungs were unreachable** | nothing in the app ever wrote `intake_translating` or `response_translating` |
 
 **The third is the one worth remembering.** Uploading a translation jumped
-straight from `assigned` to `intake_translated`, so a submission sitting on Yuta's
+straight from `assigned` to `intake_translated`, so a submission sitting on the admin's
 laptop for two days was indistinguishable from one he hadn't started — which is
 precisely what those rungs exist to show.
 
@@ -341,7 +341,7 @@ The row is unverifiable, therefore unpayable, and the abandonment sweep collects
 like any other dead attempt.
 
 ⚠️ **After payment, a bounce does nothing automatic.** A receipt or a feedback link
-failing is real and it is *Yuta's* — it shows in the trail and the row, and nothing
+failing is real and it is *the admin's* — it shows in the trail and the row, and nothing
 acts destructively on a submission somebody paid for.
 
 **The window lapses, or the guesses run out (branches from steps 2, 3 or 4).**
@@ -366,18 +366,18 @@ failure returns an inline error and the customer stays exactly where they are,
 looking at a submission the server may already have discarded. See the assessment
 below.
 
-**Yuta intervenes (available from step 4 onward).** The pipeline runs forward on
+**the admin intervenes (available from step 4 onward).** The pipeline runs forward on
 its own; this is the handle for when it shouldn't. Two powers, both admin-only,
 both deliberately blunt:
 
 | Power | What it does | Why it exists |
 | --- | --- | --- |
 | **Purge the folders** | delete any or all of the four file sets now, without waiting for a clock | a wrong file, a file that shouldn't have been sent, a customer asking to be forgotten |
-| **Reset the status** | move a submission back to an earlier point on the ladder | the only route backwards. A coach's work Yuta won't accept goes back to `in_review`; a mis-picked language set goes back to `assigned` |
+| **Reset the status** | move a submission back to an earlier point on the ladder | the only route backwards. A coach's work the admin won't accept goes back to `in_review`; a mis-picked language set goes back to `assigned` |
 
 **This is the answer to "what can be undone", and it's deliberately not a set of
 per-stage undo buttons.** One general handle an operator can reach for beats
-eleven specific ones nobody remembers exist. If Yuta isn't satisfied with a
+eleven specific ones nobody remembers exist. If the admin isn't satisfied with a
 coach's work he'll speak to them directly — the system's job is to let him put the
 submission back where it needs to be, not to model the conversation.
 
@@ -429,14 +429,14 @@ upload".
 
 **The curation radios answer two of the five questions I had.** "Does the coach
 see one set or both?" and "does the customer ever see the untranslated original?"
-are no longer things the system decides — **Yuta decides, per submission**, at
+are no longer things the system decides — **the admin decides, per submission**, at
 step 7 and again at step 13. The system derives whether a translation is
-*needed*; Yuta still decides which sets actually go out, because "can read it"
+*needed*; the admin still decides which sets actually go out, because "can read it"
 and "wants both" are different questions and only the first is stored.
 
 It does mean the choice is **data, not just a UI state**. Two facts to keep:
 what was sent to the coach, and what was sent to the customer — recorded at the
-moment of sending, because "what did we actually give them" is a question Yuta
+moment of sending, because "what did we actually give them" is a question the admin
 will ask later and a re-derivation can't answer.
 
 **Settled 2026-08-01:**
@@ -449,7 +449,7 @@ will ask later and a re-derivation can't answer.
 - **Everything is swept together.** No set outlives another, including the coach's
   response — which is only safe *because* the clock starts on collection. See the
   retention assessment.
-- **Yuta can change his mind**, via the status reset in the operator-override path.
+- **the admin can change his mind**, via the status reset in the operator-override path.
   A wrong language set goes back to `assigned` and out again.
 
 #### 2 · "Gone" is not an error, and the flow can't currently tell them apart
@@ -488,7 +488,7 @@ success**, stamped once. Two stamps, one rule:
 
 | | Stamp | Consequence | If it never happens |
 | --- | --- | --- | --- |
-| Step 9 | first coach download | `in_review`; Yuta notified | the submission sits in `sent_to_coach` — **visible, which is the point**. Yuta chases |
+| Step 9 | first coach download | `in_review`; the admin notified | the submission sits in `sent_to_coach` — **visible, which is the point**. the admin chases |
 | Step 14 | first customer download | the 30-day clock starts | **nothing is ever purged** — safe, but unbounded storage. Needs a backstop |
 
 The asymmetry is worth noticing. A coach who never downloads produces a **stuck
@@ -546,14 +546,14 @@ deletion that isn't scheduled.
 Step 15 sits before 16 and 17 deliberately — the thank-you lands while the customer
 still has their files, not after they've gone.
 
-**Settled: resolving stays a human act.** Yuta presses the button; nothing fires it
+**Settled: resolving stays a human act.** the admin presses the button; nothing fires it
 for him. The objection to that was always "he'll forget, and the thank-you never
 sends" — which is answered not by automating it but by **step 14 setting a
 `collected` status he can filter on**. The work he has to do is now a list he can
 pull up, not something he has to remember to look for.
 
 That's the general shape worth keeping: *make the pending work visible rather than
-doing it automatically.* Automation can come later if Yuta asks for it; the
+doing it automatically.* Automation can come later if the admin asks for it; the
 filterable queue is what makes deferring that decision cheap.
 
 ⚠️ The residual risk is honest and small: a submission collected but never resolved
@@ -571,11 +571,11 @@ a stage with no status was the biggest source — so what's left is deliberate.
 | --- | --- | --- |
 | 2 | Email | Nobody to tell. Verifying and uploading happen in front of the customer; the ② receipt then lists everything at once |
 | 4 | Email | **Deliberate.** The coach is *not* told at assignment — that's rung 7's job, and the gap between them is where translation happens |
-| 5, 10 | Email · Retention | Translation is off-platform. Nothing has changed on the server, and the files are on Yuta's machine |
-| 6, 11 | Email | The second language is Yuta's own housekeeping; the send is the next rung's job |
+| 5, 10 | Email · Retention | Translation is off-platform. Nothing has changed on the server, and the files are on the admin's machine |
+| 6, 11 | Email | The second language is the admin's own housekeeping; the send is the next rung's job |
 | 16 | Email | **Deliberate.** The purge is meant to be invisible by then — rung 15 already warned them, and the response they bought is untouched |
 
-**Note what isn't blank any more.** Rungs 8 and 13 both notify Yuta: a download
+**Note what isn't blank any more.** Rungs 8 and 13 both notify the admin: a download
 used to look like a private act needing no acknowledgement. It isn't — each one
 tells him the pipeline moved without him.
 
@@ -630,7 +630,7 @@ the same reason:
   everything**; the missing receipt is repaired forward.
 - **Step 13, killed after the completion stamp but before the email.** Nothing has
   left the building. `complete` would mean "delivered" while the customer has heard
-  nothing — a claim only we believe. **Scrub the stamp**, and let Yuta press the
+  nothing — a claim only we believe. **Scrub the stamp**, and let the admin press the
   button again.
 
 #### Two rules that fall out of it
@@ -642,7 +642,7 @@ Where an ordering is free, the outside effect goes last.
 **When both failure states are bad, fail toward the one someone will notice.**
 Step 13 is the case where the ordering *isn't* free — the email needs the record to
 exist. Both outcomes are wrong; they aren't equally wrong. *Complete with no email*
-is silent: Yuta's queue says delivered, the customer hears nothing, and nobody
+is silent: the admin's queue says delivered, the customer hears nothing, and nobody
 learns otherwise until a complaint arrives. *Not-complete with a stray link* is
 visible: the row still sits in his approval queue, and the link either works or
 404s harmlessly. Choose the loud failure.
@@ -769,7 +769,7 @@ Six rungs behave unlike the others:
 - **Rungs 5, 6, 10 and 11 are optional and off-platform.** A coach who reads
   English never touches them.
 - **Rungs 8 and 13 are the same rung twice, at opposite ends.** A download is
-  confirmed, a status or clock moves, Yuta is told. Building either should build
+  confirmed, a status or clock moves, the admin is told. Building either should build
   both — they want the same mechanism, and the asymmetry is the interesting part:
   a coach who never downloads leaves a **visible stuck row**, a customer who
   never downloads leaves silence and a growing bill.
@@ -795,7 +795,7 @@ one sentence explains most of the rest:
   the same as *not worth seeing*: a row at `draft` is someone filling in the form
   right now. They clear themselves, since the abandonment sweep deletes unpaid
   rows outright, and an **In progress** tab keeps them out of the paid work;
-- step 4 is also where the work changes hands, customer → Yuta. Those two facts
+- step 4 is also where the work changes hands, customer → the admin. Those two facts
   landing on the same row isn't a coincidence.
 
 ### The abandonment path
@@ -829,11 +829,11 @@ list has shrunk to a single entry — and the reason it survives is the useful p
 
 | Field | Means | Set by | Reversible |
 | --- | --- | --- | --- |
-| `archivedAt` | out of Yuta's active queue; still a real submission | `archiveSubmissionAction` / `unarchiveSubmissionAction` | yes |
+| `archivedAt` | out of the admin's active queue; still a real submission | `archiveSubmissionAction` / `unarchiveSubmissionAction` | yes |
 
 **Archiving isn't a status because it's orthogonal to every status.** A submission
 can be archived while `complete`, or `collected`, or `purged` — it's a statement
-about Yuta's attention, not about where the work has got to. Anything that can be
+about the admin's attention, not about where the work has got to. Anything that can be
 true *alongside* the ladder rather than *at a point on it* belongs here.
 
 That's the test for anything proposed as a new status later: **if it can coexist
@@ -883,7 +883,7 @@ rollout plan and resolved in its Phase 6:
 | **Translations** | replace the original, or sit beside it? | **Beside.** Four folders, both directions |
 | **Sweeping** | do translations follow the originals' clock? | **Everything is swept together** — no set outlives another |
 | **Statuses** | is "the coach has it" a status or a timestamp? | **Both, for all of them.** See the status ladder — sixteen statuses, each stamped |
-| **Undo** | what is allowed to be reversed? | **One general handle, not per-stage undo:** Yuta can purge folders and reset a status. See the operator-override path |
+| **Undo** | what is allowed to be reversed? | **One general handle, not per-stage undo:** the admin can purge folders and reset a status. See the operator-override path |
 | **Identity** | PIN, link, or both — and does the link expire? | **Both.** The link doesn't expire but can be revoked |
 | **Translation** | should the system know in advance that one is needed? | **Yes — derive it** from the coach's languages and the customer's. Steps 5 and 11 become prompts, not memory |
 | **Failure** | when a step dies partway, is the earlier work undone? | **Case by case, and the case is decidable.** See *the point of no return* — an operation survives if its effect already exists outside our database |
@@ -897,7 +897,7 @@ rollout plan and resolved in its Phase 6:
 - **Step 1's silent send** was never a question — the northstar already requires the
   code to be confirmed accepted before the customer advances. Alongside it, **step 2
   tells the customer to check their spam folder**.
-- **Step 10 emails Yuta and the coach.**
+- **Step 10 emails the admin and the coach.**
 - **Step 9 closed the oldest question on this list** — "`in_review` means the coach
   has been told, not that the coach has started". The coach's first download is that
   missing event.
@@ -998,7 +998,7 @@ is the one worth being able to say afterwards.
 ### A failed email hid the assign control
 
 The chain's pointer is the first unmet, non-passive line, and **the stage's
-control hangs off it**. `② arrival → Yuta` failed on a placeholder address, so
+control hangs off it**. `② arrival → the admin` failed on a placeholder address, so
 "Arrival announced" sat unmet — and the line below it, "Coach chosen", never got
 the pointer. The assign dropdown vanished from a paid submission, with nothing
 on screen to say why.
@@ -1060,7 +1060,7 @@ don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 | **2 · Upload** | Attach a file | — | — | At least one file attached | You can attach up to 5 files.<br>Files must be under 50 MB.<br>That file type isn't supported.<br>That file is empty.<br>Your session has expired. Please start again. |
 |  | Clear payment | `card declined → customer`<br>`card declined → customer failed`<br>`card declined → customer bounced — hard`<br>`card declined → customer bounced — soft`<br>`card declined → customer bounced`<br>`card declined → customer complained`<br>`declined — only the notice is recorded, not the decline` *(not built)* | — | Payment cleared | Their attempt was scrubbed — the flow returns them to step 1 |
 | **3 · New** | Send the receipt | `② receipt → customer failed`<br>`② receipt → customer bounced — hard`<br>`② receipt → customer bounced — soft`<br>`② receipt → customer bounced`<br>`② receipt → customer complained` | `② receipt → customer`<br>`② receipt → customer delivered` | Receipt sent to the customer | — |
-|  | Tell Yuta it arrived | `② arrival → Yuta failed`<br>`② arrival → Yuta bounced — hard`<br>`② arrival → Yuta bounced — soft`<br>`② arrival → Yuta bounced`<br>`② arrival → Yuta complained` | `② arrival → Yuta`<br>`② arrival → Yuta delivered` | Arrival announced | — |
+|  | Tell Admin it arrived | `② arrival → Admin failed`<br>`② arrival → Admin bounced — hard`<br>`② arrival → Admin bounced — soft`<br>`② arrival → Admin bounced`<br>`② arrival → Admin complained` | `② arrival → Admin`<br>`② arrival → Admin delivered` | Arrival announced | — |
 |  | Pick a coach | — | — | Coach chosen | Refused — already handed off, so a stale tab can't reassign |
 | **4 · Assigned** | Record the coach's languages | `None recorded — translation need can't be derived, and the queue says which side is missing` | — | Coach's languages recorded | — |
 |  | Send for translation, if needed | — | — | Sent out for translation, if this coach needs it | — |
@@ -1071,7 +1071,7 @@ don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 | **7 · Sent** | Email the hand-off | `③ hand-off → coach failed`<br>`③ hand-off → coach bounced — hard`<br>`③ hand-off → coach bounced — soft`<br>`③ hand-off → coach bounced`<br>`③ hand-off → coach complained` | `③ hand-off → coach`<br>`③ hand-off → coach delivered` | Hand-off emailed | — |
 |  | Coach downloads the files | `Gone — the folder was purged before they collected (410)` | — | Coach downloaded the files | Refused — a different coach asked (403) |
 | **8 · Reviewing** | Upload the response | — | — | Response uploaded | Nothing — the upload is unvalidated and failures are silent *(not built)* |
-| **9 · Submitted** | Tell Yuta and the coach | `⑤ response submitted → Yuta + coach failed`<br>`⑤ response submitted → Yuta + coach bounced — hard`<br>`⑤ response submitted → Yuta + coach bounced — soft`<br>`⑤ response submitted → Yuta + coach bounced`<br>`⑤ response submitted → Yuta + coach complained` | `⑤ response submitted → Yuta + coach`<br>`⑤ response submitted → Yuta + coach delivered` | Yuta and the coach told | — |
+| **9 · Submitted** | Tell Admin and the coach | `⑤ response submitted → Admin + coach failed`<br>`⑤ response submitted → Admin + coach bounced — hard`<br>`⑤ response submitted → Admin + coach bounced — soft`<br>`⑤ response submitted → Admin + coach bounced`<br>`⑤ response submitted → Admin + coach complained` | `⑤ response submitted → Admin + coach`<br>`⑤ response submitted → Admin + coach delivered` | Admin and the coach told | — |
 |  | Send for translation, if needed | — | — | Sent out for translation, if the customer needs it | — |
 |  | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
 | **10 · Translating** | Download the response | — | — | Response downloaded | — |
@@ -1079,7 +1079,7 @@ don't yet. Generated from `STAGE_CHAIN`, not hand-maintained.
 | **11 · Translated** | Approve and send | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained`<br>`Refused — there is no response file to send` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Approved and sent | — |
 | **12 · Delivered** | Email the feedback | `⑥ feedback ready → customer failed`<br>`⑥ feedback ready → customer bounced — hard`<br>`⑥ feedback ready → customer bounced — soft`<br>`⑥ feedback ready → customer bounced`<br>`⑥ feedback ready → customer complained` | `⑥ feedback ready → customer`<br>`⑥ feedback ready → customer delivered` | Feedback emailed | — |
 |  | Customer downloads it | `Gone — an operator purged the folder early (410)` | — | Customer downloaded it | — |
-| **13 · Collected** | Tell Yuta they collected | `⑦ collected → Yuta failed`<br>`⑦ collected → Yuta bounced — hard`<br>`⑦ collected → Yuta bounced — soft`<br>`⑦ collected → Yuta bounced`<br>`⑦ collected → Yuta complained` | `⑦ collected → Yuta`<br>`⑦ collected → Yuta delivered` | Collection announced | — |
+| **13 · Collected** | Tell Admin they collected | `⑦ collected → Admin failed`<br>`⑦ collected → Admin bounced — hard`<br>`⑦ collected → Admin bounced — soft`<br>`⑦ collected → Admin bounced`<br>`⑦ collected → Admin complained` | `⑦ collected → Admin`<br>`⑦ collected → Admin delivered` | Collection announced | — |
 |  | Mark resolved | — | — | Marked resolved | — |
 | **14 · Resolved** | Send the thank-you | `⑧ thank you → customer failed`<br>`⑧ thank you → customer bounced — hard`<br>`⑧ thank you → customer bounced — soft`<br>`⑧ thank you → customer bounced`<br>`⑧ thank you → customer complained` | `⑧ thank you → customer`<br>`⑧ thank you → customer delivered` | Thank-you sent | — |
 |  | Warning falls due | `The sweep didn't run — CRON_SECRET unset, and it refuses rather than run unguarded` | — | Deletion warning due | — |
@@ -1133,14 +1133,14 @@ anyone for something the system can't see.
 | Past — it happened | Future — it hasn't | Read from | Rungs |
 | --- | --- | --- | --- |
 | Approved and sent | Approve and send | `feedbackEmailedAt` | 9, 11 |
-| Arrival announced | Tell Yuta it arrived | `②` | 3 |
+| Arrival announced | Tell the admin it arrived | `②` | 3 |
 | At least one file attached | Attach a file | `intake` | 2 |
 | Bytes removed from storage | Remove the bytes | `filesPurgedAt` | 16 |
 | Coach chosen | Pick a coach | `assignedCoachId` | 3 |
 | Coach downloaded the files | Coach downloads the files | `trail · in_review` | 7 |
 | Coach's languages recorded | Record the coach's languages | `coaches.languages` | 4 |
 | Code sent to the customer | Send the code | `①` | 1 |
-| Collection announced | Tell Yuta they collected | `⑦` | 13 |
+| Collection announced | Tell the admin they collected | `⑦` | 13 |
 | Customer downloaded it | Customer downloads it | `collectedAt` | 12 |
 | Deletion warning due | Warning falls due | `deletionWarnedAt` | 14 |
 | Email proven | Prove the email | `emailVerifiedAt` | 1 |
@@ -1162,7 +1162,7 @@ anyone for something the system can't see.
 | Translated files uploaded | Upload the translated files | `intake_translation` | 5 |
 | Translation uploaded | Upload the translation | `response_translation` | 10 |
 | Warning sent | Send the warning | `⑨` | 15 |
-| Yuta and the coach told | Tell Yuta and the coach | `⑤` | 9 |
+| the admin and the coach told | Tell the admin and the coach | `⑤` | 9 |
 
 **The other three vocabularies** a breadcrumb can be drawn from, all past-voice
 because all three are observations rather than intentions:
@@ -1170,7 +1170,7 @@ because all three are observations rather than intentions:
 - **The sixteen rung labels** (`RUNG_LABEL`) — a status move.
 - **Eleven email labels**, ①–⑨ plus the decline notice and the status access
   code. ② is two labels for one numbered event, because a payment tells the
-  customer *and* Yuta; they're separate sends with separate outcomes.
+  customer *and* the admin; they're separate sends with separate outcomes.
 - **Two verification labels** — `code accepted` and `code rejected`, the latter
   carrying its reason and the attempts spent.
 
@@ -1301,7 +1301,7 @@ checklist that greys out as each line is met.
   carries its own `met` predicate, so nothing is a flag a human ticks; each asks
   the row, the files, or the trail. That constrains what can be listed, which is
   the point.
-- ✅ **Passive lines never hold the pointer.** Yuta translating on his laptop
+- ✅ **Passive lines never hold the pointer.** the admin translating on his laptop
   can't be observed, so treating it as a gate left a row showing nothing to do
   while an upload was plainly outstanding.
 - ✅ **The control lives on the outstanding line**, not in a button bar. A bar
@@ -1309,7 +1309,7 @@ checklist that greys out as each line is met.
   button; here the thing you read and the thing you press are the same thing.
 - ✅ **`whoseCourt`** — the row names *who is holding it up*, not who is
   assigned. A submission can belong to a coach for days while everyone is
-  actually waiting on Yuta to approve it, and "assigned to Yuki" is no use when
+  actually waiting on the admin to approve it, and "assigned to Yuki" is no use when
   Yuki hasn't been sent anything yet. Another exhaustive `Record`, so a new rung
   can't be added without deciding who is waiting. The coach gets their name;
   everyone else gets their role, because a name only beats a role when there's a
@@ -1432,7 +1432,7 @@ nothing to notice. `isReleased` is the fix, and the general rule it carries:
 
 ## 4 · Where we came from
 
-**2026-07-30 (later) · Only payment earns retention.** Yuta's rule: until the money clears,
+**2026-07-30 (later) · Only payment earns retention.** the admin's rule: until the money clears,
 a submission is fair game to scrub. So the flow session dropped from six hours to **ten
 sliding minutes**, a cold page load no longer resumes an unpaid submission, and
 `startSubmissionAction` **discards and recreates** rather than editing in place.
@@ -1475,7 +1475,7 @@ base broke the app silently, in six places. The codec was built to make that imp
 
 Decisions taken, with their reasoning:
 
-- **`Sport` → `Focus`.** The column never held a sport. Nobody reading Yuta's base could
+- **`Sport` → `Focus`.** The column never held a sport. Nobody reading the admin's base could
   tell what it meant.
 - **Kept five focus values, standardized on `Hitting`** over CLAUDE.md's `Batting`. The
   existing data, the coach bios, and the FAQ copy all said Hitting; changing the word would
@@ -1488,7 +1488,7 @@ Decisions taken, with their reasoning:
 - **`Created At` → `Submitted At`, as an Airtable created-time field.** It had been an
   app-written string sitting in an editable cell, and the status lookup sorts on it — one
   stray edit from broken ordering. Now it can't be edited at all.
-- **Status 3 → 5.** Without `New` and `Assigned`, Yuta couldn't distinguish "needs a coach"
+- **Status 3 → 5.** Without `New` and `Assigned`, the admin couldn't distinguish "needs a coach"
   from "a coach has it" — which is the queue he actually works from.
 - **Column names, not Airtable field IDs.** Field IDs would survive a rename in the UI, but
   `fld7Kd2mQ` is unreadable and IDs differ between the dev and production bases. Chose

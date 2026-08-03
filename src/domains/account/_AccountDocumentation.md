@@ -3,7 +3,7 @@
 ## The northstar
 
 `account` is who can log into the operator portal and what they're allowed to
-touch. Two roles: **admin** (Yuta) and **coach**. **Customers are never accounts** —
+touch. Two roles: **admin** (the admin) and **coach**. **Customers are never accounts** —
 they're identified by the email on their submission, not a login.
 
 The noun is an `Operator` (`{ id, email, role }`) — the password hash never

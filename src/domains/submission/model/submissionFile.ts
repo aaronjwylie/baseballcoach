@@ -7,7 +7,7 @@
  *
  * **The four folders live in `kind`.** `intake` is what the customer sent,
  * `response` is what the coach wrote back, and each has a translated
- * counterpart Yuta uploads — stored *beside* the original, never replacing it.
+ * counterpart the admin uploads — stored *beside* the original, never replacing it.
  *
  * Kinds are **nouns** (`_NomenclatureLaw.md` §2): a kind says *what this file
  * is*, while a status says *what has happened*. That's why the kind is
@@ -53,7 +53,7 @@ export const RESPONSE_KINDS: readonly FileKind[] = FILE_KINDS.filter(
 );
 
 /**
- * Which language set someone receives — the choice Yuta makes at steps 8 and 13.
+ * Which language set someone receives — the choice the admin makes at steps 8 and 13.
  *
  * Not a property of the files, but of a **send**: it records what we handed to a
  * particular person on a particular day. Kept as data rather than a UI state

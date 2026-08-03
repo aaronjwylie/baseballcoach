@@ -95,7 +95,7 @@ const STATUS_META: Record<
   },
 
   // Everything between assignment and release is one sentence to the customer.
-  // Translation and Yuta's approval check are internal steps; surfacing them
+  // Translation and the admin's approval check are internal steps; surfacing them
   // would invite questions the parent can't act on.
   assigned: WITH_YOUR_COACH,
   intake_translating: WITH_YOUR_COACH,
@@ -106,7 +106,7 @@ const STATUS_META: Record<
   response_translating: WITH_YOUR_COACH,
   response_translated: WITH_YOUR_COACH,
 
-  // Ready to collect. `resolved` is Yuta closing his side of the job — nothing
+  // Ready to collect. `resolved` is the admin closing his side of the job — nothing
   // changes for the customer, who can still download.
   complete: READY,
   collected: READY,

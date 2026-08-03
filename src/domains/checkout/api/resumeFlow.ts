@@ -5,7 +5,7 @@
  * paid", not "unless mid-upload" — always. The filename is a fossil of when it
  * did resume; the behaviour it described is gone.
  *
- * Why: only a completed payment earns retention (Yuta, 2026-07-30), and a
+ * Why: only a completed payment earns retention (the client, 2026-07-30), and a
  * half-finished submission is a scratch pad. Resuming one meant a customer who
  * refreshed — or came back to a shared machine — landed inside someone's
  * abandoned attempt, which is exactly the "form seems cached" symptom this

@@ -6,7 +6,7 @@
 
 ## Context
 
-The lifecycle had seven statuses, and Yuta could not see where a submission was
+The lifecycle had seven statuses, and the admin could not see where a submission was
 stuck. `in_review` meant "we emailed the coach", not "a coach is working", so a
 coach sitting on a review for three days looked identical to one halfway through
 it — and turnaround was unmeasurable because nothing marked the moment work

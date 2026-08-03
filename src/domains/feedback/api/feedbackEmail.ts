@@ -1,7 +1,7 @@
 /**
  * The payoff email — the coach's breakdown is ready.
  *
- * Sent when Yuta approves a submission (`approveAndComplete`). By this point the
+ * Sent when the admin approves a submission (`approveAndComplete`). By this point the
  * customer left the site days ago, so email is the only way to reach them. The
  * link is the status page rather than a single file, because a review may now be
  * several files: the customer looks up their email and downloads each one.
@@ -57,7 +57,7 @@ export function sendFeedbackViewCode(to: string, code: string) {
 }
 
 /**
- * ⑤ — the coach has delivered; it's waiting on Yuta. To Yuta and the coach.
+ * ⑤ — the coach has delivered; it's waiting on the admin. To the admin and the coach.
  *
  * The approval gate exists so nothing reaches a customer unchecked, which means
  * a delivered review sits still until a person looks at it. Every other handover
@@ -93,7 +93,7 @@ export function sendResponseSubmittedEmail(opts: {
 }
 
 /**
- * ⑦ — the customer has collected their feedback. To Yuta.
+ * ⑦ — the customer has collected their feedback. To the admin.
  *
  * Closes the loop: the job is visibly finished, the row can be resolved, and the
  * retention clock has started. Without it, "did they ever pick it up?" is a
@@ -133,7 +133,7 @@ function escapeFeedbackHtml(value: string): string {
 /**
  * ⑧ — thank you, and come back. To the customer.
  *
- * Sent when Yuta marks a submission resolved, which is deliberately **before**
+ * Sent when the admin marks a submission resolved, which is deliberately **before**
  * the purge rather than after: the invitation should land while they still have
  * their files, not once we've deleted them.
  *

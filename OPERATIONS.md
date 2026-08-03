@@ -56,7 +56,7 @@
 >
 > **Operator notifications go to every `admin` in the `users` table.** There is no
 > env var for this — add an admin user to add a recipient. Five of the nine emails
-> go to Yuta, so a production install with no admin row is a queue that announces
+> go to the admin, so a production install with no admin row is a queue that announces
 > nothing.
 >
 > **New operational task:** record each coach's **languages** in the portal.
@@ -126,7 +126,7 @@ them; we never hold either. Set accounts up in the client's name from the start.
 | --- | --- |
 | Frontend implementation, and some admin/portal work | **Ben** |
 | Backend, and **access to every account below** | **Aaron** |
-| The accounts themselves, and the money | **Yuta** (the client) |
+| The accounts themselves, and the money | **the admin** (the client) |
 
 The practical consequence: **anything in this runbook that needs a dashboard
 login or a production credential is Aaron's**, because he holds them. Ben can
@@ -178,7 +178,7 @@ that fails in confusing ways.
 | --- | --- |
 | 🔴 **The app will fail until the migrations are applied** | Production is on the old schema. This is not a connection problem; see the handoff above. |
 | 🔴 **Check `STRIPE_SECRET_KEY` starts with `sk_test_`** | If production has been switched to live keys, local testing charges real cards. |
-| **Every test run writes real rows** | The queue Yuta works from is the same database. Seed data and probes go into production. |
+| **Every test run writes real rows** | The queue the admin works from is the same database. Seed data and probes go into production. |
 | **`npm run flow` and `npm run db:seed` become destructive** | The flow probe creates and sweeps submissions; the seed inserts samples. **Do not run either** while pointed at production. |
 | **Uploads land in the production Blob store** | Under a folder keyed by a local submission id, so nothing collides — but the production sweep won't clean them up, because it works from production rows. They become orphans. |
 | **`AUTH_SECRET` is shared** | A session minted locally is valid in production, and vice versa. |
@@ -336,7 +336,7 @@ step 2 of the flow. Everywhere else a missing key degrades honestly (sends are
 skipped and logged); here it is a hard stop — nobody can get past step 2.
 
 **Upload limits and retention windows are NOT env vars.** They live in the
-database and Yuta edits them at `/admin/settings`.
+database and the admin edits them at `/admin/settings`.
 
 Env vars are read in exactly one place — `src/shared/config/env.ts` (server) and
 `publicEnv.ts` (browser). Required values throw at point of use naming the
@@ -382,7 +382,7 @@ Current setup:
 | DNS records | DKIM `TXT` `resend._domainkey`; SPF `MX` + `TXT` on the **`send.`** subdomain — added in **GoDaddy** (auto-configured) |
 | Send from | `EMAIL_FROM = "Baseball Sensei <contact@baseball-sensei.com>"` (set in Vercel → redeploy) |
 | API key | `RESEND_API_KEY` (set in Vercel) |
-| **Receiving** | **Google Workspace** on `contact@baseball-sensei.com` (root MX) — replies to transactional email land in Yuta's inbox |
+| **Receiving** | **Google Workspace** on `contact@baseball-sensei.com` (root MX) — replies to transactional email land in the admin's inbox |
 
 **Why Google + Resend coexist:** Resend's records live on the `send.` subdomain
 and `resend._domainkey`; Google's MX/SPF live on the **root** and
@@ -472,7 +472,7 @@ The customer flow sets the first three; the portal drives the rest. Only paid
 submissions (`new` and later) appear in the queue — a `draft` or an abandoned
 `awaiting_payment` is someone who didn't finish, and the nightly sweep clears it.
 
-### Admin (Yuta) — `/admin`
+### Admin (the admin) — `/admin`
 
 1. The **Submissions** queue lists every submission, newest first. A `new` row
    means a paid submission is in, with its files, and needs a coach.
@@ -564,7 +564,7 @@ The Stripe webhook URL. See the warning at the top.
 | ~~**Large-file uploads**~~ | ✅ **Built** — the browser uploads direct to Blob ([ADR 011](docs/decisions/011-client-direct-uploads.md)). It was not a "revisit for prod": at ~4.5 MB per request body, video upload could never have worked in production |
 | **Test a real card + 3-D Secure in a browser** | Everything around it is proven; a card needs a human |
 | **Real coach content + photography** for the landing page | Blocks launch — the current copy is wireframe placeholder |
-| **The remaining 3 emails + Yuta's approval step** ([`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md)) | Agreed, not built — needs a new status and an admin approve action |
+| **The remaining 3 emails + the admin's approval step** ([`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md)) | Agreed, not built — needs a new status and an admin approve action |
 | **Point the site at `baseball-sensei.com`** + update `NEXT_PUBLIC_SITE_URL` | Optional — on the `.vercel.app` URL today |
 | **Forgot-password** (email reset) | Deferred — needs a token flow (change-password already shipped) |
 

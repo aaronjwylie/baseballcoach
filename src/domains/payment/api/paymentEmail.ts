@@ -71,7 +71,7 @@ function fileList(files: SubmissionFile[]): string {
 }
 
 /**
- * ② (the other half) — a paid submission has arrived. To Yuta.
+ * ② (the other half) — a paid submission has arrived. To the admin.
  *
  * The customer gets a receipt; the operator got nothing, so the first anyone
  * knew of a sale was noticing a new row. A queue that doesn't announce its own

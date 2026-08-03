@@ -1,6 +1,6 @@
 # 012 — Retention sweep, and limits the operator owns
 
-**Status:** Accepted (2026-07-30, Ben + Yuta). Settles the abuse guard
+**Status:** Accepted (2026-07-30, Ben + the admin). Settles the abuse guard
 [ADR 009](009-upload-before-payment.md) called for.
 
 ## Problem
@@ -10,7 +10,7 @@ Left alone that grows forever, and we pay for it. Completed reviews accumulate
 too: once a coach has delivered feedback, the source video has done its job.
 
 The limits involved — how big a file, how many, how long to keep them — are
-**business judgements Yuta will want to change**, not engineering constants. A
+**business judgements the admin will want to change**, not engineering constants. A
 redeploy to change a number is a bottleneck with one developer and a client in
 another timezone.
 

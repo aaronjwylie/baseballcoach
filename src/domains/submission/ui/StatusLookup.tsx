@@ -190,7 +190,7 @@ export function StatusLookup() {
 /**
  * Customer-facing labels for each status.
  *
- * "New" and "Assigned" are queue states that exist for Yuta, not the customer —
+ * "New" and "Assigned" are queue states that exist for the admin, not the customer —
  * telling a parent their video is "unassigned" is alarming and not actionable.
  * They collapse into honest, calm language about where the submission actually is.
  */

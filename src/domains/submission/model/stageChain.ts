@@ -12,7 +12,7 @@
  * the trail. That constrains what can be listed, which is the point: if it can't
  * be observed, it doesn't belong on a progress view pretending to observe it.
  *
- * **Passive lines never hold the pointer.** Yuta translating on his laptop can't
+ * **Passive lines never hold the pointer.** the admin translating on his laptop can't
  * be watched, so treating it as a gate would leave a row showing nothing to do
  * while an upload was plainly outstanding. Such a line still renders — it's part
  * of the story — but the next actionable line is what the row is waiting on.
@@ -82,7 +82,7 @@ export interface ChainLine {
    * non-passive line, and the control hangs off it — so a notification that
    * failed for reasons having nothing to do with the work would sit there
    * unmet forever, **hiding the control on the line below it**. That is
-   * exactly what happened: `② arrival → Yuta` failed on a placeholder address
+   * exactly what happened: `② arrival → Admin` failed on a placeholder address
    * and took the whole assign control with it.
    *
    * A line where the send *is* the action — the hand-off — keeps its pointer,
@@ -95,7 +95,7 @@ export interface ChainLine {
    * Every row the trail writes when this line goes wrong, verbatim.
    *
    * The chain said what has to be true and nothing about the other outcome —
-   * and the other outcome is the one somebody has to act on. `② arrival → Yuta`
+   * and the other outcome is the one somebody has to act on. `② arrival → Admin`
    * failing is what hid the assign control for a day, and no list anywhere said
    * that was a thing that could happen.
    */
@@ -232,7 +232,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   new: [
     { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, records: [...sendRecords("② receipt → customer")], failures: [...sendFailures("② receipt → customer")], met: sent("② receipt → customer") },
-    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", passive: true, records: [...sendRecords("② arrival → Yuta")], failures: [...sendFailures("② arrival → Yuta")], met: sent("② arrival → Yuta") },
+    { what: "Arrival announced", next: "Tell Admin it arrived", from: "②", passive: true, records: [...sendRecords("② arrival → Admin")], failures: [...sendFailures("② arrival → Admin")], met: sent("② arrival → Admin") },
     { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", told: ["Refused — already handed off, so a stale tab can't reassign"], met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
@@ -284,7 +284,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", told: [...UPLOAD_UNGUARDED], met: has("response") },
   ],
   awaiting_approval: [
-    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", passive: true, records: [...sendRecords("⑤ response submitted → Yuta + coach")], failures: [...sendFailures("⑤ response submitted → Yuta + coach")], met: sent("⑤ response submitted → Yuta + coach") },
+    { what: "Admin and the coach told", next: "Tell Admin and the coach", from: "⑤", passive: true, records: [...sendRecords("⑤ response submitted → Admin + coach")], failures: [...sendFailures("⑤ response submitted → Admin + coach")], met: sent("⑤ response submitted → Admin + coach") },
     {
       what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
       from: "rung 10",
@@ -321,7 +321,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   collected: [
-    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", passive: true, records: [...sendRecords("⑦ collected → Yuta")], failures: [...sendFailures("⑦ collected → Yuta")], met: sent("⑦ collected → Yuta") },
+    { what: "Collection announced", next: "Tell Admin they collected", from: "⑦", passive: true, records: [...sendRecords("⑦ collected → Admin")], failures: [...sendFailures("⑦ collected → Admin")], met: sent("⑦ collected → Admin") },
     { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
   ],
   resolved: [

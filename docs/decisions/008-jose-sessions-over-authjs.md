@@ -9,7 +9,7 @@ ADR 007 said the operator portal needed auth and was "leaning Auth.js, final cal
 at build." This is the build. The actual requirement is narrow:
 
 - **Credentials only** — email + password for a handful of **seeded** operators.
-- **Two roles** — `admin` (Yuta) and `coach`.
+- **Two roles** — `admin` (the admin) and `coach`.
 - **No** customer-facing auth, OAuth, magic links, or multi-device session
   management.
 

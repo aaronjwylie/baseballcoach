@@ -209,7 +209,7 @@ export async function getSubmissionFile(
  * How many files the customer has attached — checked against the upload limit.
  *
  * Counts `intake` only, not its translation: the limit is a promise to the
- * customer about what *they* may send, and Yuta's translations must not eat into
+ * customer about what *they* may send, and the admin's translations must not eat into
  * it.
  */
 export async function countSubmissionFiles(

@@ -32,7 +32,7 @@ path entirely.
 - **5 requests/second per base.** Fine at MVP volume; would not survive scale.
 - **Field names are strings in our code.** A rename in the UI breaks the app
   silently. Mitigated by declaring each column name exactly once (the Step 1
-  naming sweep) and by warning the client in OPERATIONS.md § Yuta's workflow.
+  naming sweep) and by warning the client in OPERATIONS.md § the admin's workflow.
 - **No transactions, no constraints, no referential integrity.** Every read must
   treat every field as possibly absent.
 - **Not a general query engine.** `filterByFormula` covers our four access

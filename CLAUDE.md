@@ -49,7 +49,7 @@ below now reflects it; this note is the one-paragraph orientation.
 
 The operator side becomes a **custom portal** instead of Airtable:
 
-- **Yuta and the coaches log in.** Admin (Yuta): all submissions, coach
+- **the admin and the coaches log in.** Admin (the admin): all submissions, coach
   management, assignment. Coach: their assigned submissions — download the files,
   upload feedback, mark complete. **Customers still don't log in** — paid links +
   the `/status` email lookup, unchanged.
@@ -130,7 +130,7 @@ the wrong file.
 
 ### What we're building
 
-An online baseball coaching platform where parents submit a **pack of files** — clips of their kid batting or pitching, plus any stills or documents that help — and receive expert feedback from coaches based in Japan. One submission is one review of that pack, not one video. Two audiences meet on it: **customers** get a smooth, professional funnel — land, verify their email, upload, pay, and receive feedback — and **operators** (Yuta and his coaches) run the coaching workflow from a custom portal they log into. Payments run on Stripe, uploads and feedback files on object storage, transactional mail on Resend; everything else — submissions, coaches, assignment, feedback delivery — is our own application on our own database.
+An online baseball coaching platform where parents submit a **pack of files** — clips of their kid batting or pitching, plus any stills or documents that help — and receive expert feedback from coaches based in Japan. One submission is one review of that pack, not one video. Two audiences meet on it: **customers** get a smooth, professional funnel — land, verify their email, upload, pay, and receive feedback — and **operators** (the admin and his coaches) run the coaching workflow from a custom portal they log into. Payments run on Stripe, uploads and feedback files on object storage, transactional mail on Resend; everything else — submissions, coaches, assignment, feedback delivery — is our own application on our own database.
 
 **Payment comes last.** Nobody pays for a submission whose upload then fails ([ADR 009](docs/decisions/009-upload-before-payment.md)), and nothing is retained until it clears — before that a submission is a scratch pad the customer can scrub by refreshing or walking away.
 
@@ -142,12 +142,12 @@ Every architectural decision follows from that. The customer funnel and the oper
 
 ### The northstar goal
 
-Give Yuta a functional, paying-customer-ready product he and his coaches operate end-to-end themselves, built lean and kept small. The MVP validates the concept with ~10 early users before any further investment, and has a clear upgrade path as demand grows.
+Give the admin a functional, paying-customer-ready product he and his coaches operate end-to-end themselves, built lean and kept small. The MVP validates the concept with ~10 early users before any further investment, and has a clear upgrade path as demand grows.
 
 ### What success looks like
 
 - A customer can visit the landing page, pay via Stripe, upload a video, and receive coach feedback by email — all without friction
-- Yuta operates the workflow from his **admin portal** — managing coaches, assigning submissions, and tracking the queue at a glance
+- the admin operates the workflow from his **admin portal** — managing coaches, assigning submissions, and tracking the queue at a glance
 - Coaches **log into their own portal** to download assigned videos and upload their feedback response
 - A submission moves from paid → uploaded → assigned → reviewed → delivered without developer intervention
 - Operating costs are under ~$80 CAD/month at MVP volume
@@ -163,21 +163,21 @@ The client is personally funding this as a side project to validate demand befor
 
 The following are **intentionally not built**. If a request would require adding any of these, stop and flag it as out of scope before writing code. Do not silently expand scope.
 
-- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — the status lookup identifies returning customers by an unverified email. Operator logins (Yuta + coaches) are in scope and are a different thing; customers never get an account.
+- **Customer accounts, signup flows, or customer login screens.** Customer identity stays email-based — the status lookup identifies returning customers by an unverified email. Operator logins (the admin + coaches) are in scope and are a different thing; customers never get an account.
   - **The 6-digit email verification in the flow is not an account** and was checked against this line before it was built: no password, no profile, nothing to sign into, one submission, expires in hours. It proves reachability so we can deliver what was bought. See [ADR 010](docs/decisions/010-verification-gates-upload.md) — including how to tell if that line ever gets crossed.
 - **Customer dashboards** beyond the email lookup for submission status.
-- **Operator features beyond running the coaching workflow.** The portal covers submissions, coaches, assignment, feedback hand-off, and the handful of upload/retention limits Yuta tunes — not analytics suites, billing consoles, or anything that serves scale we don't have. The line is "does Yuta need it to process a submission today?"
+- **Operator features beyond running the coaching workflow.** The portal covers submissions, coaches, assignment, feedback hand-off, and the handful of upload/retention limits the admin tunes — not analytics suites, billing consoles, or anything that serves scale we don't have. The line is "does the admin need it to process a submission today?"
 - **Subscription billing.** Per-submission payment only.
 - **Automated PDF report generation.** Coaches deliver PDFs manually if at all.
 - **Custom video annotation tools** (drawing on frames, slow-motion analysis, side-by-side comparison).
 - **Multilingual UI.** English at launch. Translation module is a separate future engagement.
-- **Stripe Connect for coach payouts.** Yuta pays coaches manually outside the platform.
+- **Stripe Connect for coach payouts.** the admin pays coaches manually outside the platform.
 - **Native mobile apps.** iOS and Android are Phase 2.
 - **Advanced analytics** beyond the submission queue and simple counts the portal shows.
 - **Real-time coaching, chat, or live sessions.**
 - **Japanese-specific payment methods** (Konbini, bank transfer). Stripe credit cards only.
 
-If Yuta or Audrey asks for any of these mid-build, respond: "That's outside the scope of v1. It's on the upgrade path — happy to scope it as a change order."
+If the admin or Audrey asks for any of these mid-build, respond: "That's outside the scope of v1. It's on the upgrade path — happy to scope it as a change order."
 
 ---
 
@@ -194,7 +194,7 @@ the app is the system of record and the glue.
                         Next.js app on Vercel
 ┌──────────────────────────────────────────────────────────────────┐
 │  CUSTOMER  (public, no login)     │  OPERATOR PORTAL  (auth)       │
-│  Landing → /start, 4 steps:       │  Admin (Yuta): queue,          │
+│  Landing → /start, 4 steps:       │  Admin (the admin): queue,          │
 │    1 details  2 verify email      │  coach mgmt, assignment,       │
 │    3 upload   4 pay               │  settings (limits/retention)   │
 │  → Confirm → Status lookup        │  Coach: download files,        │
@@ -239,7 +239,7 @@ the app is the system of record and the glue.
 - **GoDaddy:** Registers the domain
 - **DNS:** Configured in GoDaddy, points to Vercel
 
-If Yuta or Audrey pushes back on this, escalate to Ben before changing the architecture.
+If the admin or Audrey pushes back on this, escalate to Ben before changing the architecture.
 
 ---
 
@@ -259,7 +259,7 @@ If Yuta or Audrey pushes back on this, escalate to Ben before changing the archi
 | Email      | Resend + React Email       | Templates as React components                                    |
 | Automation | **None**                   | **Make.com dropped** — logic lives in the app / portal           |
 | Hosting    | Vercel                     | Free tier for staging, Pro for prod once needed                  |
-| Domain     | GoDaddy                    | Yuta's registrar of choice, DNS points to Vercel                 |
+| Domain     | GoDaddy                    | the admin's registrar of choice, DNS points to Vercel                 |
 | Repo       | Single Next.js repo        | Not a monorepo                                                   |
 
 ### Do NOT introduce
@@ -348,7 +348,7 @@ full of secrets (see [structure.md §5](docs/design/structure.md)):
 
 **Operator-tunable limits are not env vars.** Upload size, file count, and the two
 retention windows live in the `settings` table and are edited at
-`/admin/settings` — env is the developer's configuration, those are Yuta's
+`/admin/settings` — env is the developer's configuration, those are the admin's
 ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 - `shared/config/publicEnv.ts` — the handful of `NEXT_PUBLIC_*` values the
   browser needs.
@@ -428,13 +428,13 @@ No transcoding, no streaming — the coach downloads and scrubs locally.
 
 First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose-sessions-over-authjs.md)):
 
-- Two roles: `admin` (Yuta) and `coach`. **Customers never authenticate.**
+- Two roles: `admin` (the admin) and `coach`. **Customers never authenticate.**
 - A `jose`-signed HS256 JWT in an httpOnly cookie (`shared/auth`). The DAL in
   `domains/account` does the secure `requireSession` / `requireRole` checks close
   to the data; `proxy.ts` (Next 16's renamed Middleware) does an optimistic
   pre-filter, never the sole defence.
 - Passwords are bcrypt-hashed and never leave `userApi.ts`. The first admin is
-  **seeded** (`npm run db:seed`); Yuta adds coaches from the portal — no
+  **seeded** (`npm run db:seed`); the admin adds coaches from the portal — no
   self-signup.
 
 ### Resend — transactional email
@@ -454,7 +454,7 @@ Each message lives in the domain that owns it, as `api/xEmail.ts`.
 full matrix is [`shared/email/_EmailDocumentation.md`](src/shared/email/_EmailDocumentation.md);
 each message lives in the domain that owns its event.
 
-**Five of the nine tell Yuta something** — a payment landed, a coach picked work
+**Five of the nine tell the admin something** — a payment landed, a coach picked work
 up, a response is waiting, a customer collected. That's deliberate: a queue that
 doesn't announce its own arrivals has to be *watched* instead of used. They go to
 every `admin` in the `users` table, read at send time, because the people who
@@ -502,7 +502,7 @@ Call it best-effort — don't let a mail hiccup fail the surrounding mutation.
 `RESEND_API_KEY` set in Vercel, and
 `EMAIL_FROM = "Baseball Sensei <contact@baseball-sensei.com>"`. **Receiving** is
 Google Workspace (root MX) — independent of Resend, so both coexist, and a
-customer reply lands in Yuta's `contact@` inbox. Dashboard/DNS detail:
+customer reply lands in the admin's `contact@` inbox. Dashboard/DNS detail:
 [OPERATIONS.md §8](OPERATIONS.md).
 
 ### Vercel
@@ -631,7 +631,7 @@ from a legitimate one.
 ### `settings`
 
 One row, always (`id` is fixed). The operator's knobs, edited at
-`/admin/settings` — **not env vars**, because they belong to Yuta rather than to
+`/admin/settings` — **not env vars**, because they belong to the admin rather than to
 a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 
 | Column | Type | Default |
@@ -713,7 +713,7 @@ collapses eleven middle rungs into one calm sentence — a parent has no use for
 | `name` | text | |
 | `specialties` | enum[] | matches the `focus` options |
 | `languages` | text[] | e.g. English, Japanese |
-| `isActive` | boolean | Yuta toggles from the portal |
+| `isActive` | boolean | the admin toggles from the portal |
 
 ### `users`
 
@@ -727,7 +727,7 @@ Operator identity — **operators only, never customers.**
 | `role` | enum | `admin` · `coach` |
 | `createdAt` | timestamptz | |
 
-The first `admin` (Yuta) is **seeded**; coaches are created from the admin portal,
+The first `admin` (the admin) is **seeded**; coaches are created from the admin portal,
 each paired with a `coaches` row.
 
 ---
@@ -1079,7 +1079,7 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 - **Customer** — The end user, typically a parent submitting their child's video
 - **Player** — The child whose video is being reviewed (customer's child)
 - **Coach** — The expert in Japan providing feedback
-- **Client** — Yuta, who operates the platform day-to-day
+- **Client** — the admin, who operates the platform day-to-day
 - **Submission** — One paid request from a customer for coaching feedback, carrying a **pack of files** (video, images, documents) reviewed together — not one video
 - **Workflow** — End-to-end process from payment to feedback delivery
 - **Database** — The Postgres instance holding the `users`, `coaches`, and `submissions` tables

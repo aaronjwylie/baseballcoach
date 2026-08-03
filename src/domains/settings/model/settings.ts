@@ -1,5 +1,5 @@
 /**
- * Platform settings — the limits Yuta tunes without a deploy.
+ * Platform settings — the limits the admin tunes without a deploy.
  *
  * These are deliberately **not** in `shared/config/env.ts`. Env vars are the
  * developer's configuration, set once at deploy time; these are the operator's,

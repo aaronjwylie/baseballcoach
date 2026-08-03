@@ -67,7 +67,7 @@ export const method = {
  * replacing the three equal coach cards that preceded it.
  *
  * Every value here is placeholder text drawn straight from the wireframe and
- * **cannot go live as written** — it needs Yuta's real name, record, and
+ * **cannot go live as written** — it needs the admin's real name, record, and
  * headshot. The `stats` are unsourced claims for the same reason.
  */
 export const coach = {

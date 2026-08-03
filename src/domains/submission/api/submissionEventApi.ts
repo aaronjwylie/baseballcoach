@@ -4,7 +4,7 @@
  * Chosen over sixteen nullable `*At` columns on `submissions`, and it answers
  * strictly more. A column remembers one moment; this remembers every one, in
  * order, with who caused it. That matters because a status can be reached twice:
- * Yuta resets a submission from `awaiting_approval` back to `in_review`, the
+ * the admin resets a submission from `awaiting_approval` back to `in_review`, the
  * coach redelivers, and it arrives at `awaiting_approval` again. A column would
  * silently overwrite the first visit.
  *

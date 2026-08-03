@@ -9,7 +9,7 @@ import {
 } from "@/domains/submission/model/submissionFile";
 
 /**
- * The four folders, as Yuta sees them.
+ * The four folders, as the admin sees them.
  *
  * `intake` and `response` are read-only — they're the customer's and the coach's
  * own uploads, and the record of what was actually submitted. The two
@@ -17,7 +17,7 @@ import {
  * originals, translate off-platform, put the result back.
  *
  * Empty folders are rendered rather than hidden. "No Japanese version yet" is
- * information Yuta acts on; a folder that vanishes when empty makes its absence
+ * information the admin acts on; a folder that vanishes when empty makes its absence
  * look like a bug in the page instead of a state of the work.
  *
  * Imports the *model* directly rather than the domain barrel: this is a

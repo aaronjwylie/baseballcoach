@@ -1,6 +1,6 @@
 # settings — `src/domains/settings/`
 
-The **settings slice** — the limits Yuta tunes without a deploy.
+The **settings slice** — the limits the admin tunes without a deploy.
 
 ---
 
@@ -122,7 +122,7 @@ and these are business judgements, not engineering constants.
   `retainDeliveredDays` (90) and `warnBeforeDeletionDays` (7). `retainResolvedHours`
   is gone — it measured from completion, which deleted files the customer may
   never have collected.
-- ✅ **`priceCents`** moved here from `site.ts`, so the price is Yuta's rather
+- ✅ **`priceCents`** moved here from `site.ts`, so the price is the admin's rather
   than a deploy's.
 - ✅ **The fourth kind of clock exists.** The deletion warning is the first
   genuinely *scheduled* effect in the system — see the timer taxonomy above.
@@ -147,7 +147,7 @@ and these are business judgements, not engineering constants.
 
 New on 2026-07-30, created because
 [ADR 009](../../../docs/decisions/009-upload-before-payment.md) needed an abuse
-guard and Yuta asked for the numbers to be his rather than ours
+guard and the admin asked for the numbers to be his rather than ours
 ([ADR 012](../../../docs/decisions/012-retention-and-operator-settings.md)).
 
 - **A single-row table, not a key/value store.** Four typed columns beat four

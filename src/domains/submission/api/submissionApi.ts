@@ -165,7 +165,7 @@ export async function assignSubmissionCoach(
  * Hand the work to the coach: `assigned` → `sent_to_coach`. Admin action.
  *
  * **Not `in_review`.** The coach has been emailed, not started — and the gap
- * between those two is the one Yuta needs to see, because it's the only place a
+ * between those two is the one the admin needs to see, because it's the only place a
  * submission stalls on a person rather than on the system. `in_review` is now
  * earned by the coach actually collecting the files.
  */

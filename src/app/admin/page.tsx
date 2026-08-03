@@ -124,7 +124,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     key: "awaiting_approval",
     label: RUNG_LABEL.awaiting_approval,
     // Delivered, plus the response-translation pair — all of it is waiting on
-    // Yuta and none of it has reached the customer.
+    // the admin and none of it has reached the customer.
     match: (s) =>
       (s.status === "awaiting_approval" ||
         s.status === "response_translating" ||
@@ -159,7 +159,7 @@ export default async function AdminHomePage({
     The four folders, per row.
 
     One query per submission rather than one for the page: the folder view only
-    renders for rows Yuta has expanded in practice, and a page-wide join would
+    renders for rows the admin has expanded in practice, and a page-wide join would
     read every translation of every submission to show a handful. Bounded by the
     page size, which the queue already limits.
   */
@@ -181,7 +181,7 @@ export default async function AdminHomePage({
     ),
   );
 
-  // The coach's feedback files, for the rows where Yuta acts on them — reviewing
+  // The coach's feedback files, for the rows where the admin acts on them — reviewing
   // before approval, and after it's delivered.
   const feedbackBySubmission = new Map(
     await Promise.all(
@@ -432,7 +432,7 @@ function SubmissionRow({
     The coach gets their name; everyone else gets their role.
 
     A name is only more useful than a role when there's a specific person to
-    chase — and for the customer, Yuta himself, or an off-platform translator
+    chase — and for the customer, the admin himself, or an off-platform translator
     there isn't one, or it's obvious. "Waiting on the translator" is actionable
     in a way "assigned to Yuki" isn't when Yuki hasn't been sent anything yet.
   */
@@ -471,7 +471,7 @@ function SubmissionRow({
         Whose court the ball is in — not who is assigned.
 
         A submission can belong to a coach for days while everyone is actually
-        waiting on Yuta to approve it. The assigned coach is only sometimes the
+        waiting on the admin to approve it. The assigned coach is only sometimes the
         answer to "who is holding this up", and the queue exists to answer the
         second question.
 

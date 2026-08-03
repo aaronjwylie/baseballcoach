@@ -45,7 +45,7 @@ export type Language = (typeof LANGUAGES)[number];
  *
  * It is a **prompt, not a gate**. The translation rungs are optional and
  * operator-driven, so this only has to be right enough to raise the question;
- * Yuta can send anything for translation regardless. That's what lets the rule
+ * the admin can send anything for translation regardless. That's what lets the rule
  * stay this simple — the edge cases are exactly what an operator is for.
  *
  * A caveat worth knowing: strictly it's the *files* that have a language, not
@@ -116,7 +116,7 @@ export type Focus = (typeof FOCUS_OPTIONS)[number];
  * | `response_translated` | step 12 — the translated version is back and stored |
  * | `complete` | step 13 — released to the customer |
  * | `collected` | step 14 — **the customer downloaded it.** The retention clock starts |
- * | `resolved` | step 15 — Yuta closed it; the thank-you has gone |
+ * | `resolved` | step 15 — the admin closed it; the thank-you has gone |
  * | `purge_imminent` | step 16 — deletion is a week out; the customer has been warned |
  * | `purged` | step 17 — the bytes are gone; the record is permanent |
  */
@@ -156,7 +156,7 @@ export type AppWrittenStatus = Extract<
  *
  * It was a list, and that cost us: `awaiting_approval` was added to the
  * lifecycle without being added here, which silently meant a *paid* submission
- * sitting on Yuta's desk read as unpaid. Six call sites believe `isPaid`, and
+ * sitting on the admin's desk read as unpaid. Six call sites believe `isPaid`, and
  * two of them act destructively on a `false` — `discardUnpaidSubmission` would
  * have deleted it outright, and `markSubmissionPaid` would have treated a
  * redelivered Stripe webhook as a fresh payment, walking the status backwards
@@ -196,7 +196,7 @@ export function isPaid(submission: Pick<Submission, "status">): boolean {
  * Does a coach's response exist yet?
  *
  * True from `awaiting_approval` — the coach has delivered — even though the
- * customer can't see it until Yuta releases it. That gap is the whole point of
+ * customer can't see it until the admin releases it. That gap is the whole point of
  * the approval gate, so "a response exists" and "the customer may have it" are
  * two different questions with two different predicates.
  */
@@ -263,9 +263,9 @@ export function isReleased(submission: Pick<Submission, "status">): boolean {
 /**
  * Is this on a coach's desk — theirs to act on?
  *
- * `assigned` is included because Yuta may assign before emailing, and the coach
+ * `assigned` is included because the admin may assign before emailing, and the coach
  * seeing it early is harmless. It stops at `awaiting_approval`: once they've
- * delivered, the work is Yuta's.
+ * delivered, the work is the admin's.
  */
 const WITH_COACH_AT_STATUS: Record<SubmissionStatus, boolean> = {
   draft: false,
@@ -296,7 +296,7 @@ export function isWithCoach(submission: Pick<Submission, "status">): boolean {
  * Whose court is the ball in?
  *
  * Not the same question as "who is assigned" — a submission can belong to a
- * coach for days while everyone is actually waiting on Yuta to approve it, or on
+ * coach for days while everyone is actually waiting on the admin to approve it, or on
  * a customer to download. The queue's job is to say *who is holding this up*, and
  * the assigned coach is only sometimes the answer.
  *
@@ -315,25 +315,25 @@ const COURT_AT_STATUS: Record<SubmissionStatus, Court> = {
   // Filling in the form, reading the code, uploading, paying.
   draft: "customer",
   awaiting_payment: "customer",
-  // Paid and unassigned — the queue is waiting on Yuta to pick someone.
+  // Paid and unassigned — the queue is waiting on the admin to pick someone.
   new: "admin",
-  // Assigned, but not yet handed over: still Yuta's move, whether that means
+  // Assigned, but not yet handed over: still the admin's move, whether that means
   // sending it on or sending it out to be translated.
   assigned: "admin",
   intake_translating: "translator",
-  // The translation is back; the hand-off is Yuta's again.
+  // The translation is back; the hand-off is the admin's again.
   intake_translated: "admin",
   // Emailed. Now genuinely the coach's, and the rung exists to make the
   // difference between "told" and "started" visible.
   sent_to_coach: "coach",
   in_review: "coach",
-  // Delivered — nothing reaches the customer until Yuta releases it.
+  // Delivered — nothing reaches the customer until the admin releases it.
   awaiting_approval: "admin",
   response_translating: "translator",
   response_translated: "admin",
   // Released. The clock doesn't start until they collect, so it's their move.
   complete: "customer",
-  // Collected — the only thing left is Yuta closing it.
+  // Collected — the only thing left is the admin closing it.
   collected: "admin",
   // Closed. Everything after this is a scheduled sweep, not a person.
   resolved: "system",

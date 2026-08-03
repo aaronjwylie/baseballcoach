@@ -87,7 +87,7 @@ through file kinds, statuses, folders, and conversation alike.
 | **customer** | the parent who pays. **Never has an account** |
 | **player** | the child in the footage. A field on a submission, never an entity |
 | **coach** | the reviewer in Japan. Has an operator login |
-| **operator** | anyone who logs in — `admin` (Yuta) or `coach`. The word that covers both |
+| **operator** | anyone who logs in — `admin` (the admin) or `coach`. The word that covers both |
 | **submission** | one paid request carrying a **pack** of files, reviewed together — not one video |
 | **intake** | the files the **customer** sent |
 | **response** | the files the **coach** wrote back |
@@ -107,7 +107,7 @@ through file kinds, statuses, folders, and conversation alike.
 | **sweep** | the scheduled deletion pass |
 | **purge** | delete a submission's files. Records survive; **the submission is kept forever** |
 | **capability** | a signed, purpose-bound token that grants access without a login |
-| **the queue** | Yuta's list of submissions. What statuses exist to filter |
+| **the queue** | the admin's list of submissions. What statuses exist to filter |
 
 ### Retired words — do not use for northstar concepts
 

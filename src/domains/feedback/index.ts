@@ -3,7 +3,7 @@
  *
  * The coach attaches one or more files (each a `feedback` row in
  * `submission_files`), then `sendFeedbackForApproval` parks the submission at
- * `awaiting_approval` for Yuta; `approveAndComplete` marks it complete and emails
+ * `awaiting_approval` for the admin; `approveAndComplete` marks it complete and emails
  * the customer that their feedback is ready.
  *
  * It also owns the messages about a response's *life after delivery* — collected

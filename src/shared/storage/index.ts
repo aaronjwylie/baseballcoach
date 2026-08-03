@@ -50,7 +50,7 @@ export function feedbackFileKey(submissionId: string, filename: string): string 
 }
 
 /**
- * Build the storage key for a translation Yuta uploads.
+ * Build the storage key for a translation the admin uploads.
  *
  * Its own subfolder per kind, so the four folders are visible in the object
  * store as well as in the database — which matters the one time someone has to

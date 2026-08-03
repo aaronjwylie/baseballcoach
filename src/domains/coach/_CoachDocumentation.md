@@ -8,7 +8,7 @@ managing them and assigning work.
 ## 1 · The northstar
 
 A `Coach` is a reviewer's profile (name, specialties, languages, active) **plus a login** —
-the `coaches` row is keyed to a `users` row by `userId`. Yuta creates coaches from the admin
+the `coaches` row is keyed to a `users` row by `userId`. the admin creates coaches from the admin
 portal (there is no self-signup) and assigns each submission to one.
 
 ```mermaid
@@ -54,9 +54,9 @@ flowchart LR
 
 - ✅ **The hand-off stops at `sent_to_coach`.** Emailing a coach is not the same
   as a coach starting work, and the gap between them is the one place a
-  submission stalls on a person outside the building. Yuta can now see it.
+  submission stalls on a person outside the building. the admin can now see it.
 - ✅ **`noteCoachCollected`** — the coach's first download earns `in_review` and
-  tells Yuta the hand-off closed. Gated on it being **that coach's** submission:
+  tells the admin the hand-off closed. Gated on it being **that coach's** submission:
   the download route can only see that *a* coach is logged in, and an admin
   checking on the work must not count as the coach starting it.
   Fire-and-forget and self-swallowing, because it hangs off a route whose real
@@ -92,7 +92,7 @@ flowchart LR
   Only blank rows are touched, so it can't undo a coach deliberately set to
   Japanese only.
   **`submissions.languages` is deliberately *not* backfilled**: a coach's
-  profile is Yuta's to state, a customer's declaration is not ours to invent.
+  profile is the admin's to state, a customer's declaration is not ours to invent.
 - ✅ **The dev seed carries all three language shapes** — bilingual, Japanese
   only, English only. The bilingual one is the case worth having: a rule written
   as "do the sets match?" instead of "do they overlap?" passes both
@@ -115,6 +115,6 @@ flowchart LR
 ## 3 · Where we came from
 
 **2026-07-29 · Created with the operator portal** ([ADR 007](../../../docs/decisions/007-portal-and-postgres-retire-airtable.md)).
-Under Airtable, "Assigned Coach" was a free-text field Yuta typed into and there was no coach
+Under Airtable, "Assigned Coach" was a free-text field the admin typed into and there was no coach
 concept in code. The portal made coaches real: a login, a profile, and referential
 integrity via `assignedCoachId`.
