@@ -50,17 +50,40 @@ async function main() {
     return;
   }
 
-  const coachEmail = "coach@example.com";
-  const coach = await ensureUser(coachEmail, "changeme123", "coach");
-  if (coach.created) {
-    await db.insert(coaches).values({
-      userId: coach.id,
-      name: "Coach Tanaka",
-      specialties: ["Hitting", "Pitching"],
-      languages: ["English", "Japanese"],
-    });
+  /*
+    One coach per language shape, because translation need is the intersection
+    of the coach's languages with the customer's and each shape takes a
+    different route through the ladder:
+
+      bilingual  — shares a language with anyone, never translates
+      Japanese   — translates for the English-reading parent this platform
+                   mostly serves, and skips it for a Japanese-reading one
+      English    — the mirror
+
+    The bilingual case is the one worth seeding deliberately. A rule written as
+    "do the sets match?" rather than "do they overlap?" passes both single-
+    language coaches and fails only here.
+  */
+  const sampleCoaches = [
+    { email: "coach@example.com", name: "Coach Tanaka", languages: ["English", "Japanese"], specialties: ["Hitting", "Pitching"] },
+    { email: "coach.jp@example.com", name: "Coach Mori", languages: ["Japanese"], specialties: ["Pitching"] },
+    { email: "coach.en@example.com", name: "Coach Reed", languages: ["English"], specialties: ["Hitting", "Fielding"] },
+  ] as const;
+
+  for (const c of sampleCoaches) {
+    const user = await ensureUser(c.email, "changeme123", "coach");
+    if (user.created) {
+      await db.insert(coaches).values({
+        userId: user.id,
+        name: c.name,
+        specialties: [...c.specialties],
+        languages: [...c.languages],
+      });
+    }
+    console.log(
+      `[seed] coach ${c.email} (${c.languages.join("+")}) ${user.created ? "created" : "exists"}`,
+    );
   }
-  console.log(`[seed] coach ${coachEmail} ${coach.created ? "created" : "exists"}`);
 
   const [{ n }] = await db.select({ n: count() }).from(submissions);
   if (n === 0) {

@@ -75,10 +75,17 @@ flowchart LR
 - ✅ **Reassignment is guarded server-side**, not just hidden: a stale tab could
   previously pull a submission out from under a coach who had already been
   emailed it.
-- ⚠️ **The rule does nothing until both sides are recorded.** Coaches created
-  before this need their languages filled in from the portal; the customer's half
-  is collected at step 1 and defaults to English, so only the coach side can be
-  silently empty in practice.
+- ✅ **Existing coaches were backfilled to English** (migration `0014`). Every
+  coach on record predates the question and every one of them reads English —
+  that was the platform's own assumption until the intersection replaced it.
+  Only blank rows are touched, so it can't undo a coach deliberately set to
+  Japanese only.
+  **`submissions.languages` is deliberately *not* backfilled**: a coach's
+  profile is Yuta's to state, a customer's declaration is not ours to invent.
+- ✅ **The dev seed carries all three language shapes** — bilingual, Japanese
+  only, English only. The bilingual one is the case worth having: a rule written
+  as "do the sets match?" instead of "do they overlap?" passes both
+  single-language coaches and fails only there.
 
 
 ### Before 2026-08-01

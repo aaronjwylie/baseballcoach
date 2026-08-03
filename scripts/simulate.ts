@@ -293,8 +293,33 @@ async function ensureCoach(name: string, languages: string[]) {
   return created;
 }
 
+/**
+ * The intersection rule itself, before any walk exercises it.
+ *
+ * A full walk only ever proves the two shapes it happens to use. These are the
+ * cases that separate *overlap* from *equality* and *unknown* from *no* — the
+ * three ways this rule can be written wrong while still passing a happy path.
+ */
+function checkLanguageRule() {
+  console.log("\n━━ the intersection rule ━━");
+  const cases: [string[], string[], boolean | null, string][] = [
+    [["English"], ["English"], false, "same single language"],
+    [["English"], ["Japanese"], true, "no overlap"],
+    [["Japanese"], ["Japanese"], false, "Japanese both sides — the case the old coach-only rule got wrong"],
+    [["English"], ["English", "Japanese"], false, "bilingual coach overlaps — sets differ, and that's fine"],
+    [["English", "Japanese"], ["Japanese"], false, "bilingual customer overlaps"],
+    [["English"], [], null, "coach hasn't declared — unknown, not no"],
+    [[], ["English"], null, "customer hasn't declared — unknown, not no"],
+    [["english"], ["English"], false, "case and spacing don't make a mismatch"],
+  ];
+  for (const [customer, coach, want, what] of cases) {
+    check(needsTranslation(customer, coach) === want, `${String(want).padEnd(5)} — ${what}`);
+  }
+}
+
 async function main() {
-  console.log("Simulating the whole ladder — both paths, real domain functions.\n");
+  console.log("Simulating the whole ladder — both paths, real domain functions.");
+  checkLanguageRule();
   await walk("English-reading coach — skips translation", false);
   await walk("Japanese-only coach — full translation path", true);
 
