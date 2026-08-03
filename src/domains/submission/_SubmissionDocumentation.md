@@ -1024,26 +1024,27 @@ It reads left to right as the substep's own story: **what is owed**, the ways it
 can **go wrong**, the rows it writes when it **doesn't**, and what it's **called
 afterwards**. Failure sits before success because failure is the reason to look.
 
-- **Still to do** — the substep in the operator's words, before the fact. This
-  is the line that closes the trail and sits under the rung on the pill.
-- **Written to the trail when it fails** — the row you'll see on a bad run.
-- **Written to the trail when it works** — the row you'll see on a good one.
-- **Done** — the same substep after the fact, still the operator's words.
-- **Shown to someone, never written down** — a refusal at the door. The person
-  in front of it is told; the trail stays silent. That distinction is the whole
-  reason for the column: **an empty trail otherwise has two readings**, and only
-  this says which one applies.
+**Where each column surfaces**, which is also the answer to "why are there two
+columns of operator vocabulary":
 
-  The customer's upload refusals come from `uploadPolicy`, which runs on
-  `/api/upload`, `/api/upload/blob` and `/api/upload/complete` and surfaces on
-  the step-3 upload cards. **The operator's and the coach's uploads run no
-  policy at all** — `uploadTranslationAction` is a Server Action returning
-  `void`, and the feedback route validates nothing — so a file that fails there
-  is a page that refreshes unchanged. That's listed as *(not built)* rather than
-  left blank, because a blank cell would read as "nothing can go wrong here".
+| Column | Where it renders |
+| --- | --- |
+| **Step** | the pill's top line · every rail dot's tooltip · the rail's screen-reader label · status rows in the trail · the queue's filter tabs · the override's **Move back to** dropdown, numbered |
+| **Still to do** | the pill's second line · the last line of the trail. **Those are one string rendered twice** |
+| **Written when it fails** | the trail, in the drawer |
+| **Written when it works** | the trail, in the drawer |
+| **Done** | the drawer's **Then, in order** checklist · **the amber flag on the collapsed row** · the override's **at:** dropdown |
+| **Shown, never written** | the customer's upload cards at step 3 |
 
-That last column is why the split is worth six columns rather than a footnote:
-**an empty trail can mean two different things**, and only this says which.
+**Three of those columns are a catalogue, not a source.** `failures`, `records`
+and `told` are never rendered from these arrays — the trail composes its rows at
+runtime from a label and its outcome, and `uploadPolicy` returns its own
+refusals. They're written down here so the set is *knowable*; nothing breaks if
+they drift, which is exactly why they have to be checked against the code rather
+than trusted.
+
+The other three are live. `RUNG_LABEL` and `what` and `next` are read straight
+out of the model by the components listed above, so those rows can't drift.
 
 **The strings are verbatim.** You can search a trail for a line and find it
 here, or read it here and know exactly what to look for — so
