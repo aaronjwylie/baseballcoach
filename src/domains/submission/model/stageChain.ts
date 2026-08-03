@@ -104,11 +104,18 @@ export interface ChainLine {
    * What someone is told when this line goes wrong **and nothing is written
    * down** — a refusal at the door, in the words the person actually sees.
    *
+   * **Every entry names its audience**, because the three don't overlap: a
+   * customer's upload limit, an admin's refused reassignment and a coach's dead
+   * download link are three different people finding out three different
+   * things, and one list of sentences reads as one voice when it is three.
+   *
    * Its own field rather than a marker inside `failures`, because it is a
    * different kind of fact: an operator reading a submission's history needs to
-   * know which silences are meaningful, and a sigil buried in a list is a poor
-   * way to say so. Every upload refusal lives here — there is no
-   * submission-level event for a file that was never accepted.
+   * know which silences are meaningful.
+   *
+   * **Northstar.** Where a refusal tells nobody today, the entry says exactly
+   * that and carries `*(not built)*` — a silent guard is a gap, not the absence
+   * of one.
    */
   told?: string[];
   /**
@@ -171,15 +178,15 @@ const sendFailures = (label: string) => [
  * wrong here", which is the opposite of true.
  */
 const UPLOAD_UNGUARDED = [
-  "Nothing — the upload is unvalidated and failures are silent *(not built)*",
+  "Operator: nothing at all — the upload is unvalidated, and a failure just refreshes the page *(not built)*",
 ];
 
 const UPLOAD_REFUSED = [
-  "You can attach up to 5 files.",
-  "Files must be under 50 MB.",
-  "That file type isn't supported.",
-  "That file is empty.",
-  "Your session has expired. Please start again.",
+  "Customer: You can attach up to 5 files.",
+  "Customer: Files must be under 50 MB.",
+  "Customer: That file type isn't supported.",
+  "Customer: That file is empty.",
+  "Customer: Your session has expired. Please start again.",
 ];
 
 /** Wrong-code rows, one per attempt — the count is in the note. */
@@ -228,12 +235,12 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   awaiting_payment: [
     { what: "At least one file attached", next: "Attach a file", from: "intake", told: [...UPLOAD_REFUSED], met: has("intake") },
-    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", failures: ["card declined → customer", ...sendFailures("card declined → customer"), "declined *(not built)* — only the notice is recorded, not the decline"], told: ["Their attempt was scrubbed — the flow returns them to step 1"], met: (s) => !!s.paidAt },
+    { what: "Payment cleared", next: "Clear payment", from: "paidAt", act: "waitCustomer", failures: ["card declined → customer", ...sendFailures("card declined → customer"), "declined *(not built)* — only the notice is recorded, not the decline"], told: ["Customer: their attempt was scrubbed, and the flow returns them to step 1"], met: (s) => !!s.paidAt },
   ],
   new: [
     { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, records: [...sendRecords("② receipt → customer")], failures: [...sendFailures("② receipt → customer")], met: sent("② receipt → customer") },
     { what: "Arrival announced", next: "Tell Admin it arrived", from: "②", passive: true, records: [...sendRecords("② arrival → Admin")], failures: [...sendFailures("② arrival → Admin")], met: sent("② arrival → Admin") },
-    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", told: ["Refused — already handed off, so a stale tab can't reassign"], met: (s) => !!s.assignedCoachId },
+    { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", told: ["Admin: nothing — the guard returns silently, so a stale tab looks like it worked *(not built)*"], met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
     {
@@ -253,7 +260,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       passive: true,
       met: (_s, f) => f.files.intake_translation > 0,
     },
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], told: ["Refused — a stale tab tried to reassign after hand-off"], met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], told: ["Admin: nothing — the guard returns silently, so a stale tab looks like it worked *(not built)*"], met: sent("③ hand-off → coach") },
   ],
   intake_translating: [
     {
@@ -267,7 +274,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", told: [...UPLOAD_UNGUARDED], met: has("intake_translation") },
   ],
   intake_translated: [
-    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], told: ["Refused — a stale tab tried to reassign after hand-off"], met: sent("③ hand-off → coach") },
+    { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], told: ["Admin: nothing — the guard returns silently, so a stale tab looks like it worked *(not built)*"], met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
     { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], met: sent("③ hand-off → coach") },
@@ -276,7 +283,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       from: "trail · in_review",
       why: "the only evidence the coach actually has it",
       act: "waitCoach",
-      failures: ["Gone — the folder was purged before they collected (410)"], told: ["Refused — a different coach asked (403)"],
+      told: ["Coach: the download is gone — the folder was purged before they collected (410)"],
       met: reached("in_review"),
     },
   ],
@@ -316,7 +323,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       from: "collectedAt",
       why: "starts the retention clock — nothing is purged before this",
       act: "waitCustomer",
-      failures: ["Gone — an operator purged the folder early (410)"],
+      told: ["Customer: the download is gone — an operator purged the folder early (410)"],
       met: (s) => !!s.collectedAt,
     },
   ],
