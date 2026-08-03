@@ -14,6 +14,62 @@
  * crept back in.
  */
 
+/**
+ * The languages either side can declare.
+ *
+ * Two, because that's what the business is: parents in English, coaches in
+ * Japanese, and the ones in the middle. Kept as free text in the column rather
+ * than an enum so a third can be added by typing it, and compared
+ * case-insensitively so "english" and "English" are the same claim.
+ */
+export const LANGUAGES = ["English", "Japanese"] as const;
+
+export type Language = (typeof LANGUAGES)[number];
+
+/**
+ * Does this pairing need a translator?
+ *
+ * **Intersect the two sets. Empty means translate.** Symmetric, one rule, and it
+ * handles what the old one couldn't: the old rule assumed the customer's side —
+ * *the platform is English, so translate when the coach doesn't read English* —
+ * which derived nothing useful for a Japanese-speaking parent sending to a
+ * Japanese coach.
+ *
+ * **Overlap of any size means no.** If the two share a language they can
+ * communicate; which one they use is then a choice, not a service we provide.
+ *
+ * **Null means we can't tell**, and is not the same as `false`. Either side
+ * having declared nothing makes the intersection meaningless, and prompting on
+ * the strength of a blank field would nag on every submission until someone
+ * filled it in — a prompt that's usually wrong is one people learn to dismiss.
+ *
+ * It is a **prompt, not a gate**. The translation rungs are optional and
+ * operator-driven, so this only has to be right enough to raise the question;
+ * Yuta can send anything for translation regardless. That's what lets the rule
+ * stay this simple — the edge cases are exactly what an operator is for.
+ *
+ * A caveat worth knowing: strictly it's the *files* that have a language, not
+ * the people. A bilingual parent may submit Japanese footage. Person-language is
+ * a proxy, and a good one, but it is a proxy — which is another reason this
+ * prompts rather than decides.
+ */
+export function needsTranslation(
+  customer: readonly string[] | undefined,
+  coach: readonly string[] | undefined,
+): boolean | null {
+  const theirs = normalise(customer);
+  const ours = normalise(coach);
+  if (theirs.size === 0 || ours.size === 0) return null;
+  for (const language of theirs) if (ours.has(language)) return false;
+  return true;
+}
+
+function normalise(languages: readonly string[] | undefined): Set<string> {
+  return new Set(
+    (languages ?? []).map((l) => l.trim().toLowerCase()).filter(Boolean),
+  );
+}
+
 /** What the player wants coached. Matches the `focus` enum in the DB. */
 import type { FileSet } from "./submissionFile";
 
@@ -305,6 +361,8 @@ export interface Submission {
 
   // What they told us, and what we tell ourselves
   customerNotes?: string;
+  /** What the customer reads. Empty means not declared, not English. */
+  languages?: string[];
   internalNotes?: string;
 
   // Where it is
@@ -358,6 +416,7 @@ export interface NewSubmission {
   playerAge?: number;
   focus?: Focus;
   customerNotes?: string;
+  languages?: string[];
   status?: SubmissionStatus;
   stripePaymentId?: string;
   stripeAmount?: number;

@@ -17,6 +17,7 @@ export function fromRow(row: SubmissionRow): Submission {
     playerAge: row.playerAge ?? undefined,
     focus: row.focus ?? undefined,
     customerNotes: row.customerNotes ?? undefined,
+    languages: row.languages ?? undefined,
     internalNotes: row.internalNotes ?? undefined,
     status: row.status,
     submittedAt: row.submittedAt?.toISOString(),

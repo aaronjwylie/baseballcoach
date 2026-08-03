@@ -24,6 +24,9 @@ export {
   type SubmissionStatus,
   whoseCourt,
   type Court,
+  LANGUAGES,
+  needsTranslation,
+  type Language,
 } from "./model/submission";
 
 export {

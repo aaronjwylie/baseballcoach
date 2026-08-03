@@ -14,7 +14,7 @@
  * honest users; anyone can POST directly.
  */
 import { z } from "zod";
-import { FOCUS_OPTIONS } from "./submission";
+import { FOCUS_OPTIONS, LANGUAGES } from "./submission";
 
 /**
  * Values ride on Stripe metadata, which caps each entry at 500 characters.
@@ -105,6 +105,19 @@ export const submissionInputSchema = z.object({
     .max(MAX_NOTES_LENGTH, `Please keep notes under ${MAX_NOTES_LENGTH} characters.`)
     .optional()
     .transform((value) => value || undefined),
+
+  /*
+    What the customer reads.
+
+    Required with at least one choice, because an empty set makes the
+    intersection with the coach meaningless — and a silently-empty answer is
+    worse than no question, since it looks like a declaration and isn't. The
+    form ticks English by default, so the common case costs nobody a click.
+  */
+  languages: z
+    .array(z.enum(LANGUAGES))
+    .min(1, "Please choose at least one language.")
+    .default([...LANGUAGES.slice(0, 1)]),
 });
 
 /** What the form collects, before parsing — every field a string. */

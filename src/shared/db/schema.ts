@@ -160,6 +160,20 @@ export const submissions = pgTable(
     focus: focus(),
     customerNotes: text(),
     internalNotes: text(),
+    /*
+      What the customer reads, so translation need can be *derived* rather than
+      assumed.
+
+      It was assumed: the platform is English, therefore translate when the coach
+      doesn't read English. That only works because it guessed one side. Holding
+      both sets makes the rule symmetric — **no overlap means translate** — and
+      handles the case the assumption can't: a Japanese-speaking parent sending to
+      a Japanese coach, where the old rule derived nothing useful.
+
+      Empty means *not declared*, not English. A row that predates the question
+      should read as unknown rather than claim an answer it never gave.
+    */
+    languages: text().array().notNull().default([]),
     status: submissionStatus().notNull().default("draft"),
 
     // Email verification — the gate on uploading, since there is no payment yet

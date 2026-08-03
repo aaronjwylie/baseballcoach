@@ -541,6 +541,7 @@ of the flow**, before verification, files, or payment — see
 | `playerAge` | integer | |
 | `focus` | enum | `Hitting` · `Pitching` · `Fielding` · `Catching` · `Other` |
 | `customerNotes` | text | the customer's words, never overwritten |
+| `languages` | text[] | what the customer reads, declared at step 1. Intersected with the coach's to decide whether translation is needed |
 | `internalNotes` | text | system messages + operator notes |
 | `status` | enum | **sixteen rungs** — see the ladder below |
 | `emailVerifiedAt` | timestamptz, null | set when the 6-digit code is accepted; **the upload gate** |
@@ -657,8 +658,9 @@ sent_to_coach → in_review → awaiting_approval →
 complete → collected → resolved → purge_imminent → purged
 ```
 
-**It is a path with branches, not a progress bar.** A coach who reads English
-takes `assigned → sent_to_coach` and `awaiting_approval → complete` directly;
+**It is a path with branches, not a progress bar.** A coach who shares a
+language with the customer takes `assigned → sent_to_coach` and
+`awaiting_approval → complete` directly;
 four rungs are only touched when a submission needs translating. Anything
 rendering this as a linear track will be wrong for most submissions.
 
@@ -882,10 +884,11 @@ doc's table carries no `(not built)` markers for the first time.
   changing it needs a redeploy.
 - **Real coach content and photography** — the current copy is wireframe
   placeholder and cannot go live as written.
-- **Record each coach's languages** in the portal. Translation need is derived
-  from them, and a coach with none recorded produces "no languages recorded"
-  rather than a prompt — correct, but it means the derivation does nothing until
-  someone fills them in.
+- **Record each coach's languages** in the portal. Translation need is the
+  intersection of those and the customer's, so a coach with none recorded
+  produces "no languages recorded for this coach" rather than a prompt —
+  correct, but it means the rule does nothing until someone fills them in. The
+  customer's half is collected at step 1 and defaults to English.
 - A **human test of the card field and 3-D Secure**.
 - Deferred: an in-app `/feedback/[id]` viewer, coach deactivation UI, resumable
   uploads across a reload, React Email, shadcn/ui.

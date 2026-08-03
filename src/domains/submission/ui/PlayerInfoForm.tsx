@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Field, inputClass } from "@/shared/ui";
 // Client-safe imports from the slice's model, not its barrel — the barrel pulls
 // in Postgres-backed queries that can't ship to the browser.
-import { FOCUS_OPTIONS } from "../model/submission";
+import { FOCUS_OPTIONS, LANGUAGES } from "../model/submission";
 import {
   submissionInputSchema,
   type SubmissionInput,
@@ -114,6 +114,35 @@ export function PlayerInfoForm({
           </select>
         </Field>
       </div>
+
+      {/*
+        Which languages the customer reads, so we can pair them with a coach who
+        shares one. Checkboxes rather than a select because "both" is a real and
+        common answer, and English is ticked by default so the ordinary case
+        costs nobody a click.
+      */}
+      <Field
+        label="What language should your coach write in?"
+        hint="Tick both if either works. We'll have the review translated if your coach doesn't share one."
+        error={errors.languages?.message}
+      >
+        <div className="flex flex-wrap gap-4 pt-1">
+          {LANGUAGES.map((language) => (
+            <label
+              key={language}
+              className="flex items-center gap-2 text-sm text-ink-soft"
+            >
+              <input
+                type="checkbox"
+                value={language}
+                {...register("languages")}
+                className="h-4 w-4"
+              />
+              {language}
+            </label>
+          ))}
+        </div>
+      </Field>
 
       <Field
         label="Anything you want the coach to look at?"

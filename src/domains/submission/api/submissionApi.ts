@@ -37,6 +37,7 @@ function toUpdateValues(
   if (patch.playerAge !== undefined) v.playerAge = patch.playerAge;
   if (patch.focus !== undefined) v.focus = patch.focus;
   if (patch.customerNotes !== undefined) v.customerNotes = patch.customerNotes;
+  if (patch.languages !== undefined) v.languages = patch.languages;
   if (patch.internalNotes !== undefined) v.internalNotes = patch.internalNotes;
   if (patch.status !== undefined) v.status = patch.status;
   if (patch.stripePaymentId !== undefined) v.stripePaymentId = patch.stripePaymentId;
@@ -78,6 +79,7 @@ export async function createSubmission(
         playerAge: input.playerAge,
         focus: input.focus,
         customerNotes: input.customerNotes,
+        languages: input.languages ?? [],
         status: input.status ?? "draft",
         stripePaymentId: input.stripePaymentId,
         stripeAmount: input.stripeAmount,

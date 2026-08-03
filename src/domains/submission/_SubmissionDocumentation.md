@@ -387,7 +387,8 @@ without explanation is worse than one that didn't move. ⚠️ Neither is built.
 ### The ladder is a path with branches, not a progress bar
 
 Four of the sixteen are only touched when a submission needs translating, so a
-coach who reads English takes **4 → 7** and **9 → 12** directly. Anything
+coach who shares a language with the customer takes **4 → 7** and **9 → 12**
+directly. Anything
 rendering this as a linear track will be wrong for most submissions.
 
 **Every rung has a timestamp, and the trail carries more than rungs.**
@@ -427,8 +428,9 @@ upload".
 **The curation radios answer two of the five questions I had.** "Does the coach
 see one set or both?" and "does the customer ever see the untranslated original?"
 are no longer things the system decides — **Yuta decides, per submission**, at
-step 7 and again at step 13. That's the right answer: which languages a given
-coach or parent can read isn't derivable from anything we store.
+step 7 and again at step 13. The system derives whether a translation is
+*needed*; Yuta still decides which sets actually go out, because "can read it"
+and "wants both" are different questions and only the first is stored.
 
 It does mean the choice is **data, not just a UI state**. Two facts to keep:
 what was sent to the coach, and what was sent to the customer — recorded at the
@@ -885,7 +887,7 @@ rollout plan and resolved in its Phase 6:
 | **Failure** | when a step dies partway, is the earlier work undone? | **Case by case, and the case is decidable.** See *the point of no return* — an operation survives if its effect already exists outside our database |
 | **Status names** | are the sixteen right? | **Yes, approved** — `intake_*` for what the customer sent, `response_*` for what the coach wrote |
 | **Timestamps** | sixteen columns, or an events table? | **`submission_events`.** One row per transition — *more* history than columns can hold, not less |
-| **Customer language** | does step 1 ask for it? | **No.** The platform is English, so it's presumed — translation need is a property of the coach alone |
+| **Customer language** | does step 1 ask for it? | **Yes — reversed 2026-08-02.** Both sides declare, and translation need is the *intersection*. Presuming English got a Japanese parent with a Japanese coach wrong |
 | **Ordering** | assign before translating, or after? | **Assign first.** Translation need is derived from the coach, so the coach must be known — and the language radio moves to step 8 with it |
 
 **Decided earlier, and worth not relitigating:**
@@ -899,6 +901,33 @@ rollout plan and resolved in its Phase 6:
   missing event.
 
 ## 3 · Where we are now — 2026-08-02
+
+### Translation need is an intersection, not a property of the coach
+
+**Both sides declare their languages, and a submission needs translating exactly
+when the two sets share nothing.** Step 1 asks the customer (checkboxes, English
+ticked); the coach's have always been on their profile. `needsTranslation`
+intersects them.
+
+It replaces a rule that read the coach alone and assumed the customer was
+English. That was right for every submission we have taken so far and wrong in
+principle: a Japanese-reading parent matched with a Japanese-reading coach would
+have been sent down the translation path to produce an English set neither of
+them asked for. The old rule couldn't see the case because it never asked the
+question.
+
+**The rule moved slices with the change** — out of `domains/coach` and into
+`domains/submission`, because it now needs both halves and only the submission
+holds both. `coaches.languages` is still where a coach's half lives.
+
+**Either side blank returns `null`, and the queue says which side.** "Can't tell"
+has two causes and two different fixes; an operator told only that the
+derivation failed has to go looking. The customer's half defaults to English at
+step 1, so in practice only the coach side is ever empty — which is the case the
+queue names.
+
+`npm run simulate` asserts the rule on both walks, against a coach fixture it
+creates itself rather than whichever coach the seed happens to hold.
 
 **The queue shows progress at the resolution of the path doc** — a sixteen-dot
 rail per row with the current rung named above it, and the stage's chain as a

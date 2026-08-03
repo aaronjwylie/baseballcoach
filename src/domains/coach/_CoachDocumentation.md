@@ -61,19 +61,24 @@ flowchart LR
   checking on the work must not count as the coach starting it.
   Fire-and-forget and self-swallowing, because it hangs off a route whose real
   job is delivering bytes.
-- ✅ **`needsTranslation`** — derived from `coaches.languages`. The platform is
-  English, so a submission needs translating exactly when *this* coach doesn't
-  read it. **Unknown is not the same as no**: no languages recorded returns
-  `null`, and the queue says so, rather than prompting on the strength of a blank
-  field until someone fills it in.
+- ✅ **`coaches.languages` is one half of the translation rule.** The rule itself
+  lives in `domains/submission`, because it needs both halves: a submission needs
+  translating exactly when the customer's declared languages and this coach's
+  **share nothing**. English is no longer privileged — a Japanese-reading parent
+  paired with a Japanese-reading coach needs no translation, which the old
+  coach-only derivation got wrong.
+  **Unknown is not the same as no**: either side blank returns `null`, and the
+  queue names *which* side is blank, since the fix differs.
 - ✅ **The hand-off carries a language choice** (step 8's radio) and records what
   was actually sent. The radio can't live on assignment — at that point the
   translation doesn't exist to choose.
 - ✅ **Reassignment is guarded server-side**, not just hidden: a stale tab could
   previously pull a submission out from under a coach who had already been
   emailed it.
-- ⚠️ **The derivation does nothing until languages are recorded.** Every coach
-  needs their languages filled in from the portal before step 5's prompt appears.
+- ⚠️ **The rule does nothing until both sides are recorded.** Coaches created
+  before this need their languages filled in from the portal; the customer's half
+  is collected at step 1 and defaults to English, so only the coach side can be
+  silently empty in practice.
 
 
 ### Before 2026-08-01

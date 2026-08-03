@@ -21,6 +21,7 @@ import {
   listSubmissionEvents,
   type SubmissionEvent,
   whoseCourt,
+  needsTranslation,
 } from "@/domains/submission";
 import {
   listCoaches,
@@ -34,7 +35,6 @@ import { SendWithFileSet } from "./SendWithFileSet";
 import { FileFolders } from "./FileFolders";
 import { OperatorOverride } from "./OperatorOverride";
 import { QueueRow } from "./QueueRow";
-import { needsTranslation } from "@/domains/coach/model/coach";
 import {
   archiveSubmissionAction,
   completeSubmissionAction,
@@ -281,7 +281,29 @@ function SubmissionRow({
   const intakeSets = availableSets(present.filter((k) => k === "intake" || k === "intake_translation"));
   const responseSets = availableSets(present.filter((k) => k === "response" || k === "response_translation"));
 
-  const wantsTranslation = assignedCoach ? needsTranslation(assignedCoach) : null;
+  // Both declared sets, intersected. Null when either side hasn't said.
+  const wantsTranslation = needsTranslation(
+    submission.languages,
+    assignedCoach?.languages,
+  );
+
+  /*
+    Say which side is missing, not just that something is.
+
+    "Can't tell" has two causes and two different fixes — fill in the coach's
+    languages, or the customer never declared theirs — and an operator told only
+    that the derivation failed has to go looking for which.
+  */
+  const translationHint =
+    !assignedCoach
+      ? null
+      : wantsTranslation === true
+        ? `No shared language with ${assignedCoach.name} — translate the client files first.`
+        : (assignedCoach.languages?.length ?? 0) === 0
+          ? "No languages recorded for this coach."
+          : (submission.languages?.length ?? 0) === 0
+            ? "The customer didn't declare a language."
+            : null;
 
   const stage = describeStage(submission, {
     files: {
@@ -488,7 +510,12 @@ function SubmissionRow({
       }
       /* The flag names what's outstanding rather than restating the status —
          the rail already says where it is. */
-      flag={outstanding && !submission.archivedAt ? outstanding.what : undefined}
+      /* The hint wins when it's set: "no shared language" is more actionable
+         than naming the outstanding line, and it's the reason for the delay. */
+      flag={
+        translationHint ??
+        (outstanding && !submission.archivedAt ? outstanding.what : undefined)
+      }
       stage={stage}
       control={control}
       folders={
@@ -536,7 +563,11 @@ function SubmissionRow({
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{submission.customerEmail}</dd>
           <dt className="text-ink-muted">Coach</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">{assignedCoach?.name ?? "—"}</dd>
-          <dt className="text-ink-muted">Languages</dt>
+          <dt className="text-ink-muted">Customer reads</dt>
+          <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
+            {submission.languages?.join(", ") || "not declared"}
+          </dd>
+          <dt className="text-ink-muted">Coach reads</dt>
           <dd className="m-0 font-mono text-[11.5px] text-ink-soft">
             {assignedCoach ? assignedCoach.languages.join(", ") || "none recorded" : "—"}
           </dd>

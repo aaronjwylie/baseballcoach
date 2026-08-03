@@ -21,7 +21,12 @@
  */
 import "./loadEnv";
 import { eq } from "drizzle-orm";
-import { db, submissions as submissionsTable, coaches as coachesTable } from "@/shared/db";
+import {
+  db,
+  submissions as submissionsTable,
+  coaches as coachesTable,
+  users as usersTable,
+} from "@/shared/db";
 import {
   addSubmissionFile,
   assignSubmissionCoach,
@@ -37,6 +42,7 @@ import {
   markCoachCollected,
   markCustomerCollected,
   markSubmissionSentToCoach,
+  needsTranslation,
   updateSubmission,
   whoseCourt,
   type Submission,
@@ -75,11 +81,19 @@ async function rung(
 
 async function walk(label: string, translating: boolean) {
   console.log(`\n━━ ${label} ━━`);
-  const coaches = await db.select().from(coachesTable);
-  const coach = translating
-    ? coaches.find((c) => !c.languages.some((l) => /english/i.test(l))) ?? coaches[0]
-    : coaches.find((c) => c.languages.some((l) => /english/i.test(l))) ?? coaches[0];
-  if (!coach) throw new Error("no coaches — run npm run db:seed");
+  /*
+    The sim owns its coach rather than picking one out of the seed.
+
+    Whether the translation path runs is now decided by intersecting the
+    customer's declared languages with the coach's, so a walk that borrows
+    whichever coach happens to be seeded is asserting a rule about data it
+    doesn't control — and it fails on a database where nobody has a
+    Japanese-only coach, which is most of them.
+  */
+  const coach = await ensureCoach(
+    translating ? "Sim Coach (JA only)" : "Sim Coach (EN)",
+    translating ? ["Japanese"] : ["English"],
+  );
 
   // ── rung 1: draft ────────────────────────────────────────────────────
   const s = await createSubmission({
@@ -87,8 +101,14 @@ async function walk(label: string, translating: boolean) {
     playerName: `Sim ${label}`,
     playerAge: 14,
     focus: "Hitting",
+    languages: ["English"],
   });
   await rung(s.id, "draft", "customer");
+  // The rule the whole translation path hangs off: two declared sets, intersected.
+  check(
+    needsTranslation((await at(s.id)).languages, coach.languages) === translating,
+    `   language check says translation is ${translating ? "" : "not "}needed`,
+  );
   check(!isPaid(await at(s.id)), "   nothing is paid at draft");
 
   // ── rung 2: uploading (verify, attach, pay) ──────────────────────────
@@ -239,6 +259,38 @@ async function walk(label: string, translating: boolean) {
 
   await deleteSubmission(s.id);
   check((await listSubmissionEvents(s.id)).length === 0, "   deleting cascades the trail");
+}
+
+/** A coach with exactly these languages, created once and reused. */
+async function ensureCoach(name: string, languages: string[]) {
+  const [existing] = await db
+    .select()
+    .from(coachesTable)
+    .where(eq(coachesTable.name, name));
+  if (existing) {
+    if (existing.languages.join() !== languages.join()) {
+      const [fixed] = await db
+        .update(coachesTable)
+        .set({ languages })
+        .where(eq(coachesTable.id, existing.id))
+        .returning();
+      return fixed;
+    }
+    return existing;
+  }
+  const [user] = await db
+    .insert(usersTable)
+    .values({
+      email: `${name.toLowerCase().replace(/[^a-z]+/g, "-")}@sim.local`,
+      passwordHash: "x",
+      role: "coach",
+    })
+    .returning();
+  const [created] = await db
+    .insert(coachesTable)
+    .values({ userId: user.id, name, languages, specialties: ["Hitting"] })
+    .returning();
+  return created;
 }
 
 async function main() {
