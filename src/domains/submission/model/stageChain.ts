@@ -71,7 +71,23 @@ export interface ChainLine {
   from: string;
   /** Why it matters, where that isn't obvious. */
   why?: string;
-  /** Unobservable, so it never holds the pointer. */
+  /**
+   * **Nobody can act on it**, so it never holds the pointer.
+   *
+   * Two kinds qualify. Off-platform steps we can't observe — a translator
+   * downloading the originals. And **records of a send**: an email either went
+   * or it didn't, and no button in the portal makes a failed one true.
+   *
+   * That second kind is why this matters. The pointer is the first unmet
+   * non-passive line, and the control hangs off it — so a notification that
+   * failed for reasons having nothing to do with the work would sit there
+   * unmet forever, **hiding the control on the line below it**. That is
+   * exactly what happened: `② arrival → Yuta` failed on a placeholder address
+   * and took the whole assign control with it.
+   *
+   * A line where the send *is* the action — the hand-off — keeps its pointer,
+   * because there a person really does press something.
+   */
   passive?: boolean;
   /** The control that satisfies it, if a person can. */
   act?: ChainAction;
@@ -97,8 +113,8 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   new: [
     { what: "Payment cleared", next: "Clear payment", from: "paidAt", met: (s) => !!s.paidAt },
-    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", met: sent("② receipt → customer") },
-    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", met: sent("② arrival → Yuta") },
+    { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, met: sent("② receipt → customer") },
+    { what: "Arrival announced", next: "Tell Yuta it arrived", from: "②", passive: true, met: sent("② arrival → Yuta") },
     { what: "Coach chosen", next: "Pick a coach", from: "assignedCoachId", act: "assign", met: (s) => !!s.assignedCoachId },
   ],
   assigned: [
@@ -136,7 +152,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", met: sent("③ hand-off → coach") },
   ],
   sent_to_coach: [
-    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", met: sent("③ hand-off → coach") },
+    { what: "Hand-off emailed", next: "Email the hand-off", from: "③", passive: true, met: sent("③ hand-off → coach") },
     {
       what: "Coach downloaded the files", next: "Coach downloads the files",
       from: "trail · in_review",
@@ -151,7 +167,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   awaiting_approval: [
     { what: "Response uploaded", next: "Upload the response", from: "response", met: has("response") },
-    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", met: sent("⑤ response submitted → Yuta + coach") },
+    { what: "Yuta and the coach told", next: "Tell Yuta and the coach", from: "⑤", passive: true, met: sent("⑤ response submitted → Yuta + coach") },
     {
       what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
       from: "rung 10",
@@ -177,7 +193,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [
-    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", met: sent("⑥ feedback ready → customer") },
+    { what: "Feedback emailed", next: "Email the feedback", from: "⑥", passive: true, met: sent("⑥ feedback ready → customer") },
     { what: "Delivery stamped", next: "Stamp delivery", from: "completedAt", met: (s) => !!s.completedAt },
     {
       what: "Customer downloaded it", next: "Customer downloads it",
@@ -189,16 +205,16 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   collected: [
     { what: "Customer has it", next: "Customer opens it", from: "collectedAt", met: (s) => !!s.collectedAt },
-    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", met: sent("⑦ collected → Yuta") },
+    { what: "Collection announced", next: "Tell Yuta they collected", from: "⑦", passive: true, met: sent("⑦ collected → Yuta") },
     { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", act: "resolve", met: reached("resolved") },
   ],
   resolved: [
     { what: "Marked resolved", next: "Mark resolved", from: "trail · resolved", met: reached("resolved") },
-    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", met: sent("⑧ thank you → customer") },
+    { what: "Thank-you sent", next: "Send the thank-you", from: "⑧", passive: true, met: sent("⑧ thank you → customer") },
     { what: "Deletion warning due", next: "Warning falls due", from: "deletionWarnedAt", act: "waitCron", met: (s) => !!s.deletionWarnedAt },
   ],
   purge_imminent: [
-    { what: "Warning sent", next: "Send the warning", from: "⑨", met: sent("⑨ deletion warning → customer") },
+    { what: "Warning sent", next: "Send the warning", from: "⑨", passive: true, met: sent("⑨ deletion warning → customer") },
     { what: "Files deleted", next: "Delete the files", from: "filesPurgedAt", act: "waitCron", met: (s) => !!s.filesPurgedAt },
   ],
   purged: [

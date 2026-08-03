@@ -904,6 +904,27 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### A failed email hid the assign control
+
+The chain's pointer is the first unmet, non-passive line, and **the stage's
+control hangs off it**. `② arrival → Yuta` failed on a placeholder address, so
+"Arrival announced" sat unmet — and the line below it, "Coach chosen", never got
+the pointer. The assign dropdown vanished from a paid submission, with nothing
+on screen to say why.
+
+**A record of a send is now passive** — it never holds the pointer. Eight lines
+qualify: an email either went or it didn't, and no button in the portal makes a
+failed one true. The hand-off keeps its pointer, because there the send *is* the
+action and a person really does press something.
+
+The wider lesson is that **the pointer is load-bearing**. It was introduced to
+say "look here", and it quietly became the thing that decides whether an
+operator can act at all. A predicate that can never be satisfied is a predicate
+that can strand the whole rung.
+
+Reproduced with production's exact state — paid, receipt delivered, arrival
+failed — before and after.
+
 ### The breadcrumb library — two voices for one line
 
 A breadcrumb appears in the trail **twice over its life**: once as a thing that
