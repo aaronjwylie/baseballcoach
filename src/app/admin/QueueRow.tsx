@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { LocalTime } from "@/shared/ui";
 import { StatusRail } from "@/domains/submission/ui/StatusRail";
 import { StageChain } from "@/domains/submission/ui/StageChain";
@@ -55,7 +55,7 @@ export function QueueRow({
   events: SubmissionEvent[];
   override: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useOpenAcrossReloads(shortId);
 
   /*
     The one line the submission is waiting on — a breadcrumb, not the next rung.
@@ -77,7 +77,7 @@ export function QueueRow({
       <button
         type="button"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         className="grid w-full grid-cols-[minmax(0,200px)_1fr_minmax(0,150px)_30px] items-center gap-4 px-4 py-2.5 text-left outline-ink hover:outline hover:outline-1 hover:-outline-offset-1 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 max-[860px]:grid-cols-[1fr_30px]"
       >
         <span className="min-w-0">
@@ -180,6 +180,50 @@ function describeEvent(e: SubmissionEvent): {
     bad: e.outcome === "bounced" || e.outcome === "failed" || e.ok === false,
     good: e.outcome === "delivered",
   };
+}
+
+/**
+ * Remember whether this row was open, across a reload.
+ *
+ * An override or an assignment reloads the page, and the row you were working
+ * in used to close under you — so the way to see what you had just done was to
+ * find the row again and open it again.
+ *
+ * **`sessionStorage`, not the URL.** The URL would make expanding a row a
+ * server round-trip and put a growing list of ids in the address bar;
+ * expansion is a reading posture, not a location. And not `localStorage`,
+ * because a row opened last week should not still be open — the right lifetime
+ * is the tab.
+ *
+ * `useSyncExternalStore` rather than state seeded in an effect: the server has
+ * no `sessionStorage`, and `getServerSnapshot` is exactly the hook's answer to
+ * that. Writes happen in the click handler, where they belong.
+ */
+const listeners = new Set<() => void>();
+
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => void listeners.delete(fn);
+}
+
+function useOpenAcrossReloads(key: string) {
+  const storageKey = `queue:open:${key}`;
+  const open = useSyncExternalStore(
+    subscribe,
+    () => sessionStorage.getItem(storageKey) === "1",
+    () => false,
+  );
+  const setOpen = useCallback(
+    (next: boolean) => {
+      // Absent rather than "0": a queue of collapsed rows shouldn't leave a key
+      // behind for every one of them.
+      if (next) sessionStorage.setItem(storageKey, "1");
+      else sessionStorage.removeItem(storageKey);
+      for (const fn of listeners) fn();
+    },
+    [storageKey],
+  );
+  return [open, setOpen] as const;
 }
 
 function Label({ children }: { children: ReactNode }) {

@@ -928,6 +928,21 @@ and "Translating" is the honest word both times. On the rail position carries
 the difference; in a flat list it can't, so the override's dropdown numbers them
 (`5 · Translating`).
 
+### An open row stays open across a reload
+
+An override or an assignment reloads the page, and the row being worked in
+closed under you — so the way to see what you had just done was to find the row
+again and open it again.
+
+Kept in `sessionStorage`, not the URL: expanding a row is a reading posture, not
+a location, and the URL would make it a server round-trip and put a growing list
+of ids in the address bar. Not `localStorage` either — a row opened last week
+should not still be open, and the tab is the right lifetime.
+
+Read through `useSyncExternalStore`. The server has no `sessionStorage`, and
+`getServerSnapshot` is the hook's answer to exactly that; seeding state in an
+effect would render open on the client and closed on the server.
+
 ### The filter tabs read from the same map
 
 They carried their own vocabulary — "Not picked up", "In review", "Coach
