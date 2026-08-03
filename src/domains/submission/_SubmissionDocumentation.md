@@ -295,8 +295,8 @@ will never arrive. Nothing can push it to them, so two things surface it:
 | **A single delayed check** | step 2 asks once, five seconds in — while they're still switching to their mail app. Not a poll: a bounce that takes two seconds doesn't need one |
 | **Their next action** | typing a code or asking for a new one both check first, so the answer is never *"that code doesn't match"* about a code that was never sent |
 
-Either returns them to step 1 with *"that email address didn't accept our
-message — check it for a typo and try again."*
+Either returns them to step 1 with *"That email address was not valid. Please
+check it for a typo and try again."*
 
 **It scrubs nothing, and it can't need to.** A bounce of ① can only happen before
 verification, and uploading *requires* verification — so there are never any files.

@@ -90,7 +90,7 @@ function gone(
  */
 function bouncedBack(): { ok: false; error: string; gone: true } {
   return gone(
-    "That email address didn't accept our message — check it for a typo and try again.",
+    "That email address was not valid. Please check it for a typo and try again.",
   );
 }
 

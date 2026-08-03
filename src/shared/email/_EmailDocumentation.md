@@ -119,8 +119,8 @@ that matters most.
 **On ①, before payment:** the next thing the customer does tells them. A bounce
 arrives *after* they've been moved to "enter your code" and nothing can push it
 to them, so the verify and resend paths both check, and either returns them to
-step 1 with *"that email address didn't accept our message — check it for a
-typo"*. Without that they'd type a code that was never delivered and be told
+step 1 with *"That email address was not valid. Please check it for a typo and
+try again."* Without that they'd type a code that was never delivered and be told
 "that code doesn't match" — true about the code, and a lie about what happened.
 
 **It does not delete anything, and that's the point.** A bounce can only occur
