@@ -904,6 +904,25 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### The pill carries a second line — on trial
+
+Line one is the rung, which can sit unchanged for days. Line two is **the latest
+breadcrumb**: a code rejected, a message delivered, with its time. The rung
+answers *where* a submission is; only the trail answers *what last happened*,
+and that was a click away inside the expanded panel.
+
+It skips a status event that merely names the rung already shown above it —
+which is the newest row the instant anything advances, and repeating the
+headline underneath itself says nothing.
+
+`describeEvent` is shared with the trail, so the pill's second line and the last
+row of the list underneath it read identically. Two formatters would have drifted
+the first time either changed.
+
+**Explicitly a build-time readout.** It roughly doubles the row's height, and
+once the flow is trusted the rung's name alone is likely enough. Removing it is
+dropping the `detail` prop and its two call sites; nothing else depends on it.
+
 ### One rung, one label
 
 `RUNG_LABEL` moved out of `StatusRail` and in beside the ladder, because **two

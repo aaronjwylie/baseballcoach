@@ -58,6 +58,9 @@ export function QueueRow({
 }) {
   const [open, setOpen] = useState(false);
 
+  const last = latestBreadcrumb(events, rail.status);
+  const newest = last ? { ...describeEvent(last), note: last.note, at: last.at } : undefined;
+
   return (
     <div className="border-b border-line last:border-0">
       <button
@@ -79,6 +82,16 @@ export function QueueRow({
             status={rail.status}
             needsTranslation={rail.needsTranslation}
             label={rail.label}
+            detail={
+              newest ? (
+                <>
+                  {newest.mark} {newest.text}
+                  {newest.note ? ` — ${newest.note}` : ""}
+                  {" · "}
+                  <LocalTime iso={newest.at} />
+                </>
+              ) : undefined
+            }
           />
         </span>
 
@@ -125,6 +138,64 @@ export function QueueRow({
   );
 }
 
+/**
+ * How one breadcrumb reads.
+ *
+ * Shared by the trail and the pill's second line so the two can't drift — the
+ * pill is showing the *last* row of the very list underneath it, and a reader
+ * comparing them should see the same words.
+ *
+ * `mark` carries the outcome at a glance: two ticks for a delivery, a return
+ * arrow for a bounce, a key for a code that worked.
+ */
+function describeEvent(e: SubmissionEvent): {
+  mark: string;
+  text: string;
+  bad: boolean;
+  good: boolean;
+} {
+  if (e.kind === "status") {
+    return {
+      mark: "→",
+      text: e.status ? RUNG_LABEL[e.status] : "—",
+      bad: false,
+      good: false,
+    };
+  }
+  if (e.kind === "verification") {
+    return { mark: e.ok ? "🔑" : "⚠", text: e.label ?? "", bad: !e.ok, good: !!e.ok };
+  }
+  const mark =
+    e.outcome === "delivered" ? "✓✓" : e.outcome === "bounced" ? "↩" : e.ok ? "✓" : "✗";
+  return {
+    mark,
+    // The outcome only earns a word when it isn't the plain "we sent it" the
+    // previous row already said.
+    text: `${e.label ?? ""}${e.outcome && e.outcome !== "sent" ? ` ${e.outcome}` : ""}`,
+    bad: e.outcome === "bounced" || e.outcome === "failed" || e.ok === false,
+    good: e.outcome === "delivered",
+  };
+}
+
+/**
+ * The latest breadcrumb worth showing beside the rung.
+ *
+ * Skips a status event that merely names the rung the pill already displays —
+ * that's the most recent row the instant anything advances, and repeating the
+ * headline underneath itself says nothing.
+ */
+export function latestBreadcrumb(
+  events: SubmissionEvent[],
+  status: string,
+): SubmissionEvent | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const e = events[i];
+    if (e.kind === "status" && e.status === status) continue;
+    return e;
+  }
+  return undefined;
+}
+
 function Label({ children }: { children: ReactNode }) {
   return (
     <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
@@ -153,50 +224,23 @@ function Trail({ events }: { events: SubmissionEvent[] }) {
           className="grid grid-cols-[1fr_auto] gap-3 py-0.5 text-[11.5px] text-ink-soft"
         >
           <span className="min-w-0 truncate">
-            {e.kind === "status" ? (
-              /* The rung's own label, the same one the pill above shows. It
-                 spelled the raw enum before, which made one rung read two ways
-                 on a single screen. */
-              <span className="text-ink">
-                {e.status ? RUNG_LABEL[e.status] : "—"}
-              </span>
-            ) : e.kind === "verification" ? (
-              /* The customer's own act, so it reads as one rather than as a
-                 message we sent. A rejection is drawn like a bounce because it
-                 is the same class of thing: the flow stalled and somebody may
-                 need to help. */
-              <span
-                className={e.ok ? "text-emerald-700" : "font-semibold text-amber-700"}
-              >
-                {e.ok ? "🔑" : "⚠"} {e.label}
-              </span>
-            ) : (
-              <span
-                className={
-                  e.outcome === "bounced" || e.outcome === "failed"
-                    ? "font-semibold text-rose-700"
-                    : e.outcome === "delivered"
-                      ? "text-emerald-700"
-                      : "text-ink-soft"
-                }
-              >
-                {e.outcome === "delivered"
-                  ? "✓✓"
-                  : e.outcome === "bounced"
-                    ? "↩"
-                    : e.ok
-                      ? "✓"
-                      : "✗"}{" "}
-                {e.label}
-                {/* The outcome only earns a word when it isn't the plain
-                    "we sent it" the previous row already said. */}
-                {e.outcome && e.outcome !== "sent" ? (
-                  <span className="ml-1 font-normal text-ink-muted">
-                    {e.outcome}
-                  </span>
-                ) : null}
-              </span>
-            )}
+            {(() => {
+              const d = describeEvent(e);
+              return (
+                <span
+                  className={
+                    d.bad
+                      ? "font-semibold text-rose-700"
+                      : d.good
+                        ? "text-emerald-700"
+                        : "text-ink"
+                  }
+                >
+                  {e.kind === "status" ? null : `${d.mark} `}
+                  {d.text}
+                </span>
+              );
+            })()}
             {e.note ? <span className="text-ink-muted"> — {e.note}</span> : null}
           </span>
           <span className="tabular-nums text-ink-muted">

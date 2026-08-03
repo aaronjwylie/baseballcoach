@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { pillClass } from "@/shared/ui";
 import {
   RUNG_LABEL,
@@ -38,6 +39,7 @@ export function StatusRail({
   status,
   needsTranslation,
   label,
+  detail,
 }: {
   status: SubmissionStatus;
   /** Fades the optional rungs on a submission that will never touch them. */
@@ -50,6 +52,18 @@ export function StatusRail({
    * which half applies; the rail doesn't, and shouldn't have to.
    */
   label?: string;
+  /**
+   * A second line under the name: the latest breadcrumb.
+   *
+   * The name answers *where* a submission is, and it can sit unchanged for
+   * days. This answers *what last happened* — a code rejected, a message
+   * delivered — which is the half you can't get from a rung.
+   *
+   * **A build-time readout, on trial.** It roughly doubles the row's height,
+   * and once the flow is trusted the name alone is probably enough. Drop this
+   * prop and its two call sites to take it out; nothing else depends on it.
+   */
+  detail?: ReactNode;
 }) {
   const at = SUBMISSION_STATUSES.indexOf(status);
   const pos = (i: number) => (i / (SUBMISSION_STATUSES.length - 1)) * 100;
@@ -57,26 +71,44 @@ export function StatusRail({
   const pillLeft = Math.min(Math.max(pos(at), 9), 91);
   const warn = WARN.has(status);
 
+  // The rail's furniture drops by the height of the second line when there is
+  // one, so the stem still lands on the pill and the dots stay clear of it.
+  const drop = detail ? 17 : 0;
+
   return (
     <div
-      className="relative h-11"
+      className={detail ? "relative h-[61px]" : "relative h-11"}
       aria-label={`Step ${at + 1} of 16: ${label ?? RUNG_LABEL[status]}`}
     >
       <span
         className={`${pillClass} absolute top-0 -translate-x-1/2 ${
+          detail ? "flex flex-col items-center gap-px leading-tight" : ""
+        } ${
           warn
             ? "border-amber-600 bg-white text-amber-700"
             : "border-ink bg-ink text-white"
         }`}
         style={{ left: `${pillLeft}%` }}
       >
-        {label ?? RUNG_LABEL[status]}
+        <span>{label ?? RUNG_LABEL[status]}</span>
+        {detail ? (
+          <span
+            className={`max-w-[34ch] truncate text-[10px] font-normal ${
+              warn ? "text-amber-700/75" : "text-white/70"
+            }`}
+          >
+            {detail}
+          </span>
+        ) : null}
       </span>
       <span
-        className={`absolute top-[21px] h-[9px] w-px -translate-x-1/2 ${warn ? "bg-amber-600" : "bg-ink"}`}
-        style={{ left: `${pos(at)}%` }}
+        className={`absolute h-[9px] w-px -translate-x-1/2 ${warn ? "bg-amber-600" : "bg-ink"}`}
+        style={{ left: `${pos(at)}%`, top: 21 + drop }}
       />
-      <div className="absolute inset-x-0 top-9 flex h-[9px] items-center justify-between">
+      <div
+        className="absolute inset-x-0 flex h-[9px] items-center justify-between"
+        style={{ top: 36 + drop }}
+      >
         {/* the hairline the dots sit on — one process, not sixteen events */}
         <span className="absolute inset-x-[3px] top-1/2 h-px bg-line" />
         {SUBMISSION_STATUSES.map((rung, i) => {
