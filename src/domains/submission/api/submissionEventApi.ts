@@ -194,12 +194,14 @@ export async function noteEmailOutcome(
  * have been moved on to "enter your code" and nothing can push it to them. The
  * next thing they do is what surfaces it.
  */
-export async function hasBounced(
+export type BounceKind = "hard" | "soft" | "unknown";
+
+export async function bounceOf(
   submissionId: string,
   labelPrefix: string,
-): Promise<boolean> {
+): Promise<BounceKind | null> {
   const rows = await db
-    .select({ label: submissionEvents.label })
+    .select({ label: submissionEvents.label, note: submissionEvents.note })
     .from(submissionEvents)
     .where(
       and(
@@ -207,7 +209,17 @@ export async function hasBounced(
         eq(submissionEvents.outcome, "bounced"),
       ),
     );
-  return rows.some((row) => row.label?.startsWith(labelPrefix));
+
+  const hit = rows.find((row) => row.label?.startsWith(labelPrefix));
+  if (!hit) return null;
+  /*
+    Unknown is a real answer, not a fallback to `hard`.
+
+    Resend has moved where it puts the classification before, and guessing wrong
+    would tell a customer with a full mailbox that their address does not exist.
+    The caller has wording that covers both.
+  */
+  return hit.note === "hard" || hit.note === "soft" ? hit.note : "unknown";
 }
 
 /**

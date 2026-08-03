@@ -25,7 +25,8 @@ import {
   clearFlowSession,
   touchFlowSession,
   type SubmissionFile,
-  hasBounced,
+  bounceOf,
+  type BounceKind,
 } from "@/domains/submission";
 import { submissionFolder } from "@/shared/storage";
 import { discardUnpaidSubmission, sweepAbandoned } from "@/domains/upload";
@@ -88,10 +89,23 @@ function gone(
  * dead attempt. Deleting it immediately would buy nothing — there are no files
  * yet, because uploading requires the verification this never got.
  */
-function bouncedBack(): { ok: false; error: string; gone: true } {
-  return gone(
-    "That email address was not valid. Please check it for a typo and try again.",
-  );
+/**
+ * The address didn't take our code. Say which problem it is, where we know.
+ *
+ * A hard bounce and a full mailbox need different advice, and giving the wrong
+ * one sends somebody hunting for a typo they don't have. Where the classification
+ * is missing, the wording covers both rather than guessing: "couldn't deliver" is
+ * true in every case, and it offers both remedies.
+ */
+const BOUNCE_MESSAGE: Record<BounceKind, string> = {
+  hard: "That email address doesn't exist. Please check it for a typo and try again.",
+  soft: "That inbox couldn't accept our email. It may be full, so please try a different address.",
+  unknown:
+    "We couldn't deliver your code to that address. Check it for a typo, or try a different email.",
+};
+
+function bouncedBack(kind: BounceKind): { ok: false; error: string; gone: true } {
+  return gone(BOUNCE_MESSAGE[kind]);
 }
 
 const DONE: ActionResult<void> = { ok: true, data: undefined };
@@ -215,7 +229,8 @@ export async function resendCodeAction(): Promise<ActionResult> {
 
   // Resending to an address that already bounced sends a second message
   // nowhere. Send them back to fix it instead.
-  if (await undeliverable(submission.id)) return bouncedBack();
+  const bounced = await undeliverable(submission.id);
+  if (bounced) return bouncedBack(bounced);
 
   await touchFlowSession();
   const sent = await sendCode(submission.id, submission.customerEmail);
@@ -237,8 +252,8 @@ export async function resendCodeAction(): Promise<ActionResult> {
  * after money has changed hands, and nothing here may act destructively on a
  * paid submission.
  */
-async function undeliverable(submissionId: string): Promise<boolean> {
-  return hasBounced(submissionId, "①");
+async function undeliverable(submissionId: string) {
+  return bounceOf(submissionId, "①");
 }
 
 /**
@@ -263,7 +278,8 @@ async function undeliverable(submissionId: string): Promise<boolean> {
 export async function checkDeliveryAction(): Promise<ActionResult> {
   const submissionId = await readFlowSession();
   if (!submissionId) return DONE;
-  return (await undeliverable(submissionId)) ? bouncedBack() : DONE;
+  const bounce = await undeliverable(submissionId);
+  return bounce ? bouncedBack(bounce) : DONE;
 }
 
 export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
@@ -289,7 +305,8 @@ export async function verifyCodeAction(rawCode: string): Promise<ActionResult> {
     what happened. They'd retype it, ask for another, and conclude the site is
     broken rather than that they mistyped their address.
   */
-  if (await undeliverable(submissionId)) return bouncedBack();
+  const bounced = await undeliverable(submissionId);
+  if (bounced) return bouncedBack(bounced);
 
   const result = await verifyCode(submissionId, parsed.data);
   if (result.ok) await touchFlowSession();

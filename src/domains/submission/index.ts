@@ -115,8 +115,9 @@ export {
   recordSubmissionEvent,
   type SubmissionEvent,
   type SubmissionEventKind,
-  hasBounced,
+  bounceOf,
   noteEmailOutcome,
+  type BounceKind,
   type EmailOutcome,
 } from "./api/submissionEventApi";
 

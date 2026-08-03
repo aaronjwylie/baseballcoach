@@ -119,8 +119,19 @@ that matters most.
 **On ①, before payment:** the next thing the customer does tells them. A bounce
 arrives *after* they've been moved to "enter your code" and nothing can push it
 to them, so the verify and resend paths both check, and either returns them to
-step 1 with *"That email address was not valid. Please check it for a typo and
-try again."* Without that they'd type a code that was never delivered and be told
+step 1 with wording that matches **what kind of bounce it was**:
+
+| Bounce | What they're told |
+| --- | --- |
+| `hard` | *"That email address doesn't exist. Please check it for a typo and try again."* |
+| `soft` | *"That inbox couldn't accept our email. It may be full, so please try a different address."* |
+| unrecognised | *"We couldn't deliver your code to that address. Check it for a typo, or try a different email."* |
+
+**Unknown is a real answer, not a fallback to `hard`.** Resend has moved where it
+puts the classification before, and guessing wrong would tell someone with a full
+mailbox that their address doesn't exist. The third wording is true in every case
+and offers both remedies, so a missing classification costs detail rather than
+accuracy. Without that they'd type a code that was never delivered and be told
 "that code doesn't match" — true about the code, and a lie about what happened.
 
 **It does not delete anything, and that's the point.** A bounce can only occur

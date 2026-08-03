@@ -81,7 +81,17 @@ export async function POST(request: Request) {
     return new Response("Invalid signature", { status: 400 });
   }
 
-  let event: { type?: string; data?: { email_id?: string } };
+  let event: {
+    type?: string;
+    data?: {
+      email_id?: string;
+      // Resend nests the bounce classification, and has moved it between
+      // shapes before. Read defensively: an unrecognised payload should cost us
+      // the *detail*, never the bounce itself.
+      bounce?: { type?: string; subType?: string };
+      type?: string;
+    };
+  };
   try {
     event = JSON.parse(raw);
   } catch {
@@ -96,8 +106,21 @@ export async function POST(request: Request) {
     return new Response(null, { status: 204 });
   }
 
+  /*
+    `hard` means the address does not exist; `soft` means the inbox could not
+    take it just now — full, or temporarily refusing us. The customer needs
+    different advice for each, and it is the only thing separating "you made a
+    typo" from "your mailbox is full", which are not the same problem.
+  */
+  const bounceKind =
+    outcome === "bounced"
+      ? (event.data?.bounce?.type ?? event.data?.type ?? "").toLowerCase()
+      : "";
+  const note =
+    bounceKind === "hard" || bounceKind === "soft" ? bounceKind : undefined;
+
   try {
-    const origin = await noteEmailOutcome(messageId, outcome);
+    const origin = await noteEmailOutcome(messageId, outcome, note);
     if (!origin) {
       // Sent before this existed, or not ours. Nothing to attach it to.
       return new Response(null, { status: 204 });
