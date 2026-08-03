@@ -58,6 +58,10 @@ export function QueueRow({
 }) {
   const [open, setOpen] = useState(false);
 
+  // The one line the submission is actually waiting on — a breadcrumb, not the
+  // next rung. A rung can be four of these away.
+  const pending = stage.find((line) => line.now);
+
   const last = latestBreadcrumb(events, rail.status);
   const newest = last ? { ...describeEvent(last), note: last.note, at: last.at } : undefined;
 
@@ -129,7 +133,7 @@ export function QueueRow({
             </div>
             <div>
               <Label>Trail</Label>
-              <Trail events={events} />
+              <Trail events={events} pending={pending?.next} />
             </div>
           </div>
         </div>
@@ -212,8 +216,14 @@ function Label({ children }: { children: ReactNode }) {
  * which is exactly the failure this view exists to surface. A send that didn't
  * land is the one thing here drawn in a colour.
  */
-function Trail({ events }: { events: SubmissionEvent[] }) {
-  if (events.length === 0) {
+function Trail({
+  events,
+  pending,
+}: {
+  events: SubmissionEvent[];
+  pending?: string;
+}) {
+  if (events.length === 0 && !pending) {
     return <p className="text-[11.5px] italic text-ink-muted">Nothing recorded yet.</p>;
   }
   return (
@@ -248,6 +258,29 @@ function Trail({ events }: { events: SubmissionEvent[] }) {
           </span>
         </li>
       ))}
+
+      {/*
+        The list ends on what hasn't happened.
+
+        Everything above is past voice with a time — a thing that was satisfied.
+        This is the same kind of line, one step further on, and it needs the
+        future wording rather than a greyed-out version of the past one: "Payment
+        cleared" dimmed still reads as an event that occurred.
+
+        It's the outstanding *breadcrumb*, not the next rung. A rung can be
+        several of these away, and "what has to happen next" is the smaller,
+        more useful question.
+
+        Absent when every line of the stage is met — the submission is then
+        waiting on a transition rather than on anyone, and inventing a to-do for
+        it would be a lie.
+      */}
+      {pending ? (
+        <li className="grid grid-cols-[1fr_auto] gap-3 py-0.5 text-[11.5px] italic text-ink-muted">
+          <span className="min-w-0 truncate">○ {pending}</span>
+          <span className="tabular-nums">not yet</span>
+        </li>
+      ) : null}
     </ol>
   );
 }

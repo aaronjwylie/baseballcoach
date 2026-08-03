@@ -904,6 +904,81 @@ rollout plan and resolved in its Phase 6:
 
 ## 3 · Where we are now — 2026-08-02
 
+### The breadcrumb library — two voices for one line
+
+A breadcrumb appears in the trail **twice over its life**: once as a thing that
+hasn't happened, and once as a thing that has. Those are different sentences,
+not one sentence in two colours. Greying out "Payment cleared" still reads as an
+event that occurred.
+
+So every chain line carries both. `what` is the condition, past voice, and it's
+what the checklist shows — a checklist is a list of conditions and should read
+like one. `next` is the same line before the fact, in future voice, **naming who
+does it**, and it's what closes the trail.
+
+**43 lines across the sixteen rungs, 36 distinct.** Seven repeat because each
+rung opens by restating the condition that got it there — "Payment cleared" is
+the last line of rung 2 and the first line of rung 3. That overlap is the point:
+a rung's chain reads as a complete account of itself, not a fragment needing the
+previous one for context.
+
+Two are marked **passive** — "Originals downloaded" and "Response downloaded" —
+because they happen off-platform and we can't observe them. A passive line never
+holds the pointer, so it never becomes the trail's closing line and never asks
+anyone for something the system can't see.
+
+| Past — it happened | Future — it hasn't yet | Read from | Rungs |
+| --- | --- | --- | --- |
+| Approved and sent | Yuta approves it and sends it on | `feedbackEmailedAt` | 9, 11 |
+| Arrival announced | Yuta hears it arrived | `②` | 3 |
+| At least one file attached | The customer attaches a file | `intake` | 2 |
+| Bytes removed from storage | The sweep removes the bytes | `filesPurgedAt` | 16 |
+| Coach chosen | Yuta picks a coach | `assignedCoachId` | 3, 4 |
+| Coach downloaded the files | The coach downloads the files | `trail · in_review` | 7 |
+| Coach has the files | The coach gets the files | `trail · in_review` | 8 |
+| Coach's languages recorded | Someone records this coach's languages | `coaches.languages` | 4 |
+| Collection announced | Yuta hears the customer collected it | `⑦` | 13 |
+| Customer downloaded it | The customer downloads it | `collectedAt` | 12 |
+| Customer has it | The customer gets it | `collectedAt` | 13 |
+| Deletion warning due | The deletion warning falls due | `deletionWarnedAt` | 14 |
+| Delivery stamped | Delivery gets stamped | `completedAt` | 12 |
+| Email proven | The customer proves their email | `emailVerifiedAt` | 1, 2 |
+| Feedback emailed | The feedback email goes out | `⑥` | 12 |
+| Files deleted | The files are deleted | `filesPurgedAt` | 15 |
+| Hand-off emailed | The hand-off email goes out | `③` | 7 |
+| Handed to the coach | Yuta hands it to the coach | `③` | 4, 6 |
+| Locators cleared | The locators are cleared | `fileUrl = null` | 16 |
+| Marked resolved | Yuta marks it resolved | `trail · resolved` | 13, 14 |
+| Originals downloaded | The originals get downloaded | `off-platform` | 5 |
+| Payment cleared | The customer's payment clears | `paidAt` | 2, 3 |
+| Player details captured | The customer fills in the player's details | `playerName · focus` | 1 |
+| Receipt sent to the customer | The receipt goes to the customer | `②` | 3 |
+| Record kept — permanently | The record is kept, permanently | `the row survives` | 16 |
+| Response downloaded | The response gets downloaded | `off-platform` | 10 |
+| Response uploaded | The coach uploads their response | `response` | 8, 9 |
+| Sent out for translation, if the customer needs it | It goes out for translation, if the customer needs it | `rung 10` | 9 |
+| Sent out for translation, if this coach needs it | It goes out for translation, if this coach needs it | `rung 5` | 4 |
+| Thank-you sent | The thank-you goes out | `⑧` | 14 |
+| Translated files uploaded | The translated files are uploaded | `intake_translation` | 5 |
+| Translated set stored | The translated set is stored | `intake_translation` | 6 |
+| Translation stored | The translation is stored | `response_translation` | 11 |
+| Translation uploaded | The translation is uploaded | `response_translation` | 10 |
+| Warning sent | The warning goes out | `⑨` | 15 |
+| Yuta and the coach told | Yuta and the coach are told | `⑤` | 9 |
+
+**The other three vocabularies** a breadcrumb can be drawn from, all past-voice
+because all three are observations rather than intentions:
+
+- **The sixteen rung labels** (`RUNG_LABEL`) — a status move.
+- **Eleven email labels**, ①–⑨ plus the decline notice and the status access
+  code. ② is two labels for one numbered event, because a payment tells the
+  customer *and* Yuta; they're separate sends with separate outcomes.
+- **Two verification labels** — `code accepted` and `code rejected`, the latter
+  carrying its reason and the attempts spent.
+
+Only the chain lines need a future voice. An event is something that happened;
+you can't write the past-tense record of a send that hasn't gone out.
+
 ### The pill carries a second line — on trial
 
 Line one is the rung, which can sit unchanged for days. Line two is **the latest
