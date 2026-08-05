@@ -89,8 +89,17 @@ Three consequences, and the third is the one that bites:
   would import it. Close that loop and one of the two modules initialises half-formed, so a table
   arrives `undefined` from inside Drizzle with a stack trace naming neither file.
 
-  So: **a declaration imports only declarations.** Never a barrel — not `@/db/schema`, not
-  `@/shared/db`, not a slice's `index.ts`. Everything *above* the plane keeps the normal rules.
+  So: **a declaration never imports a barrel** — not `@/db/schema`, not `@/shared/db`, not a
+  slice's `index.ts` — nor anything that transitively reaches one. Everything *above* the plane
+  keeps the normal rules.
+
+  *Sharpened 2026-08-05, a day after it was written.* It first read "a declaration imports only
+  declarations", which was a proxy for the real hazard and immediately proved too strict: the
+  enums now derive from the domain vocabularies (`submissionStatusEnum` ← `SUBMISSION_STATUSES`),
+  so declarations import plain model files and always will. Those are leaves — they import
+  nothing upward, so no loop can close through them. **The danger was never "a non-declaration";
+  it was a module that imports you back.** A rule stated as a proxy will keep forbidding safe
+  things and, worse, will eventually permit an unsafe one that happens to fit its letter.
 
 The cost paid knowingly: placement becomes a recurring judgment call that a single file never
 had, and it *drifts* — what one domain clearly owns becomes contested when a second consumer

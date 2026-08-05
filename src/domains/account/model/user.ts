@@ -6,7 +6,15 @@
  * read only by `verifyCredentials`.
  */
 
-export type Role = "admin" | "coach";
+/**
+ * The two operator roles — the vocabulary `userRoleEnum.ts` derives from.
+ *
+ * A list rather than a bare union so there is one home for the fact. Customers
+ * are not a third role and never will be: they don't get a `users` row at all.
+ */
+export const ROLES = ["admin", "coach"] as const;
+
+export type Role = (typeof ROLES)[number];
 
 /** The session cookie payload — minimal, no PII (CLAUDE.md authentication). */
 export interface OperatorSession {

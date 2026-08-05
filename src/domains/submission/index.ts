@@ -120,12 +120,17 @@ export {
   noteVerification,
   recordSubmissionEvent,
   type SubmissionEvent,
-  type SubmissionEventKind,
   bounceOf,
   noteEmailOutcome,
   type BounceKind,
-  type EmailOutcome,
 } from "./api/submissionEventApi";
+
+export {
+  SUBMISSION_EVENT_KINDS,
+  EMAIL_OUTCOMES,
+  type SubmissionEventKind,
+  type EmailOutcome,
+} from "./model/submissionEvent";
 
 export {
   FLOW_MAX_AGE_S,

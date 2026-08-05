@@ -88,10 +88,21 @@ rather than paper over it.
   for. A foreign table is reached at the declaration plane too, uniformly.
 - **`shared/db` shrank to one export.** Scripts, which are cross-cutting by definition, import
   tables from `@/db/schema`.
-- **Deferred, deliberately:** `submissionStatus` (the pgEnum) and `SUBMISSION_STATUSES` (the
-  domain const) are still two hand-maintained copies of the same sixteen rungs, now obviously so
-  in the same folder. Deriving one from the other is a separate commit — bundling it would have
-  made the "no schema change" verification meaningless.
+- **The duplication it exposed is now closed** (separate commit, so the "no schema change"
+  verification above stayed meaningful). Putting `submissionStatusEnum.ts` beside
+  `submission.ts` made two hand-kept copies of the same sixteen rungs impossible to miss — and
+  the same duplication turned out to exist for `focus`, `fileKind`, `fileSet`,
+  `submissionEventKind`, `emailOutcome`, and `userRole`. All seven now derive.
+
+  **The domain vocabulary is the source; the pgEnum derives from it** — never the reverse. A
+  vocabulary is what the domain *says*; storage is one of the things that says it, and a model
+  that reads its own words back out of the schema has the dependency upside down
+  (`model/submission.ts` opens by claiming it knows nothing about storage). The direction also
+  keeps the docblocks where the reasoning is, leaving each `*Enum.ts` a pointer plus one line.
+
+  This is the split earning its keep. The duplication predated it and was invisible across 400
+  lines; adjacency is what made it obvious. Locality doesn't just reduce reading — it puts
+  facts near enough to compare.
 - **No `relations.ts`.** Drizzle's `relations()` is only used by the nested query API, which we
   don't use. `.references()` stays inline. If a genuine two-way reference or a join table owned
   by neither domain appears, that file goes in `src/db/` and imports both domains — never the

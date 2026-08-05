@@ -1,21 +1,13 @@
 /**
- * How far an email got.
+ * The storage spelling of how far an email got.
  *
- * `sent` is all the send path can honestly claim — Resend accepted it. The rest
- * arrives later, by webhook, and is the difference between "we tried" and "it
- * reached them". A `bounced` on the verification code is the failure that used
- * to look exactly like a customer being slow.
+ * **Derived** from `EMAIL_OUTCOMES` in `./submissionEvent.ts`.
  *
  * Owned by submission rather than by `shared/email`: it is a column on the
  * trail, and the trail is the submission's history. The email seam sends; it
  * doesn't remember.
  */
 import { pgEnum } from "drizzle-orm/pg-core";
+import { EMAIL_OUTCOMES } from "./submissionEvent";
 
-export const emailOutcome = pgEnum("email_outcome", [
-  "sent",
-  "delivered",
-  "bounced",
-  "complained",
-  "failed",
-]);
+export const emailOutcome = pgEnum("email_outcome", EMAIL_OUTCOMES);

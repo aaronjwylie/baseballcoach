@@ -915,11 +915,27 @@ and into `model/` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)):
 read them from this slice. `coachesTable.ts` imports the enum across, which is
 how declaration files reach each other.
 
-**The duplication this exposed:** `submissionStatusEnum.ts` and the
-`SUBMISSION_STATUSES` const in `model/submission.ts` are two hand-maintained
-copies of the same sixteen rungs, now sitting in one folder. Deriving one from
-the other is the next change here — kept out of the split so the "no schema
-change" verification stayed meaningful.
+**The duplication this exposed, now closed.** `submissionStatusEnum.ts` and
+`SUBMISSION_STATUSES` were two hand-kept copies of the same sixteen rungs, and
+once they sat in one folder the same pattern was obvious for `focus`, `fileKind`
+and `fileSet` too. Every enum here now **derives from the vocabulary**:
+
+| enum | derives from |
+| --- | --- |
+| `submissionStatus` | `SUBMISSION_STATUSES` — `model/submission.ts` |
+| `focus` | `FOCUS_OPTIONS` — `model/submission.ts` |
+| `fileKind` | `FILE_KINDS` — `model/submissionFile.ts` |
+| `fileSet` | `FILE_SETS` — `model/submissionFile.ts` |
+| `submissionEventKind` | `SUBMISSION_EVENT_KINDS` — `model/submissionEvent.ts` |
+| `emailOutcome` | `EMAIL_OUTCOMES` — `model/submissionEvent.ts` |
+
+`model/submissionEvent.ts` is new: the trail's two vocabularies were bare unions
+in `api/submissionEventApi.ts`, which is the wrong layer for them. A vocabulary
+is what the domain says; the API is one of the things that says it.
+
+**The enum's order is the ladder's order**, so `ORDER BY status` still means "how
+far along". Reordering `SUBMISSION_STATUSES` therefore reorders a Postgres type —
+that array is a migration surface now, not a free list.
 
 ## 3 · Where we are now — 2026-08-02
 

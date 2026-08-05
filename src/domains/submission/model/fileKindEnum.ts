@@ -1,21 +1,16 @@
 /**
- * What a stored file *is* — the four folders, as one column.
+ * The storage spelling of the four folders.
  *
- * **Nouns, deliberately** (`_NomenclatureLaw.md` §2): a kind answers *what is
- * this file*, while a status answers *what has happened*. That's why the kind is
- * `intake_translation` and the status is `intake_translated` — one stem, two
- * axes, no ambiguity at the call site. Its counterpart lives next door in
- * `./submissionStatusEnum.ts`; the pairing is the point.
+ * **Derived** from `FILE_KINDS` in `./submissionFile.ts`, which is the
+ * vocabulary and also holds the side-of map that decides what each kind *means*.
+ * A fifth kind added there is a compile error until that map answers for it —
+ * which is a guarantee this file can't offer and shouldn't try to.
  *
- * `intake` = what the customer sent · `response` = what the coach wrote back.
- * Each has a translated counterpart, uploaded by the admin and stored beside the
- * original rather than replacing it.
+ * Kinds are **nouns**, statuses are **participles** (`_NomenclatureLaw.md` §2):
+ * `intake_translation` is what a file *is*, `intake_translated` is what has
+ * *happened*. One stem, two axes; the counterpart is `./submissionStatusEnum.ts`.
  */
 import { pgEnum } from "drizzle-orm/pg-core";
+import { FILE_KINDS } from "./submissionFile";
 
-export const fileKind = pgEnum("file_kind", [
-  "intake",
-  "intake_translation",
-  "response",
-  "response_translation",
-]);
+export const fileKind = pgEnum("file_kind", FILE_KINDS);

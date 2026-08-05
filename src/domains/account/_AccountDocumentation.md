@@ -24,6 +24,9 @@ Invariants:
 
 `users` and `userRole` are declared here now — `model/usersTable.ts` and
 `model/userRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
+The enum **derives** from `ROLES` in `model/user.ts`, which is also where
+`type Role` comes from: one list, two consumers. `Role` used to be a bare union
+spelled a second time in the schema.
 
 **This slice is `user`'s home, and there is no `domains/user/`.** Operator
 identity has always lived under `account`, and a second folder for the same

@@ -1,33 +1,21 @@
 /**
- * The submission lifecycle — **the ladder**. Sixteen rungs, in order.
+ * The storage spelling of **the ladder** — sixteen rungs, in order.
  *
- * Mirrors `SUBMISSION_STATUSES` in `./submission.ts`, which carries the full
- * account of what each rung means. Keep the two in step: this is the storage
- * spelling, that one is the vocabulary.
+ * **Derived, not restated.** `SUBMISSION_STATUSES` in `./submission.ts` is the
+ * one ordered list of rungs, and carries the full account of what each means,
+ * who moves it, and which email fires. This file only tells Postgres about it.
  *
- * A path with branches, not a progress bar — the four `*_translating` /
- * `*_translated` rungs are only touched when a coach needs a translation.
+ * It was two hand-maintained copies kept in step by a comment. They never
+ * actually diverged, but nothing would have said so if they had: a rung added
+ * here and not there is a valid enum with a missing value, and a rung added
+ * there and not here fails at runtime on the first insert, in whichever
+ * environment ran that path first.
  *
- * `awaiting_upload` is gone: upload happens *before* payment, so a state meaning
- * "paid but no file yet" can no longer occur.
+ * The enum's order is the ladder's order, so `ORDER BY status` means "how far
+ * along" without a lookup. Reordering `SUBMISSION_STATUSES` therefore reorders
+ * the Postgres type, which is a migration — the array is not a free list.
  */
 import { pgEnum } from "drizzle-orm/pg-core";
+import { SUBMISSION_STATUSES } from "./submission";
 
-export const submissionStatus = pgEnum("submission_status", [
-  "draft",
-  "awaiting_payment",
-  "new",
-  "assigned",
-  "intake_translating",
-  "intake_translated",
-  "sent_to_coach",
-  "in_review",
-  "awaiting_approval",
-  "response_translating",
-  "response_translated",
-  "complete",
-  "collected",
-  "resolved",
-  "purge_imminent",
-  "purged",
-]);
+export const submissionStatus = pgEnum("submission_status", SUBMISSION_STATUSES);
