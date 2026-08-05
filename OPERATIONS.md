@@ -265,6 +265,43 @@ Sign in at `/login` as **`yuta@example.com` / `changeme123`** → `/admin`.
 - Forward Stripe webhooks locally with
   `stripe listen --forward-to localhost:3000/api/webhooks/stripe`.
 
+### Squashing the migration history — baseline before you deploy
+
+Collapsing many migrations into one leaves every existing database holding the
+schema but no record of the file describing it. **Drizzle decides what to apply
+by timestamp alone** — `pg-core/dialect.js` runs anything whose `when` is greater
+than the newest row in `drizzle.__drizzle_migrations`, and never compares hashes
+to decide what to skip. A squash written today is newer than everything applied,
+so `drizzle-kit migrate` reads it as pending and runs `CREATE TYPE …` against
+types that already exist.
+
+The result is a **failed production build** — which is the designed-safe outcome
+(`migrate-on-deploy.mjs` fails rather than deploying, so the previous deploy keeps
+serving), but the deploy stays blocked until someone diagnoses it.
+
+So after squashing, and **before deploying**, baseline every database that already
+has the schema — production first, then any local one:
+
+```bash
+npm run db:baseline                # dry run: reports, changes nothing
+npm run db:baseline -- --apply     # rewrites the ledger
+
+# production, from a checkout:
+POSTGRES_URL_NON_POOLING="<supabase direct url>" npm run db:baseline
+```
+
+It computes the hash from the migration file rather than taking it on trust,
+**refuses if the schema doesn't already match** the squash (missing tables mean
+the migration has real work to do and should be *run*, not marked done), backs the
+old rows up to `drizzle.__drizzle_migrations_backup_<when>` inside the same
+transaction, and verifies before committing. Re-running it is a no-op.
+
+To undo, restore from that backup table — the exact statements are printed on
+success.
+
+**A fresh database needs none of this**: with nothing applied, the squash runs
+normally and the script refuses on purpose.
+
 ---
 
 ## 3. Create the production accounts
@@ -554,6 +591,7 @@ The Stripe webhook URL. See the warning at the top.
 
 | Change | Status |
 | --- | --- |
+| 🔴 **Baseline production before deploying the squashed migration history** | The seventeen migrations were collapsed into one. Production still lists the old seventeen as applied, so `drizzle-kit migrate` will read the squash as pending and **fail the build**. Run `npm run db:baseline` against prod first — [§2](#2-local-development) |
 | 🔴 **Apply migrations `0001` + `0002` to Supabase** | **Aaron** — production is on the old schema; the deployed app fails on its first query until this runs ([§1](#1-ownership-model)) |
 | 🔴 **Set `CRON_SECRET` in Vercel** | **Aaron** — the retention sweep returns 503 without it |
 | **Stripe keys + webhook** (§5–§6) | **The last launch blocker for money** — no payments until done |
