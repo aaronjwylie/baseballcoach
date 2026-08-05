@@ -73,9 +73,8 @@ submission's because `FOCUS_OPTIONS` already was, even though `coaches.specialti
 Three consequences, and the third is the one that bites:
 
 - **A barrel aggregates; it never declares.** [`src/db/schema.ts`](src/db/schema.ts) exists so
-  drizzle-kit has one file to read. It contains no declarations, and it sits *outside* the layer
-  cake rather than in `shared/` — a file that imports every domain cannot be domain-less, and
-  rule 4 has no exceptions.
+  drizzle-kit has one file to read. It contains no declarations. That part is firm; where it
+  *sits* is not — see below.
 - **The whole-picture view is a tooling concern, not a file-structure one.** "What does the
   database look like" is answered by Drizzle Studio, the pgAdmin ERD, and generated SQL — none of
   which read our folders. Keeping declarations physically adjacent was paying a locality cost for
@@ -97,6 +96,34 @@ The cost paid knowingly: placement becomes a recurring judgment call that a sing
 had, and it *drifts* — what one domain clearly owns becomes contested when a second consumer
 appears. That correction is a file move and `tsc` finds every call site, which is why the cost is
 acceptable rather than merely tolerated.
+
+#### ⚠️ The manifest's address is provisional — decided 2026-08-05, kept under review
+
+What's **settled** is that the manifest can't live in `shared/`. It was going to, and rule 4
+caught it: a file importing every domain cannot be domain-less. That's the invariant doing its
+job, and it isn't up for revisiting.
+
+What's **provisional** is `src/db/` specifically. It's a fourth top-level folder beside `app/`,
+`domains/`, and `shared/` that is *not a layer* — which is either honest or a smell, and one
+file isn't enough evidence to tell. It's there because:
+
+- **Nothing in `src/` imports it**, so it constrains nothing and nothing constrains it. Its only
+  consumers are `drizzle.config.ts` and `scripts/`, both outside the cake already.
+- **It stays under `src/`** so the `@/` alias resolves — which is what drizzle-kit actually reads
+  when it bundles the schema. Repo root would work too and buys nothing.
+- **The alternative was a documented exception in `shared/`**, and exceptions to rule 4 are
+  worth more than the tidiness of three top-level folders. Once a law has one carve-out, the
+  second is an argument rather than a violation.
+
+**What would move it.** If something in `src/` ever legitimately needs the whole map, that's
+evidence it *is* a layer and belongs in the cake. If `src/db/` grows a second file — a
+`relations.ts`, or a join table owned by neither domain — the folder acquires a real purpose and
+we should name it for that purpose rather than for the tool that wanted it. And if it simply
+reads as clutter after a few months of working in the tree, that's reason enough; nothing here is
+load-bearing.
+
+Recorded this way on purpose. The reasoning above is worth more than the conclusion, because the
+conclusion is a judgment call and the reasoning is what will tell us if it was the wrong one.
 
 ### 8 · Compartmentalize the differences; unify the commonality
 

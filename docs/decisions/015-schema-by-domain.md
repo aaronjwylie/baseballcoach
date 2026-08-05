@@ -54,6 +54,11 @@ was going to live in `shared/db/`, and the invariant *"`shared/` never imports a
 it — a file importing every domain cannot be domain-less. Friction was information, as
 PRINCIPLES claims.
 
+⚠️ **That it can't live in `shared/` is settled; `src/db/` specifically is not.** It's a fourth
+top-level folder that isn't a layer, which one file isn't enough evidence to judge. The
+reasoning, and the three things that would move it, are in
+[PRINCIPLES §7b](../../PRINCIPLES.md) — one home, so the two can't drift.
+
 That move forced a second, better one: `shared/db/client.ts` no longer passes `schema` to
 `drizzle()`. That argument exists solely to power the relational query API (`db.query.x`), which
 this codebase has never used — every read is an explicit `select`. Dropping it leaves the shared
