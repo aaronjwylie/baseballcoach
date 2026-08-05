@@ -176,7 +176,7 @@ that fails in confusing ways.
 
 | Risk | Why |
 | --- | --- |
-| 🔴 **The app will fail until the migrations are applied** | Production is on the old schema. This is not a connection problem; see the handoff above. |
+| ~~🔴 **The app will fail until the migrations are applied**~~ | **No longer true (2026-08-05).** Production carries the full six-table schema with live data. |
 | 🔴 **Check `STRIPE_SECRET_KEY` starts with `sk_test_`** | If production has been switched to live keys, local testing charges real cards. |
 | **Every test run writes real rows** | The queue the admin works from is the same database. Seed data and probes go into production. |
 | **`npm run flow` and `npm run db:seed` become destructive** | The flow probe creates and sweeps submissions; the seed inserts samples. **Do not run either** while pointed at production. |
@@ -291,10 +291,15 @@ POSTGRES_URL_NON_POOLING="<supabase direct url>" npm run db:baseline
 ```
 
 It computes the hash from the migration file rather than taking it on trust,
-**refuses if the schema doesn't already match** the squash (missing tables mean
-the migration has real work to do and should be *run*, not marked done), backs the
-old rows up to `drizzle.__drizzle_migrations_backup_<when>` inside the same
-transaction, and verifies before committing. Re-running it is a no-op.
+**refuses if the schema doesn't already match** the squash — every table, every
+column, and every enum, all parsed out of the SQL. Columns matter as much as
+tables: a database that stopped a few migrations short still has all six tables,
+and it's the columns those migrations added that are missing. Anything absent
+means the migration has real work to do and should be *run*, not marked done.
+
+It then backs the old rows up to `drizzle.__drizzle_migrations_backup_<when>`
+inside the same transaction and verifies before committing. Re-running it is a
+no-op.
 
 To undo, restore from that backup table — the exact statements are printed on
 success.
@@ -592,7 +597,7 @@ The Stripe webhook URL. See the warning at the top.
 | Change | Status |
 | --- | --- |
 | 🔴 **Baseline production before deploying the squashed migration history** | The seventeen migrations were collapsed into one. Production still lists the old seventeen as applied, so `drizzle-kit migrate` will read the squash as pending and **fail the build**. Run `npm run db:baseline` against prod first — [§2](#2-local-development) |
-| 🔴 **Apply migrations `0001` + `0002` to Supabase** | **Aaron** — production is on the old schema; the deployed app fails on its first query until this runs ([§1](#1-ownership-model)) |
+| ~~🔴 **Apply migrations `0001` + `0002` to Supabase**~~ | ✅ **Stale — cleared 2026-08-05.** Production carries all six tables with live data (27 submissions, 44 trail events), including `submission_events` and `settings`, which only exist from migrations `0011`/`0012`. The schema is well past `0002`. Verified by REST probe, not by reading the ledger — see the note below |
 | 🔴 **Set `CRON_SECRET` in Vercel** | **Aaron** — the retention sweep returns 503 without it |
 | **Stripe keys + webhook** (§5–§6) | **The last launch blocker for money** — no payments until done |
 | ~~**Verify the Resend domain + set `EMAIL_FROM`**~~ | ✅ Done — domain verified, sending live (§8). Now load-bearing: the verification code is emailed |

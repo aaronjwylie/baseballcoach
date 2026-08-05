@@ -79,14 +79,25 @@ function readSquash() {
   // Read as bytes→string exactly as drizzle does, so the hash matches byte for byte.
   const sql = fs.readFileSync(`${MIGRATIONS_DIR}/${tag}.sql`).toString();
 
+  // Parsed from the SQL rather than hardcoded, so a regenerated squash with a
+  // seventh table can't quietly pass a check written against six.
+  const blocks = [...sql.matchAll(/CREATE TABLE "([^"]+)" \(([\s\S]*?)\n\);/g)];
+
   return {
     tag,
     when,
     sql,
     hash: crypto.createHash("sha256").update(sql).digest("hex"),
-    // Parsed from the SQL rather than hardcoded, so a regenerated squash with a
-    // seventh table can't quietly pass a check written against six.
-    tables: [...sql.matchAll(/CREATE TABLE "([^"]+)"/g)].map((m) => m[1]),
+    tables: blocks.map((b) => b[1]),
+    // Columns matter as much as tables. A database that stopped a few migrations
+    // short still has all six tables — it's the *columns* those migrations added
+    // that are missing, and checking only table names would wave it through.
+    columns: new Map(
+      blocks.map((b) => [
+        b[1],
+        [...b[2].matchAll(/^\s*"([^"]+)"/gm)].map((m) => m[1]),
+      ]),
+    ),
     types: [...sql.matchAll(/CREATE TYPE "public"\."([^"]+)"/g)].map((m) => m[1]),
   };
 }
@@ -162,20 +173,45 @@ async function main() {
       `
     ).map((r) => r.typname);
 
+    const dbColumns = await sql<{ table_name: string; column_name: string }[]>`
+      SELECT table_name, column_name FROM information_schema.columns
+      WHERE table_schema = 'public'
+    `;
+    const columnsByTable = new Map<string, string[]>();
+    for (const { table_name, column_name } of dbColumns) {
+      columnsByTable.set(table_name, [
+        ...(columnsByTable.get(table_name) ?? []),
+        column_name,
+      ]);
+    }
+
     const missingTables = squash.tables.filter((t) => !presentTables.includes(t));
     const missingTypes = squash.types.filter((t) => !presentTypes.includes(t));
+    const missingColumns: string[] = [];
+    for (const [table, wanted] of squash.columns) {
+      if (missingTables.includes(table)) continue; // already reported, don't double up
+      const present = columnsByTable.get(table) ?? [];
+      for (const column of wanted) {
+        if (!present.includes(column)) missingColumns.push(`${table}.${column}`);
+      }
+    }
 
-    if (missingTables.length || missingTypes.length) {
+    if (missingTables.length || missingTypes.length || missingColumns.length) {
       console.error(
         `\n  REFUSING — the database does not already match the squash.\n` +
-          (missingTables.length ? `  missing tables: ${missingTables.join(", ")}\n` : "") +
-          (missingTypes.length ? `  missing enums:  ${missingTypes.join(", ")}\n` : "") +
+          (missingTables.length ? `  missing tables:  ${missingTables.join(", ")}\n` : "") +
+          (missingTypes.length ? `  missing enums:   ${missingTypes.join(", ")}\n` : "") +
+          (missingColumns.length ? `  missing columns: ${missingColumns.join(", ")}\n` : "") +
           `\n  Baselining would mark real schema work as done and leave the code\n` +
           `  running against a database missing it. Run the migration instead.`,
       );
       process.exit(1);
     }
-    console.log(`  schema matches: all ${squash.tables.length} tables and ${squash.types.length} enums present`);
+
+    const columnCount = [...squash.columns.values()].reduce((n, c) => n + c.length, 0);
+    console.log(
+      `  schema matches: ${squash.tables.length} tables, ${columnCount} columns, ${squash.types.length} enums`,
+    );
 
     const backup = `${TABLE}_backup_${squash.when}`;
     const backupExists = await sql`
