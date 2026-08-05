@@ -6,7 +6,9 @@
  * table.
  */
 import { asc, eq } from "drizzle-orm";
-import { db, coaches, users } from "@/shared/db";
+import { db } from "@/shared/db";
+import { users } from "@/domains/account/model/usersTable";
+import { coaches } from "../model/coachesTable";
 import {
   createOperator,
   listAdminEmails,

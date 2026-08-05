@@ -7,11 +7,15 @@
  *
  * Server-only. Nothing in `app/` or a client component imports this directly —
  * the domains do (see structure.md §3b).
+ *
+ * **No `schema` argument, deliberately.** Drizzle only wants one to power the
+ * relational query API (`db.query.x.findMany`), which this codebase has never
+ * used — every read is an explicit `select`. Passing it would drag every domain
+ * into `shared/`, which is the one thing this floor may not know about.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "@/shared/config/env";
-import * as schema from "./schema";
 
 const globalForDb = globalThis as unknown as {
   _pgClient?: ReturnType<typeof postgres>;
@@ -26,4 +30,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForDb._pgClient = client;
 }
 
-export const db = drizzle(client, { schema, casing: "snake_case" });
+export const db = drizzle(client, { casing: "snake_case" });

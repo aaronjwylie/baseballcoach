@@ -63,6 +63,41 @@ Consumers import a slice's `index.ts`, never its internals. That makes the inter
 **private implementation detail** — changeable anytime, zero ripple. It's what lets rule 6
 be safe.
 
+### 7b · Storage declarations follow ownership — and form their own plane
+
+**Adopted 2026-08-05** ([ADR 015](docs/decisions/015-schema-by-domain.md)). A table or enum
+lives in the folder of the domain that owns it, not in a shared infrastructure file. Ownership,
+not usage: `submissionStatus` is submission's even though four layers read it; `focus` is
+submission's because `FOCUS_OPTIONS` already was, even though `coaches.specialties` uses it too.
+
+Three consequences, and the third is the one that bites:
+
+- **A barrel aggregates; it never declares.** [`src/db/schema.ts`](src/db/schema.ts) exists so
+  drizzle-kit has one file to read. It contains no declarations, and it sits *outside* the layer
+  cake rather than in `shared/` — a file that imports every domain cannot be domain-less, and
+  rule 4 has no exceptions.
+- **The whole-picture view is a tooling concern, not a file-structure one.** "What does the
+  database look like" is answered by Drizzle Studio, the pgAdmin ERD, and generated SQL — none of
+  which read our folders. Keeping declarations physically adjacent was paying a locality cost for
+  a view we can get three other ways. *Explicit non-goal: never build a utility that assembles
+  the schema for reading. If that starts to feel necessary, the split cost more than expected and
+  we revisit it rather than paper over it.*
+- **Declaration files are their own plane, and the import rules above don't reach them.** A
+  `*Table.ts` imports other declaration files **directly and cross-domain** — `coachesTable`
+  imports `usersTable`, not `@/domains/account`. This looks like a violation of rule 7 and of
+  structure.md §4.5, and it is; it's forced by the module system, not chosen. A foreign key is a
+  compile-time reference no barrel can carry, because the barrel already imports the file that
+  would import it. Close that loop and one of the two modules initialises half-formed, so a table
+  arrives `undefined` from inside Drizzle with a stack trace naming neither file.
+
+  So: **a declaration imports only declarations.** Never a barrel — not `@/db/schema`, not
+  `@/shared/db`, not a slice's `index.ts`. Everything *above* the plane keeps the normal rules.
+
+The cost paid knowingly: placement becomes a recurring judgment call that a single file never
+had, and it *drifts* — what one domain clearly owns becomes contested when a second consumer
+appears. That correction is a file move and `tsc` finds every call site, which is why the cost is
+acceptable rather than merely tolerated.
+
 ### 8 · Compartmentalize the differences; unify the commonality
 
 Separate concepts that are genuinely different even when they share a shape. But write the

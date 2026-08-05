@@ -116,6 +116,18 @@ and these are business judgements, not engineering constants.
 
 ---
 
+## 1b · The slice owns its storage — 2026-08-05
+
+`settings` is declared here now, in `model/settingsTable.ts`
+([ADR 015](../../../docs/decisions/015-schema-by-domain.md)). It references
+nothing and nothing references it, so it's the one table the split left entirely
+self-contained.
+
+Its docblock came back with it, and was **misfiled** in the shared schema — it
+sat above `submissionEvents`, describing a table three hundred lines away.
+Reattached to the declaration it belongs to, which is the failure mode a
+one-declaration-per-file rule makes impossible.
+
 ## 2 · Where we are now — 2026-08-01
 
 - ✅ **Retention is three knobs now**, not one: `retainCollectedDays` (30),

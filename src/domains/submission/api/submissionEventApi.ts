@@ -21,7 +21,8 @@
  * with it — a status change nobody can account for is worse than no change.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { db, submissionEvents } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissionEvents } from "../model/submissionEventsTable";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
 

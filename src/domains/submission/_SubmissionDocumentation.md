@@ -902,6 +902,25 @@ rollout plan and resolved in its Phase 6:
   has been told, not that the coach has started". The coach's first download is that
   missing event.
 
+## 2c · The slice owns its storage — 2026-08-05
+
+The spine's three tables and six of the seven enums moved out of `shared/db/schema.ts`
+and into `model/` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)):
+`submissionsTable.ts` · `submissionFilesTable.ts` · `submissionEventsTable.ts` ·
+`submissionStatusEnum.ts` · `fileKindEnum.ts` · `fileSetEnum.ts` ·
+`submissionEventKindEnum.ts` · `emailOutcomeEnum.ts` · `focusEnum.ts`.
+
+`focus` landed here rather than on the shared floor because `FOCUS_OPTIONS` and
+`type Focus` were already declared in `model/submission.ts` and `coach` has always
+read them from this slice. `coachesTable.ts` imports the enum across, which is
+how declaration files reach each other.
+
+**The duplication this exposed:** `submissionStatusEnum.ts` and the
+`SUBMISSION_STATUSES` const in `model/submission.ts` are two hand-maintained
+copies of the same sixteen rungs, now sitting in one folder. Deriving one from
+the other is the next change here — kept out of the split so the "no schema
+change" verification stayed meaningful.
+
 ## 3 · Where we are now — 2026-08-02
 
 ### Sixteen rungs, one word each

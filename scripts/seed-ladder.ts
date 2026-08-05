@@ -19,13 +19,13 @@
  */
 import "./loadEnv";
 import { eq, like } from "drizzle-orm";
+import { db } from "@/shared/db";
 import {
-  db,
   submissions as submissionsTable,
   submissionFiles,
   submissionEvents,
   coaches as coachesTable,
-} from "@/shared/db";
+} from "@/db/schema";
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "@/domains/submission";
 import type { FileKind } from "@/domains/submission";
 

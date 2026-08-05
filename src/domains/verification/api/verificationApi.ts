@@ -9,7 +9,8 @@
 import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { db, submissions } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissions } from "@/domains/submission/model/submissionsTable";
 import { noteVerification, recordSubmissionEvent } from "@/domains/submission";
 import {
   CODE_LENGTH,

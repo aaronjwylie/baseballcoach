@@ -20,6 +20,17 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
+## The slice owns its storage — 2026-08-05
+
+`users` and `userRole` are declared here now — `model/usersTable.ts` and
+`model/userRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
+
+**This slice is `user`'s home, and there is no `domains/user/`.** Operator
+identity has always lived under `account`, and a second folder for the same
+concept is the one-stem violation `_NomenclatureLaw.md` §2 exists to catch. Two
+other domains reference the table directly — `coachesTable` (a coach's login) and
+`submissionEventsTable` (`actorId`, null for the customer and the cron).
+
 ## Where we are — 2026-08-01
 
 - ✅ **`listAdminEmails()`** — where operator notifications go, read from the
