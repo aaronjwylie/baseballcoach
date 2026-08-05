@@ -31,6 +31,8 @@ needs a gloss every time it appears is a term that's wrong in the code.
 | Segment folder | fixed lowercase set | `model` · `api` · `ui` · `lib` · `config` |
 | Barrel | `index.ts` | |
 | Slice doc | `_<Slice>Documentation.md` | `_SubmissionDocumentation.md` |
+| Table declaration file | `camelCase` `xTable`, **matching its export** | `submissionsTable.ts` → `submissions` |
+| Enum declaration file | `camelCase` `xEnum`, **matching its export** | `submissionStatusEnum.ts` → `submissionStatus` |
 | DB table | `snake_case`, **plural** | `submissions` · `submission_files` · `submission_events` |
 | DB column | `snake_case` | `customer_email` · `emailed_at` |
 | Drizzle field | `camelCase` — the mapper owns the crossing | `customerEmail` |
@@ -55,7 +57,20 @@ submission · submissionApi · SubmissionPatch · submission_files · _Submissio
 ```
 
 A mix of `submission` and `submissions` in code is the exact smell this kills. *(Plural is
-correct in one place only: the DB table name.)*
+correct in two places, and only two: the DB table name, and the file that declares it — see
+below.)*
+
+**Amended 2026-08-05** ([ADR 015](docs/decisions/015-schema-by-domain.md)). The split put
+`submissionsTable.ts` in the same folder as `submission.ts`, which reads as the violation this
+rule exists to catch. It's allowed, for one reason: **a declaration file is named for its
+export**, and the export is `submissions` because that's the table's name. Call the file
+`submissionTable.ts` and grepping `submissions` no longer finds where `submissions` is
+declared, which is the exact findability failure the whole convention is for.
+
+That leaves the plural doing real work rather than drifting: **inside `model/`, plural marks
+the storage plane and singular marks the domain plane.** `submission.ts` is what a submission
+*is*; `submissionsTable.ts` is where it's *stored*. Same stem, different axis, same trick as
+the noun/participle rule below.
 
 **This applies across axes, not just within a folder.** The same concept named one way in the
 schema and another in the status enum is the same violation, one level up — it just takes
@@ -159,6 +174,8 @@ bearing as the ladder grows.
 ```
 domains/<slice>/
 ├── model/<slice>.ts              # the type family
+├── model/<slice>sTable.ts        # the pgTable — one declaration, named for its export
+├── model/<x>Enum.ts              # one pgEnum, likewise. Never grouped
 ├── model/<slice>Input.ts         # the Zod schema, when a form collects one
 ├── api/<slice>Api.ts             # the data client
 ├── api/<slice>Row.ts             # the ONLY column↔domain mapper
@@ -173,9 +190,14 @@ Segments are created **when they're needed**, never pre-made empty.
 
 **Two invariants worth memorising:**
 
-- **Every storage column name lives in one place** — the Drizzle schema in `shared/db`, surfaced
-  through `<slice>/api/<slice>Row.ts`. If you're mapping columns anywhere else, you're in the
-  wrong file.
+- **Every storage column name lives in one place** — the owning slice's `model/<x>Table.ts`,
+  surfaced through `<slice>/api/<slice>Row.ts`. If you're mapping columns anywhere else, you're
+  in the wrong file. *(The address moved from `shared/db` on 2026-08-05,
+  [ADR 015](docs/decisions/015-schema-by-domain.md); the invariant didn't.)*
+- **One declaration per file, always** — even the two-line enums. The rule buys the *absence of
+  a judgment call* about what groups with what, which is worth more than the file count it
+  costs: the moment a `submissionEnums.ts` exists, the next enum joins it by default and the
+  shared file is back, just smaller.
 - **Every `process.env` read lives in one file** — `shared/config/env.ts` for secrets,
   `publicEnv.ts` for the browser. Split by **audience**, so a client component never imports a
   module full of secrets.

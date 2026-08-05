@@ -21,12 +21,12 @@
  */
 import "./loadEnv";
 import { eq } from "drizzle-orm";
+import { db } from "@/shared/db";
 import {
-  db,
   submissions as submissionsTable,
   coaches as coachesTable,
   users as usersTable,
-} from "@/shared/db";
+} from "@/db/schema";
 import {
   addSubmissionFile,
   assignSubmissionCoach,

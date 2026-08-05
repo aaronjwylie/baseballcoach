@@ -6,7 +6,8 @@
  */
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, users } from "@/shared/db";
+import { db } from "@/shared/db";
+import { users } from "../model/usersTable";
 import type { Operator, Role } from "../model/user";
 
 /** Raw row lookup — internal; keeps the password hash contained to this file. */

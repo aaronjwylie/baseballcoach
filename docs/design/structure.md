@@ -165,13 +165,35 @@ Revisit if it slips.
 Rule 5 is what makes rule 6 of PRINCIPLES safe: because nobody imports internals, internal
 layout can change freely.
 
+**One plane is exempt from rules 3 and 5, and it's exempt by force** — the storage
+declarations (`*Table.ts`, `*Enum.ts`), since 2026-08-05
+([ADR 015](../decisions/015-schema-by-domain.md)):
+
+6. **A declaration never imports a barrel** — not `@/db/schema`, not `@/shared/db`, not a
+   slice's `index.ts`, nor anything that transitively reaches one. It imports other files
+   **directly, across domains**: `coachesTable` imports `@/domains/account/model/usersTable`,
+   and `submissionStatusEnum` imports the vocabulary it derives from in `model/submission.ts`.
+   A foreign key is a compile-time reference no barrel can carry without closing a cycle through
+   itself, and the failure mode is a table arriving `undefined` inside Drizzle with a stack trace
+   naming neither file. Leaf model files are safe because nothing loops back through them.
+7. **Everything above the plane keeps rules 1–5.** An `xApi.ts` imports `db` from `@/shared/db`
+   and its own domain's table from `../model/xTable`. It reaches another domain's table at the
+   declaration plane too — that's where tables are reached from, uniformly, whoever is asking.
+8. **[`src/db/schema.ts`](../../src/db/schema.ts) is not a layer.** It's a manifest so
+   drizzle-kit has one entry point, and it's outside the cake because it imports every domain,
+   which rule 4 forbids anything in `shared/` from doing. Nothing in `src/` imports it; only
+   `drizzle.config.ts` and `scripts/`.
+
 ---
 
 ## 5 · The invariants worth stating out loud
 
-**Every stored column name lives in one place** — the Drizzle schema in `shared/db`,
-surfaced to the domain through `domains/submission/api/submissionRow.ts`. No other file turns
-a DB row into a domain object. A schema change is a migration. *(Rule #2.)*
+**Every stored column name lives in one place** — and since 2026-08-05 that place is the
+**owning domain's `model/<x>Table.ts`**, not one shared schema file
+([ADR 015](../decisions/015-schema-by-domain.md)). The invariant didn't change; its address
+did. A column is still spelled exactly once, and
+`domains/submission/api/submissionRow.ts` is still the only file that turns a DB row into a
+domain object. A schema change is still a migration. *(Rule #2.)*
 
 **Every `process.env` read lives in `shared/config/`** — `env.ts` for server-only secrets,
 `publicEnv.ts` for the handful of `NEXT_PUBLIC_*` values the browser needs. Two files, split

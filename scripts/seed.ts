@@ -10,7 +10,8 @@
 import "./loadEnv";
 import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
-import { db, users, coaches, submissions } from "@/shared/db";
+import { db } from "@/shared/db";
+import { users, coaches, submissions } from "@/db/schema";
 import { createSubmission } from "@/domains/submission";
 import { storeUploadedFile } from "@/domains/upload";
 

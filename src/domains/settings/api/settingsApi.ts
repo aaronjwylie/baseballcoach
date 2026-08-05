@@ -6,8 +6,8 @@
  */
 import { cache } from "react";
 import { eq } from "drizzle-orm";
-import { db, settings } from "@/shared/db";
-import type { SettingsRow } from "@/shared/db";
+import { db } from "@/shared/db";
+import { settings, type SettingsRow } from "../model/settingsTable";
 import {
   DEFAULT_SETTINGS,
   type PlatformSettings,

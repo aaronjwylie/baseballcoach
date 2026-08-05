@@ -40,6 +40,15 @@ flowchart LR
 
 ---
 
+## 2c · The slice owns its storage — 2026-08-05
+
+`coaches` is declared here now, in `model/coachesTable.ts`, rather than in a
+shared schema file ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
+It imports two declarations from other domains — `usersTable` (the login it's
+paired with) and `focusEnum` (the vocabulary `specialties` draws on, owned by
+`submission`, which already owned `FOCUS_OPTIONS`). Both are direct file imports,
+never barrels: a foreign key can't route through one without closing a cycle.
+
 ## 2b · Fixed 2026-08-02
 
 - 🔴 **The hand-off refused translated submissions.** `notifyCoachAction` only

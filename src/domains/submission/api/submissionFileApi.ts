@@ -18,7 +18,8 @@
  * until then this file's behaviour is the old rule.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { db, submissionFiles } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissionFiles } from "../model/submissionFilesTable";
 import {
   INTAKE_KINDS,
   RESPONSE_KINDS,

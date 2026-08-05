@@ -7,7 +7,8 @@
  * hour), and signed with AUTH_SECRET like the session, so it can't be forged.
  */
 import { eq } from "drizzle-orm";
-import { db, users } from "@/shared/db";
+import { db } from "@/shared/db";
+import { users } from "../model/usersTable";
 import { signSession, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
 import { setUserPassword } from "./userApi";

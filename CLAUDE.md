@@ -104,8 +104,9 @@ Retired by the pivot: the Mux `passthrough` trick ([ADR 002](docs/decisions/002-
 
 ### One name per concept — the spine
 
-Still the invariant, now on Postgres: the storage column names live once in the
-Drizzle schema (`shared/db`), surfaced through
+Still the invariant, now on Postgres: the storage column names live once — in the
+owning domain's `model/<x>Table.ts` since 2026-08-05
+([ADR 015](docs/decisions/015-schema-by-domain.md)), surfaced through
 [`domains/submission/api/submissionRow.ts`](src/domains/submission/api/submissionRow.ts).
 The domain model
 ([`domains/submission/model/submission.ts`](src/domains/submission/model/submission.ts))
@@ -298,7 +299,7 @@ split.
 
 The two invariants worth memorizing:
 
-- **Every storage column name lives in one place** — the Drizzle schema in `shared/db`, surfaced through `domains/submission/api/`.
+- **Every storage column name lives in one place** — the owning domain's `model/<x>Table.ts`, surfaced through `domains/submission/api/`. Split out of one shared file by [ADR 015](docs/decisions/015-schema-by-domain.md); `src/db/schema.ts` is a manifest for drizzle-kit and declares nothing.
 - **Every `process.env` read lives in one file** — `shared/config/env.ts`.
 
 Each domain carries a `_XxxDocumentation.md` — its northstar, its honest current state, and
@@ -418,8 +419,11 @@ No transcoding, no streaming — the coach downloads and scrubs locally.
 
 ### Postgres — system of record
 
-- Accessed through **Drizzle**; the connection and schema live in `shared/db`.
-  Every submission / coach / user fact is a column here — one home per fact.
+- Accessed through **Drizzle**. The connection is `shared/db`; **each table is
+  declared in the domain that owns it** ([ADR 015](docs/decisions/015-schema-by-domain.md)),
+  with `src/db/schema.ts` a declaration-free manifest so drizzle-kit has one
+  entry point. Every submission / coach / user fact is a column in exactly one
+  of those files — one home per fact.
 - Read and written by the domains, never by route files directly (see §3b).
 - Email is lowercased on write and on lookup, so the status lookup matches
   regardless of case.
@@ -523,9 +527,17 @@ customer reply lands in the admin's `contact@` inbox. Dashboard/DNS detail:
 ## 8. Data Model (Postgres)
 
 The system of record is one Postgres database, **six tables**, accessed through
-Drizzle. **Column names live in exactly one place** — the Drizzle schema in
-`shared/db` (surfaced to the domain via `domains/submission/api/`) — and a
-migration is the only way they change. One home per fact.
+Drizzle. **Column names live in exactly one place** — the owning domain's
+`model/<x>Table.ts` (surfaced to the domain via `domains/submission/api/`) — and
+a migration is the only way they change. One home per fact.
+
+The tables below are grouped for reading; on disk each sits with its domain
+(`submissions` · `submission_files` · `submission_events` in `domains/submission/model/`,
+`coaches` in `domains/coach/`, `users` in `domains/account/`, `settings` in
+`domains/settings/`). **This section is where the cross-cutting rationale lives** —
+why `collectedAt` duplicates the trail, why kinds are nouns and statuses
+participles — because those sentences describe a tension *between* two
+declarations and so belong to neither file ([ADR 015](docs/decisions/015-schema-by-domain.md)).
 
 ### `submissions`
 
@@ -698,6 +710,13 @@ stage, what changes, which email fires, and what is retained — lives in
 before changing any stage. **The route from what's deployed to that path is
 [`docs/design/rollout.md`](docs/design/rollout.md)** — phases, dependencies, and
 what must be settled before each one starts.
+
+**Where the ladder is *going* is [`docs/design/northstar/`](docs/design/northstar/)** —
+eighteen steps and fifty-six substeps, and for each one the trail rows written on
+success and on failure plus the exact words every party is shown. Authored, not
+generated: it carries rows that don't exist yet, which is the point. Most of it
+is marked **not built**. `northstar.py` is the source; the page and the two CSVs
+are outputs of `build.py`, which verifies them against it.
 
 There is no "paid but no file yet" state any more: files arrive before payment,
 so `awaiting_upload` was retired with the flow that needed it. The status lookup
@@ -971,8 +990,13 @@ Read this section before coding. These have bitten *this* project.
 
 ### Postgres + Drizzle
 
-- **Column names live once** — in the Drizzle schema (`shared/db`), mapped by
-  `submissionRow.ts`. Don't spell a column anywhere else.
+- **Column names live once** — in the owning domain's `model/<x>Table.ts`, mapped
+  by `submissionRow.ts`. Don't spell a column anywhere else.
+- **A `*Table.ts` / `*Enum.ts` never imports a barrel** — not `@/db/schema`, not
+  `@/shared/db`, not a slice's `index.ts`. It imports other declaration files
+  directly, across domains. Reach for a barrel there and you close a cycle
+  through it: a table arrives `undefined` inside Drizzle, with a stack trace
+  naming neither file ([ADR 015](docs/decisions/015-schema-by-domain.md)).
 - **A schema change is a migration** — `npm run db:generate` then `db:migrate`.
   Never edit a table by hand.
 - **A production deploy applies its own migrations**, via
@@ -1094,6 +1118,7 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 - **[_NomenclatureLaw.md](_NomenclatureLaw.md)** — how things are spelled: casing, the type family, the settled words, the retired ones
 - **[docs/design/rollout.md](docs/design/rollout.md)** — the route from what's deployed to the northstar pipeline, with phases, dependencies, and red flags
 - **[docs/design/structure.md](docs/design/structure.md)** — the layout, segments, dependency rules, and naming
+- **[docs/design/northstar/](docs/design/northstar/)** — the pipeline as it should be: every step, substep, trail row and message. Edit `northstar.py`, then run `build.py`
 - **`src/domains/*/_XxxDocumentation.md`** — per-slice: northstar, honest current state, and the dated decision trail. Read the slice's doc before changing the slice
 - **[docs/decisions/](docs/decisions/)** — ADRs recording where and why the implementation departs from this document
 - **[README.md](README.md)** — Quick start for a new developer joining

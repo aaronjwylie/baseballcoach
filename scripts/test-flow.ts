@@ -36,7 +36,8 @@ import {
   sendFeedbackForApproval,
   approveAndComplete,
 } from "@/domains/feedback";
-import { db, submissions as submissionsTable } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissions as submissionsTable } from "@/db/schema";
 import { eq as eqFn } from "drizzle-orm";
 
 const pass = (msg: string) => console.log(`   ✓ ${msg}`);

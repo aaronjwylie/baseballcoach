@@ -20,7 +20,7 @@
  * still say what was sent. `isAvailable` is the honest way to ask.
  */
 
-/** The four folders, as one union. Matches the `file_kind` enum. */
+/** The four folders, as one union. `./fileKindEnum.ts` derives the DB type from it. */
 export const FILE_KINDS = [
   "intake",
   "intake_translation",

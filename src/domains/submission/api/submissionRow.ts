@@ -5,7 +5,8 @@
  *
  * No other file turns a DB row into a `Submission` or a `SubmissionFile`.
  */
-import type { SubmissionRow, SubmissionFileRow } from "@/shared/db";
+import type { SubmissionRow } from "../model/submissionsTable";
+import type { SubmissionFileRow } from "../model/submissionFilesTable";
 import type { Submission } from "../model/submission";
 import type { SubmissionFile } from "../model/submissionFile";
 

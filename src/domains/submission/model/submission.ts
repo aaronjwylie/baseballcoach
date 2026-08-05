@@ -1,9 +1,15 @@
 /**
  * The submission domain model — the vocabulary the whole app speaks.
  *
- * Knows nothing about storage. The Postgres column names live in the Drizzle
- * schema (`shared/db`); the row↔domain mapping lives in `api/submissionRow.ts`.
+ * Knows nothing about storage. The Postgres column names live in
+ * `./submissionsTable.ts`; the row↔domain mapping lives in `api/submissionRow.ts`.
  * If storage ever moves, this file doesn't change.
+ *
+ * **The vocabularies here are the source.** `./submissionStatusEnum.ts` and
+ * `./focusEnum.ts` derive their values from `SUBMISSION_STATUSES` and
+ * `FOCUS_OPTIONS` below, so a word is spelled once and storage follows. Not the
+ * reverse — a model reading its own words back out of the schema would make the
+ * first line of this docblock a lie.
  *
  * One name per concept: a property here is spelled the same way in the form,
  * the API, and the UI.
@@ -70,7 +76,7 @@ function normalise(languages: readonly string[] | undefined): Set<string> {
   );
 }
 
-/** What the player wants coached. Matches the `focus` enum in the DB. */
+/** What the player wants coached. `./focusEnum.ts` derives the DB type from it. */
 import type { FileSet } from "./submissionFile";
 
 export const FOCUS_OPTIONS = [

@@ -16,7 +16,8 @@
     "db:ladder": "tsx --tsconfig tsconfig.json scripts/seed-ladder.ts",
     "payment": "tsx --tsconfig tsconfig.json scripts/test-payment.ts",
     "flow": "tsx --tsconfig tsconfig.json scripts/test-flow.ts",
-    "stripe": "tsx --tsconfig tsconfig.json scripts/stripe-webhook.ts"
+    "stripe": "tsx --tsconfig tsconfig.json scripts/stripe-webhook.ts",
+    "db:baseline": "tsx --tsconfig tsconfig.json scripts/baseline-migrations.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

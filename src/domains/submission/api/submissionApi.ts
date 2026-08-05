@@ -6,7 +6,8 @@
  * are a separate table with its own module, `submissionFileApi.ts`.
  */
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
-import { db, submissions } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissions } from "../model/submissionsTable";
 import {
   SUBMISSION_STATUSES,
   isReleased,

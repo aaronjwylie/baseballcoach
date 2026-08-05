@@ -21,22 +21,17 @@
  * with it — a status change nobody can account for is worse than no change.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { db, submissionEvents } from "@/shared/db";
+import { db } from "@/shared/db";
+import { submissionEvents } from "../model/submissionEventsTable";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
+import type {
+  SubmissionEventKind,
+  EmailOutcome,
+} from "../model/submissionEvent";
 
 /** A transaction handle, or the connection itself. */
 type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-export type SubmissionEventKind = "status" | "email" | "verification";
-
-/** How far an email got. See the `email_outcome` enum. */
-export type EmailOutcome =
-  | "sent"
-  | "delivered"
-  | "bounced"
-  | "complained"
-  | "failed";
 
 export interface SubmissionEvent {
   id: string;

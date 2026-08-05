@@ -13,7 +13,7 @@ twice?" but **"is it still true if the domain changes?"**
 
 ```
 shared/
-  db/         the Postgres connection + Drizzle schema (any table)
+  db/         the Postgres connection — `db`, and nothing else
   storage/    the storage seam — local-disk (dev) + Blob (prod) drivers
   auth/       the session-cookie seam — jose token + cookie helpers
   stripe/     the SDK singleton
@@ -29,6 +29,13 @@ shared/
 - **`shared/` never imports a domain.** Not once, in either direction of convenience. If
   something here needs to know what a Submission is, it isn't shared — it's a domain's `api/`.
   *(This was violated during Step 2 and caught by the check below.)*
+- **`db/` holds the connection, not the tables** — since 2026-08-05
+  ([ADR 015](../../docs/decisions/015-schema-by-domain.md)). Every table and enum moved to the
+  domain that owns it, and the manifest drizzle-kit reads sits at `src/db/schema.ts`, outside
+  the layer cake, because a file importing every domain can't live on a domain-less floor.
+  `client.ts` passes **no `schema` argument** to `drizzle()` for the same reason — that argument
+  exists only to power the relational query API (`db.query.x`), which this codebase has never
+  used. This invariant is what forced both moves; it did its job.
 - **Every `process.env` read lives in `config/env.ts`.** Required values throw at point of
   use with a message naming the variable, so a misconfiguration is a clear error rather than
   `undefined` propagating into an API call.
