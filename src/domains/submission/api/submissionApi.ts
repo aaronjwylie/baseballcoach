@@ -144,7 +144,7 @@ export async function updateSubmission(
 /**
  * Delete a submission outright. `submissionFileTable` rows cascade with it.
  *
- * Only for submissionTable that were never paid for — the guard lives in
+ * Only for submissions that were never paid for — the guard lives in
  * `discardUnpaidSubmission`, which is the only thing that should call this.
  */
 export async function deleteSubmission(id: string): Promise<void> {
@@ -262,7 +262,7 @@ export async function findByStripePaymentId(
 }
 
 /**
- * A customer's submissionTable (their email is stored lowercased).
+ * A customer's submissions (their email is stored lowercased).
  *
  * `draft` rows are excluded: an abandoned first step is not something a customer
  * should see listed as a submission, and it carries no useful status.
@@ -291,7 +291,7 @@ export async function listSubmissions(): Promise<Submission[]> {
     /*
       **Everything, including the scratch pads.**
 
-      This filtered to paid submissionTable on the reasoning that an unfinished
+      This filtered to paid submissions on the reasoning that an unfinished
       attempt isn't work. True, but it isn't the same as "not worth seeing": a
       row sitting at `draft` is someone filling in the form *right now*, and at
       this volume that's the most interesting thing on the page. Hiding it also
@@ -321,11 +321,11 @@ export async function findByCoach(coachId: string): Promise<Submission[]> {
   return rows.map(fromRow);
 }
 
-/** The status-lookup read: a customer's submissionTable, trimmed to what's safe.
+/** The status-lookup read: a customer's submissions, trimmed to what's safe.
  * Feedback files are deliberately not exposed here — delivery rides on the
  * signed link in the customer's email, not on this email lookup. */
 /**
- * A customer's submissionTable, sanitised for their own eyes.
+ * A customer's submissions, sanitised for their own eyes.
  *
  * ⚠️ **Sensitive — call only behind proof of the inbox.** It carries a child's
  * first name, a focus and a date, keyed on an email address that is trivially
@@ -344,7 +344,7 @@ export async function lookupPublicSubmissions(
 }
 
 /**
- * Completed submissionTable whose uploads are due for deletion.
+ * Completed submissions whose uploads are due for deletion.
  *
  * The customer has their feedback and the coach is done, so the *files* go while
  * the *record* stays — the receipt and the portal still need to say what was
@@ -392,7 +392,7 @@ export async function findResolvedDue(
 }
 
 /**
- * Released submissionTable approaching deletion that haven't been warned yet.
+ * Released submissions approaching deletion that haven't been warned yet.
  *
  * The one genuinely *scheduled* effect in the system. Everything else the sweep
  * does is derivable from state — "delete what's due" needs no memory — but "warn
@@ -400,7 +400,7 @@ export async function findResolvedDue(
  * `deletionWarnedAt` is for. Without it this would send every night for seven
  * nights.
  *
- * Only submissionTable with a collection clock are warned. One that was never
+ * Only submissions with a collection clock are warned. One that was never
  * collected is running on the backstop, and warning someone about files they
  * never came for would be the first they'd heard of any of it.
  */

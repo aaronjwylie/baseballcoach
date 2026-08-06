@@ -227,7 +227,7 @@ async function main() {
   );
 
   // ── 6 · abandoned: nothing unpaid is retained ──────────────────────────
-  console.log(`\n6 · abandoned submissionTable leave nothing behind`);
+  console.log(`\n6 · abandoned submissions leave nothing behind`);
   const orphan = await createSubmission({
     customerEmail: `flow-orphan-${Date.now()}@seed.test`,
     playerName: "Orphan Probe",

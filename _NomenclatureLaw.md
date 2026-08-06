@@ -90,6 +90,38 @@ speech, no ambiguity at the call site.
 
 ---
 
+## 2b · How to rename
+
+**Added 2026-08-05, the hard way.** The law says what things are called; it said nothing about
+changing what they are called, and a rename shipped sixty-six wrong strings to production.
+
+`submissions` was replaced with `submissionTable` everywhere the word appeared. The public FAQ
+asked *"Who are the coachTable?"*, the admin nav pointed at `/admin/coachTable` — a 404 — and coach
+feedback uploads wrote to `submissionTable/{id}/feedback` in Blob storage.
+
+**`tsc`, `eslint`, `next build` and all 149 simulate checks passed**, and none of them could have
+failed. A wrong string is a well-typed string. `simulate` renders no copy and follows no URLs.
+
+Three rules, and a guard that enforces the one that matters:
+
+- **Scope the substitution to files that import the thing.** Prose and copy don't import anything.
+  A word-boundary match cannot tell an identifier from a sentence, and the words worth renaming are
+  exactly the words that appear in sentences.
+- **`xTable` names a Drizzle export and nothing else.** Not a prop, not a local, not a URL segment,
+  not a word. Everywhere else the English plural stands — *coaches*, *submissions*, *operators*.
+- **Read the diff.** On a word this common, green checks mean nothing. They tell you the code still
+  compiles, which was never in doubt.
+
+**`npm run check:names` enforces the second rule**, and runs as the first step of `npm run build`,
+so it fails a deploy rather than teaching the lesson twice. It flags a table name inside any string
+or template literal, in prose in a comment, or in a file that never imported it — while allowing a
+`backticked reference` in a docblock, which is documentation working as intended.
+
+That guard exists because rules people have to remember don't survive, and because the checks that
+already existed **structurally could not** catch this class of mistake.
+
+---
+
 ## 3 · The settled words
 
 The vocabulary is **intake / response** — what the customer sent, what the coach wrote. It runs
