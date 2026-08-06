@@ -31,6 +31,14 @@ export interface ProgressFacts {
   reached: ReadonlySet<SubmissionStatus>;
   /** Messages we tried to send, and whether they landed. */
   emails: ReadonlyMap<string, boolean>;
+  /**
+   * Who currently owes each kind of file.
+   *
+   * Lives here rather than on the `Submission` because assignment is its own
+   * table now (ADR 018) — a submission can carry a coach and two translators,
+   * and the scalar column that used to answer this could only hold one.
+   */
+  assignees: Readonly<Partial<Record<FileKind, string>>>;
 }
 
 /**
@@ -261,7 +269,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   new: [
     { what: "Receipt sent to the customer", next: "Send the receipt", from: "②", passive: true, records: [...sendRecords("② receipt → customer")], failures: [...sendFailures("② receipt → customer")], toldOnFail: ["Admin/portal: “The receipt to {customer} bounced — they may not know their submission arrived.” *(not built)*"], toldOnSuccess: ["Customer/email: ② the receipt, listing every file"], met: sent("② receipt → customer") },
     { what: "Arrival announced", next: "Tell Admin it arrived", from: "②", passive: true, records: [...sendRecords("② arrival → Admin")], failures: [...sendFailures("② arrival → Admin")], toldOnFail: ["Admin/portal: a banner on the row — “Your arrival notice bounced. Check the address on your account.” *(not built)*"], toldOnSuccess: ["Admin/email: ② the arrival notice"], met: sent("② arrival → Admin") },
-    { what: "Coach chosen", next: "Pick a coach", from: "assignedOperatorId", act: "assign", toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Assigned and the coach's name appears on it"], met: (s) => !!s.assignedOperatorId },
+    { what: "Coach chosen", next: "Pick a coach", from: "submission_assignment", act: "assign", toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Assigned and the coach's name appears on it"], met: (_s, f) => !!f.assignees.feedback },
   ],
   assigned: [
     {

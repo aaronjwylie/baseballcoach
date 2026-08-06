@@ -397,8 +397,12 @@ export interface Submission {
   // When the retention sweep deleted the customer's uploaded bytes
   filesPurgedAt?: string;
 
-  // Coaching
-  assignedOperatorId?: string;
+  /*
+    Coaching. **Who it's assigned to is deliberately not here** — it's a row in
+    `submission_assignment`, reached through `assigneeFor()` or, for a whole
+    page at once, the `assignees` on `ProgressFacts`. A submission can owe three
+    files to three people; a field here could only ever name one of them.
+  */
   feedbackEmailedAt?: string;
   /**
    * Last write of any kind — **what the abandonment sweep measures from.**

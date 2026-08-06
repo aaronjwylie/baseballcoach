@@ -7,8 +7,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/operator";
-import { getSubmission } from "@/domains/submission";
+import { getSubmission, isAssignedTo } from "@/domains/submission";
 import { sendFeedbackForApproval } from "./feedbackApi";
 
 export async function sendFeedbackForApprovalAction(
@@ -20,11 +19,8 @@ export async function sendFeedbackForApprovalAction(
   const submission = await getSubmission(submissionId);
   if (!submission) return { ok: false, error: "That submission doesn't exist." };
 
-  if (session.role !== "admin") {
-    const coach = await getCoachByOperatorId(session.operatorId);
-    if (!coach || submission.assignedOperatorId !== coach.id) {
-      return { ok: false, error: "That isn't your submission." };
-    }
+  if (session.role !== "admin" && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
+    return { ok: false, error: "That isn't your submission." };
   }
 
   const result = await sendFeedbackForApproval(submissionId);

@@ -149,6 +149,8 @@ export {
   unassignOperator,
   listAssignments,
   assigneeFor,
+  isAssignedTo,
+  assignmentsBySubmission,
   assignmentsFor,
   type Assignment,
 } from "./api/submissionAssignmentApi";

@@ -8,6 +8,7 @@
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { submissionTable } from "../model/submissionTable";
+import { submissionAssignmentTable } from "../model/submissionAssignmentTable";
 import {
   SUBMISSION_STATUSES,
   isReleased,
@@ -47,7 +48,6 @@ function toUpdateValues(
   if (patch.feedbackUrl !== undefined) v.feedbackUrl = patch.feedbackUrl;
   if (patch.coachFileSet !== undefined) v.coachFileSet = patch.coachFileSet;
   if (patch.customerFileSet !== undefined) v.customerFileSet = patch.customerFileSet;
-  if (patch.assignedOperatorId !== undefined) v.assignedOperatorId = patch.assignedOperatorId;
   if (patch.emailVerifiedAt !== undefined) v.emailVerifiedAt = new Date(patch.emailVerifiedAt);
   if (patch.paidAt !== undefined) v.paidAt = new Date(patch.paidAt);
   if (patch.completedAt !== undefined) v.completedAt = new Date(patch.completedAt);
@@ -313,14 +313,30 @@ export async function listSubmissions(): Promise<Submission[]> {
   return rows.map(fromRow);
 }
 
-/** Submissions assigned to one coach, newest first — the coach portal's read. */
+/**
+ * Submissions assigned to one coach, newest first — the coach portal's read.
+ *
+ * An inner join against the assignment table rather than a column comparison.
+ * It reads the same for a coach today and answers correctly for a translator
+ * tomorrow, which the scalar column could not: it held one operator, and a
+ * submission in translation has two or three.
+ */
 export async function findByCoach(coachId: string): Promise<Submission[]> {
   const rows = await db
-    .select()
+    .select({ submission: submissionTable })
     .from(submissionTable)
-    .where(eq(submissionTable.assignedOperatorId, coachId))
+    .innerJoin(
+      submissionAssignmentTable,
+      eq(submissionAssignmentTable.submissionId, submissionTable.id),
+    )
+    .where(
+      and(
+        eq(submissionAssignmentTable.operatorId, coachId),
+        eq(submissionAssignmentTable.produces, "feedback"),
+      ),
+    )
     .orderBy(desc(submissionTable.submittedAt));
-  return rows.map(fromRow);
+  return rows.map((r) => fromRow(r.submission));
 }
 
 /** The status-lookup read: a customer's submissions, trimmed to what's safe.

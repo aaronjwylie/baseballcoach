@@ -274,11 +274,16 @@ function SubmissionRow({
   files: SubmissionFile[];
   feedbackFiles: SubmissionFile[];
   folders?: Record<FileKind, SubmissionFile[]>;
-  progress?: { reached: Set<SubmissionStatus>; emails: Map<string, boolean> };
+  progress?: {
+    reached: Set<SubmissionStatus>;
+    emails: Map<string, boolean>;
+    assignees: Partial<Record<FileKind, string>>;
+  };
   events: SubmissionEvent[];
   coaches: Coach[];
 }) {
-  const assignedCoach = coaches.find((c) => c.id === submission.assignedOperatorId);
+  const assignedCoachId = progress?.assignees.feedback;
+  const assignedCoach = coaches.find((c) => c.id === assignedCoachId);
   const empty: Record<FileKind, SubmissionFile[]> = {
     intake: [], intake_translation: [], feedback: [], feedback_translation: [],
   };
@@ -327,6 +332,7 @@ function SubmissionRow({
     },
     reached: progress?.reached ?? new Set<SubmissionStatus>(),
     emails: progress?.emails ?? new Map<string, boolean>(),
+    assignees: progress?.assignees ?? {},
   });
 
   /*
@@ -349,9 +355,9 @@ function SubmissionRow({
   ) : act === "assign" ? (
     <div className="flex flex-col items-start gap-2">
       <AssignCoachSelect
-        key={submission.assignedOperatorId ?? "unassigned"}
+        key={assignedCoachId ?? "unassigned"}
         submissionId={submission.id}
-        assignedOperatorId={submission.assignedOperatorId}
+        assignedOperatorId={assignedCoachId}
         coaches={coaches}
       />
       <p className="text-[11px] text-ink-muted">

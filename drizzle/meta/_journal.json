@@ -57,6 +57,13 @@
       "when": 1786050146305,
       "tag": "0007_drop_coach",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786052952419,
+      "tag": "0008_drop_assigned_operator_id",
+      "breakpoints": true
     }
   ]
 }

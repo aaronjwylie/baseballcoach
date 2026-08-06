@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { env } from "@/shared/config/env";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/operator";
-import { getSubmission } from "@/domains/submission";
+import { getSubmission, isAssignedTo } from "@/domains/submission";
 import { ALLOWED_MIME_TYPES, isAllowedFilename } from "@/domains/upload";
 import { getSettings, maxFileSizeBytes } from "@/domains/settings";
 
@@ -38,11 +37,8 @@ export async function POST(request: Request) {
         const submission = await getSubmission(submissionId);
         if (!submission) throw new Error("That submission doesn't exist.");
 
-        if (session.role !== "admin") {
-          const coach = await getCoachByOperatorId(session.operatorId);
-          if (!coach || submission.assignedOperatorId !== coach.id) {
-            throw new Error("That isn't your submission.");
-          }
+        if (session.role !== "admin" && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
+          throw new Error("That isn't your submission.");
         }
 
         if (!isAllowedFilename(pathname)) {

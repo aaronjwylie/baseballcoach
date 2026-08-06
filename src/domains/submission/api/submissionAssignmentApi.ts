@@ -6,17 +6,16 @@
  * `feedback_translation`. Nobody is assigned to produce the `intake` — the
  * customer supplies that.
  *
- * ## Mid-migration, deliberately
+ * ## This table is the only record — 2026-08-06
  *
- * `submission.assignedOperatorId` still exists and is still written. This is an
- * **expand/contract** step: the join is now the record, the column is a cache
- * kept in step so the ten read sites that use it keep working unchanged. A
- * follow-up flips those reads to `assigneeFor()` and drops the column, at which
- * point every write here loses its second half.
+ * `submission.assignedOperatorId` is **gone** (migration `0008`). It was kept as
+ * a cache through the expand step so the thirteen read sites could be moved one
+ * at a time; contracting it was the point of the exercise, not an afterthought.
  *
- * **Both halves live in one transaction**, so the two cannot disagree — which is
- * the only thing that makes a temporary second home for a fact tolerable rather
- * than a bug waiting.
+ * The column could not have survived translation anyway. It held one operator,
+ * and a submission being translated owes three files to as many as three
+ * people — so "the assigned operator" would have quietly come to mean "the
+ * coach one", a column whose meaning depends on who is reading it.
  *
  * ## No trail row here, yet
  *
@@ -30,7 +29,7 @@
  * `status`, `email` and `verification`. That is a migration and its own change,
  * so for now the status transition is the only row written.
  */
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { submissionAssignmentTable } from "../model/submissionAssignmentTable";
 import { submissionTable } from "../model/submissionTable";
@@ -68,13 +67,13 @@ export async function assignOperator(
       .insert(submissionAssignmentTable)
       .values({ submissionId, operatorId, produces });
 
-    // The cache half. Goes away with the column.
-    if (produces === "feedback") {
-      await tx
-        .update(submissionTable)
-        .set({ assignedOperatorId: operatorId, updatedAt: new Date() })
-        .where(eq(submissionTable.id, submissionId));
-    }
+    // Assignment is a write on the submission too — the abandonment sweep
+    // measures from `updatedAt`, and work landing on someone's desk is a sign
+    // of life.
+    await tx
+      .update(submissionTable)
+      .set({ updatedAt: new Date() })
+      .where(eq(submissionTable.id, submissionId));
   });
 }
 
@@ -92,12 +91,10 @@ export async function unassignOperator(
           eq(submissionAssignmentTable.produces, produces),
         ),
       );
-    if (produces === "feedback") {
-      await tx
-        .update(submissionTable)
-        .set({ assignedOperatorId: null, updatedAt: new Date() })
-        .where(eq(submissionTable.id, submissionId));
-    }
+    await tx
+      .update(submissionTable)
+      .set({ updatedAt: new Date() })
+      .where(eq(submissionTable.id, submissionId));
   });
 }
 
@@ -112,6 +109,52 @@ export async function listAssignments(submissionId: string): Promise<Assignment[
     produces: r.produces,
     assignedAt: r.assignedAt.toISOString(),
   }));
+}
+
+/**
+ * Is this operator the one who owes us this file?
+ *
+ * **The guard, in one place.** Five call sites asked it by hand against
+ * the old scalar column — three upload routes, the feedback action,
+ * and the coach's download. Five copies of a question is five chances for one of
+ * them to keep matching a column that stopped meaning what it used to, which is
+ * the failure this codebase has already had once.
+ *
+ * False when nobody is assigned, so a missing assignment can never read as a
+ * pass.
+ */
+export async function isAssignedTo(
+  submissionId: string,
+  operatorId: string,
+  produces: FileKind,
+): Promise<boolean> {
+  return (await assigneeFor(submissionId, produces)) === operatorId;
+}
+
+/**
+ * Everyone owing anything across a set of submissions — the queue's read.
+ *
+ * One query for the whole page rather than one per row. The admin queue renders
+ * every open submission, so the per-row version of this was the difference
+ * between two round trips and forty.
+ */
+export async function assignmentsBySubmission(
+  submissionIds: string[],
+): Promise<Map<string, Partial<Record<FileKind, string>>>> {
+  const byId = new Map<string, Partial<Record<FileKind, string>>>();
+  if (!submissionIds.length) return byId;
+
+  const rows = await db
+    .select()
+    .from(submissionAssignmentTable)
+    .where(inArray(submissionAssignmentTable.submissionId, submissionIds));
+
+  for (const row of rows) {
+    const entry = byId.get(row.submissionId) ?? {};
+    entry[row.produces] = row.operatorId;
+    byId.set(row.submissionId, entry);
+  }
+  return byId;
 }
 
 /** Who owes us this particular file, if anyone. */

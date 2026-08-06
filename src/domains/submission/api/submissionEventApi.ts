@@ -22,6 +22,8 @@
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/shared/db";
+import { assignmentsBySubmission } from "./submissionAssignmentApi";
+import type { FileKind } from "../model/submissionFile";
 import { submissionEventTable } from "../model/submissionEventTable";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
@@ -273,17 +275,29 @@ export async function bounceOf(
  * has no events, so callers never have to distinguish "no trail" from "not
  * loaded".
  */
+/** The mutable half of `ProgressFacts` — built here, read as readonly. */
+interface ProgressFactsFor {
+  reached: Set<SubmissionStatus>;
+  emails: Map<string, boolean>;
+  assignees: Partial<Record<FileKind, string>>;
+}
+
 export async function listProgressFacts(
   submissionIds: string[],
-): Promise<Map<string, { reached: Set<SubmissionStatus>; emails: Map<string, boolean> }>> {
-  const facts = new Map<
-    string,
-    { reached: Set<SubmissionStatus>; emails: Map<string, boolean> }
-  >();
+): Promise<Map<string, ProgressFactsFor>> {
+  const facts = new Map<string, ProgressFactsFor>();
   for (const id of submissionIds) {
-    facts.set(id, { reached: new Set(), emails: new Map() });
+    facts.set(id, { reached: new Set(), emails: new Map(), assignees: {} });
   }
   if (submissionIds.length === 0) return facts;
+
+  // Who owes what, for the whole page in one query — same reason the events
+  // below are batched rather than read per row.
+  const assignees = await assignmentsBySubmission(submissionIds);
+  for (const [id, owed] of assignees) {
+    const entry = facts.get(id);
+    if (entry) entry.assignees = owed;
+  }
 
   const rows = await db
     .select()

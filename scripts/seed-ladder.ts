@@ -24,6 +24,7 @@ import {
   submissionTable,
   submissionFileTable,
   submissionEventTable,
+  submissionAssignmentTable,
   operatorTable,
   operatorProfileTable,
 } from "@/db/schema";
@@ -137,7 +138,6 @@ async function main() {
         ...(reached.has("new")
           ? { paidAt: new Date(started + 600_000), stripeAmount: 8000, stripePaymentId: `pi_${MARK}${i}` }
           : {}),
-        ...(reached.has("assigned") ? { assignedOperatorId: coach.id } : {}),
         ...(reached.has("sent_to_coach") ? { coachFileSet: translating ? "translation" : "original" } : {}),
         ...(reached.has("complete")
           ? {
@@ -153,6 +153,18 @@ async function main() {
         updatedAt: new Date(started + path.length * 3600_000),
       })
       .returning();
+
+    // Assignment is a row of its own now, not a column on the submission
+    // (ADR 018) — so a seeded ladder has to write it, or the queue shows every
+    // rung from `assigned` onward with nobody holding it.
+    if (reached.has("assigned")) {
+      await db.insert(submissionAssignmentTable).values({
+        submissionId: row.id,
+        operatorId: coach.id,
+        produces: "feedback",
+        assignedAt: new Date(started + 900_000),
+      });
+    }
 
     // Files. A purged submission keeps its records and loses its locators —
     // that asymmetry is the whole reason the row survives, so seed it that way.

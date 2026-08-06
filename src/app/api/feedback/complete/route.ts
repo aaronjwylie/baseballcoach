@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/operator";
-import { getSubmission } from "@/domains/submission";
+import { getSubmission, isAssignedTo } from "@/domains/submission";
 import { recordFeedbackFile } from "@/domains/feedback";
 
 /**
@@ -47,11 +46,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  if (session.role !== "admin") {
-    const coach = await getCoachByOperatorId(session.operatorId);
-    if (!coach || submission.assignedOperatorId !== coach.id) {
-      return NextResponse.json({ error: "Not your submission." }, { status: 403 });
-    }
+  if (session.role !== "admin" && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
+    return NextResponse.json({ error: "Not your submission." }, { status: 403 });
   }
 
   try {

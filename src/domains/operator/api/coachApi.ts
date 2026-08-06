@@ -15,10 +15,10 @@ import { operatorProfileTable } from "../model/operatorProfileTable";
 import { listAdminEmails } from "./operatorApi";
 import { createOperator, setOperatorPassword } from "./operatorCredentialApi";
 import {
-  getSubmission,
   markCoachCollected,
   noteEmailSent,
   type Focus,
+  isAssignedTo,
 } from "@/domains/submission";
 import { env } from "@/shared/config/env";
 import type { Coach, NewCoach } from "../model/coach";
@@ -168,9 +168,7 @@ export async function noteCoachCollected(
   operatorId: string,
 ): Promise<void> {
   try {
-    const submission = await getSubmission(submissionId);
-    if (!submission?.assignedOperatorId) return;
-    if (submission.assignedOperatorId !== operatorId) return;
+    if (!(await isAssignedTo(submissionId, operatorId, "feedback"))) return;
 
     const coach = await getCoachByOperatorId(operatorId);
     if (!coach) return;

@@ -26,6 +26,7 @@ import {
   type FileSet,
   type Submission,
   type SubmissionFile,
+  assigneeFor,
 } from "@/domains/submission";
 import { getCoach } from "@/domains/operator";
 import { listAdminEmails } from "@/domains/operator";
@@ -95,9 +96,8 @@ export async function sendFeedbackForApproval(
 
   // ⑤ — tell the admin it's waiting, and the coach that it arrived. Best-effort: the
   // work is delivered either way, and a webhook must never fail on mail.
-  const coach = updated.assignedOperatorId
-    ? await getCoach(updated.assignedOperatorId)
-    : null;
+  const assignee = await assigneeFor(updated.id, "feedback");
+  const coach = assignee ? await getCoach(assignee) : null;
   const admins = await listAdminEmails();
   const submitted = await sendResponseSubmittedEmail({
     to: [...admins, ...(coach?.email ? [coach.email] : [])],

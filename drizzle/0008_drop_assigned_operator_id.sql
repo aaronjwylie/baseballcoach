@@ -1,0 +1,16 @@
+-- The contract half of ADR 018's expand/contract.
+--
+-- `0006` created `submission_assignment` and backfilled it from this column,
+-- and every write since has kept the two in step inside one transaction. The
+-- thirteen read sites moved to the join first, in the same commit as this file,
+-- so nothing reads the column by the time it goes.
+--
+-- Dropping it is the point rather than tidying: one column holds one operator,
+-- and a submission in translation owes three files to as many as three people.
+-- Left in place it would have quietly come to mean "the coach one" — a column
+-- whose meaning depends on who is reading it, which is the drift the join
+-- exists to prevent.
+--
+-- The FK constraint goes with the column; Postgres drops a column's own
+-- constraints, unlike RENAME, which cascades to nothing.
+ALTER TABLE "submission" DROP COLUMN "assigned_operator_id";

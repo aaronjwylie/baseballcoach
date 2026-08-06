@@ -17,6 +17,7 @@ import {
   updateSubmission,
   type FileSet,
   type Focus,
+  assigneeFor,
 } from "@/domains/submission";
 import { storage, coachImageKey } from "@/shared/storage";
 import { languagesForChoice, readLanguageChoice } from "@/domains/submission/model/submission";
@@ -191,11 +192,12 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   */
   const handOffable =
     submission?.status === "assigned" || submission?.status === "intake_translated";
-  if (!submission || !handOffable || !submission.assignedOperatorId) {
-    return;
-  }
+  if (!submission || !handOffable) return;
 
-  const coach = await getCoach(submission.assignedOperatorId);
+  const assignee = await assigneeFor(submissionId, "feedback");
+  if (!assignee) return;
+
+  const coach = await getCoach(assignee);
   if (!coach) return;
 
   /*
