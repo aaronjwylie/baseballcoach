@@ -398,7 +398,7 @@ export interface Submission {
   filesPurgedAt?: string;
 
   // Coaching
-  assignedCoachId?: string;
+  assignedOperatorId?: string;
   feedbackEmailedAt?: string;
   /**
    * Last write of any kind — **what the abandonment sweep measures from.**

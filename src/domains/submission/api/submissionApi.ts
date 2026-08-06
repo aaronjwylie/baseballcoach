@@ -46,7 +46,7 @@ function toUpdateValues(
   if (patch.feedbackUrl !== undefined) v.feedbackUrl = patch.feedbackUrl;
   if (patch.coachFileSet !== undefined) v.coachFileSet = patch.coachFileSet;
   if (patch.customerFileSet !== undefined) v.customerFileSet = patch.customerFileSet;
-  if (patch.assignedCoachId !== undefined) v.assignedCoachId = patch.assignedCoachId;
+  if (patch.assignedOperatorId !== undefined) v.assignedOperatorId = patch.assignedOperatorId;
   if (patch.emailVerifiedAt !== undefined) v.emailVerifiedAt = new Date(patch.emailVerifiedAt);
   if (patch.paidAt !== undefined) v.paidAt = new Date(patch.paidAt);
   if (patch.completedAt !== undefined) v.completedAt = new Date(patch.completedAt);
@@ -157,7 +157,7 @@ export async function assignSubmissionCoach(
   coachId: string,
 ): Promise<Submission> {
   return updateSubmission(submissionId, {
-    assignedCoachId: coachId,
+    assignedOperatorId: coachId,
     status: "assigned",
   });
 }
@@ -316,7 +316,7 @@ export async function findByCoach(coachId: string): Promise<Submission[]> {
   const rows = await db
     .select()
     .from(submissionTable)
-    .where(eq(submissionTable.assignedCoachId, coachId))
+    .where(eq(submissionTable.assignedOperatorId, coachId))
     .orderBy(desc(submissionTable.submittedAt));
   return rows.map(fromRow);
 }

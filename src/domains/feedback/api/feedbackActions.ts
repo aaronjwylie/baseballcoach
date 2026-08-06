@@ -22,7 +22,7 @@ export async function sendFeedbackForApprovalAction(
 
   if (session.role !== "admin") {
     const coach = await getCoachByOperatorId(session.operatorId);
-    if (!coach || submission.assignedCoachId !== coach.id) {
+    if (!coach || submission.assignedOperatorId !== coach.id) {
       return { ok: false, error: "That isn't your submission." };
     }
   }

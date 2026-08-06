@@ -20,14 +20,14 @@ import { assignCoachAction } from "../api/coachActions";
  */
 export function AssignCoachSelect({
   submissionId,
-  assignedCoachId,
+  assignedOperatorId,
   coaches,
 }: {
   submissionId: string;
-  assignedCoachId?: string | null;
+  assignedOperatorId?: string | null;
   coaches: { id: string; name: string }[];
 }) {
-  const [coachId, setCoachId] = useState(assignedCoachId ?? "");
+  const [coachId, setCoachId] = useState(assignedOperatorId ?? "");
   const router = useRouter();
 
   return (

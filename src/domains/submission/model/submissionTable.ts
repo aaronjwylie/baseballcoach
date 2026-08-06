@@ -13,7 +13,7 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { coachTable } from "@/domains/coach/model/coachTable";
+import { operatorTable } from "@/domains/operator/model/operatorTable";
 import { focus } from "./focusEnum";
 import { submissionStatus } from "./submissionStatusEnum";
 import { fileSet } from "./fileSetEnum";
@@ -56,7 +56,12 @@ export const submissionTable = pgTable(
     stripeAmount: integer(), // cents
     paidAt: timestamp({ withTimezone: true }),
 
-    assignedCoachId: uuid().references(() => coachTable.id, {
+    /*
+      Who the admin gave it to. Points at an operator now, not a coach record —
+      the coach record is retiring (ADR 018), and phase 3 replaces this single
+      column with a join, since a submission can carry two translators.
+    */
+    assignedOperatorId: uuid().references(() => operatorTable.id, {
       onDelete: "set null",
     }),
     feedbackUrl: text(),

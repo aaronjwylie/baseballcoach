@@ -1,14 +1,17 @@
 /**
- * The coach — the person who reviews a submission. Distinct from the operator
- * `operators` row that logs them in: a Coach *has a* user (`operatorId`), plus the
- * profile the admin manages (name, specialties, languages, active).
+ * The coach — the person who reviews a submission.
+ *
+ * A **view over two rows** since ADR 018: the `operator` that logs them in, and
+ * the `operatorProfile` that says what they cover. Not a record of its own any
+ * more, which is why `id` here is the operator's id — one person, one
+ * identifier, whichever way you arrived at them.
  */
 import type { Focus, LanguageChoice } from "@/domains/submission/model/submission";
 
 export interface Coach {
+  /** The operator's id. A coach *is* an operator, so there is only the one. */
   id: string;
-  operatorId: string;
-  /** The coach's login, from the joined `operators` row. */
+  /** Their login, from the operator row. */
   email: string;
   name: string;
   specialties: Focus[];

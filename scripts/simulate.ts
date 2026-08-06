@@ -22,9 +22,9 @@
 import "./loadEnv";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
+import { operatorProfileTable } from "@/domains/operator/model/operatorProfileTable";
 import {
   submissionTable,
-  coachTable,
   operatorTable,
 } from "@/db/schema";
 import {
@@ -284,36 +284,36 @@ async function walk(label: string, translating: boolean) {
   check((await listSubmissionEvents(s.id)).length === 0, "   deleting cascades the trail");
 }
 
-/** A coach with exactly these languages, created once and reused. */
+/**
+ * A coach with exactly these languages, created once and reused.
+ *
+ * Since ADR 018 that is two rows — the operator that logs in, and the profile
+ * that says what they cover — and the id the rest of the walk assigns is the
+ * operator's.
+ */
 async function ensureCoach(name: string, languages: string[]) {
+  const email = `${name.toLowerCase().replace(/[^a-z]+/g, "-")}@sim.local`;
   const [existing] = await db
     .select()
-    .from(coachTable)
-    .where(eq(coachTable.name, name));
+    .from(operatorTable)
+    .where(eq(operatorTable.email, email));
+
   if (existing) {
-    if (existing.languages.join() !== languages.join()) {
-      const [fixed] = await db
-        .update(coachTable)
-        .set({ languages })
-        .where(eq(coachTable.id, existing.id))
-        .returning();
-      return fixed;
-    }
-    return existing;
+    await db
+      .update(operatorProfileTable)
+      .set({ languages })
+      .where(eq(operatorProfileTable.operatorId, existing.id));
+    return { id: existing.id, name: existing.name, languages };
   }
-  const [user] = await db
+
+  const [operator] = await db
     .insert(operatorTable)
-    .values({
-      email: `${name.toLowerCase().replace(/[^a-z]+/g, "-")}@sim.local`,
-      passwordHash: "x",
-      role: "coach",
-    })
+    .values({ email, passwordHash: "x", role: "coach", name })
     .returning();
-  const [created] = await db
-    .insert(coachTable)
-    .values({ operatorId: user.id, name, languages, specialties: ["Hitting"] })
-    .returning();
-  return created;
+  await db
+    .insert(operatorProfileTable)
+    .values({ operatorId: operator.id, languages, specialties: ["Hitting"] });
+  return { id: operator.id, name: operator.name, languages };
 }
 
 /**

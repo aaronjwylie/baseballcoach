@@ -191,11 +191,11 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   */
   const handOffable =
     submission?.status === "assigned" || submission?.status === "intake_translated";
-  if (!submission || !handOffable || !submission.assignedCoachId) {
+  if (!submission || !handOffable || !submission.assignedOperatorId) {
     return;
   }
 
-  const coach = await getCoach(submission.assignedCoachId);
+  const coach = await getCoach(submission.assignedOperatorId);
   if (!coach) return;
 
   /*

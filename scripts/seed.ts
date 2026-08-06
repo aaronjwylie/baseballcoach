@@ -11,7 +11,7 @@ import "./loadEnv";
 import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { operatorTable, coachTable, submissionTable } from "@/db/schema";
+import { operatorTable, operatorProfileTable, submissionTable } from "@/db/schema";
 import { createSubmission } from "@/domains/submission";
 import { storeUploadedFile } from "@/domains/upload";
 
@@ -19,6 +19,7 @@ async function ensureUser(
   email: string,
   password: string,
   role: "admin" | "coach",
+  name: string,
 ): Promise<{ id: string; created: boolean }> {
   const existing = await db
     .select({ id: operatorTable.id })
@@ -30,7 +31,7 @@ async function ensureUser(
   const passwordHash = await bcrypt.hash(password, 10);
   const [row] = await db
     .insert(operatorTable)
-    .values({ email, passwordHash, role })
+    .values({ email, passwordHash, role, name })
     .returning({ id: operatorTable.id });
   return { id: row.id, created: true };
 }
@@ -38,7 +39,7 @@ async function ensureUser(
 async function main() {
   const adminEmail = (process.env.SEED_ADMIN_EMAIL || "yuta@example.com").toLowerCase();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || "changeme123";
-  const admin = await ensureUser(adminEmail, adminPassword, "admin");
+  const admin = await ensureUser(adminEmail, adminPassword, "admin", "Admin");
   console.log(`[seed] admin ${adminEmail} ${admin.created ? "created" : "exists"}`);
 
   // The admin is always seeded. The sample coach + submissions are dev-only
@@ -72,11 +73,10 @@ async function main() {
   ] as const;
 
   for (const c of sampleCoaches) {
-    const user = await ensureUser(c.email, "changeme123", "coach");
+    const user = await ensureUser(c.email, "changeme123", "coach", c.name);
     if (user.created) {
-      await db.insert(coachTable).values({
+      await db.insert(operatorProfileTable).values({
         operatorId: user.id,
-        name: c.name,
         specialties: [...c.specialties],
         languages: [...c.languages],
       });
