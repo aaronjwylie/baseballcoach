@@ -9,6 +9,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
+import { HOME_FOR_ROLE } from "../model/operator";
 import type { OperatorSession, Role } from "../model/operator";
 
 /** The verified session, or null if unauthenticated. */
@@ -31,7 +32,7 @@ export async function requireSession(): Promise<OperatorSession> {
 export async function requireRole(...allowed: Role[]): Promise<OperatorSession> {
   const session = await requireSession();
   if (!allowed.includes(session.role)) {
-    redirect(session.role === "admin" ? "/admin" : "/coach");
+    redirect(HOME_FOR_ROLE[session.role]);
   }
   return session;
 }

@@ -1,0 +1,11 @@
+-- The third operator role.
+--
+-- Additive and reversible-by-neglect: no row uses it yet, so nothing breaks if
+-- it is never used. Assignment to a translator arrives in phase 3 (ADR 018).
+--
+-- **Alone in its own migration on purpose.** Postgres permits ALTER TYPE ... ADD
+-- VALUE inside a transaction on PG12+, but the new value cannot be *used* until
+-- that transaction commits — and Drizzle wraps each run in one. Adding the value
+-- and writing a row that uses it therefore cannot share a migration. Cheap to
+-- obey, confusing to diagnose.
+ALTER TYPE "public"."operator_role" ADD VALUE 'translator';

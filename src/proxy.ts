@@ -16,6 +16,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
+import { HOME_FOR_ROLE, type Role } from "@/domains/operator/model/operator";
 import type { OperatorSession } from "@/domains/operator";
 
 /** HTTP Basic Auth over the whole site. Returns a 401 challenge, or null to pass. */
@@ -50,8 +51,9 @@ export async function proxy(req: NextRequest) {
   if (gate) return gate;
 
   const { pathname } = req.nextUrl;
-  const isPortal =
-    pathname.startsWith("/admin") || pathname.startsWith("/coach");
+  // Derived, so a new role's portal is gated the day it exists rather than the
+  // day someone remembers to add it here.
+  const isPortal = Object.values(HOME_FOR_ROLE).some((portal) => pathname.startsWith(portal));
 
   // Public pages have nothing more to check once the site gate has passed.
   if (!isPortal && pathname !== "/login") return NextResponse.next();
@@ -65,15 +67,20 @@ export async function proxy(req: NextRequest) {
   }
 
   if (session) {
-    const home = session.role === "admin" ? "/admin" : "/coach";
+    const home = HOME_FOR_ROLE[session.role];
     if (pathname === "/login") {
       return NextResponse.redirect(new URL(home, req.nextUrl));
     }
-    if (pathname.startsWith("/admin") && session.role !== "admin") {
-      return NextResponse.redirect(new URL("/coach", req.nextUrl));
-    }
-    if (pathname.startsWith("/coach") && session.role !== "coach") {
-      return NextResponse.redirect(new URL("/admin", req.nextUrl));
+    /*
+      A portal belongs to one role, and anyone else is sent to their own — not
+      to a hardcoded other one. The previous version bounced a non-admin to
+      /coach and a non-coach to /admin, which was fine while there were exactly
+      two roles and became a redirect loop the moment there were three.
+    */
+    for (const [role, portal] of Object.entries(HOME_FOR_ROLE) as [Role, string][]) {
+      if (pathname.startsWith(portal) && session.role !== role) {
+        return NextResponse.redirect(new URL(home, req.nextUrl));
+      }
     }
   }
 

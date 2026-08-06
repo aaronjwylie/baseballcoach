@@ -10,10 +10,11 @@ import { z } from "zod";
 import { setSessionCookie, clearSessionCookie } from "@/shared/auth";
 import { verifyCredentials, changePassword } from "./operatorApi";
 import { requireSession } from "./dal";
-import type {
-  ChangePasswordState,
-  LoginState,
-  OperatorSession,
+import {
+  HOME_FOR_ROLE,
+  type ChangePasswordState,
+  type LoginState,
+  type OperatorSession,
 } from "../model/operator";
 
 const LoginSchema = z.object({
@@ -42,7 +43,7 @@ export async function login(
     role: operator.role,
   } satisfies OperatorSession);
 
-  redirect(operator.role === "admin" ? "/admin" : "/coach");
+  redirect(HOME_FOR_ROLE[operator.role]);
 }
 
 export async function logout(): Promise<void> {
