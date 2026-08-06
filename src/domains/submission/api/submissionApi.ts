@@ -20,6 +20,7 @@ import {
   type PublicSubmission,
 } from "../model/publicSubmission";
 import { fromRow } from "./submissionRow";
+import { assignOperator } from "./submissionAssignmentApi";
 import { recordSubmissionEvent } from "./submissionEventApi";
 
 /**
@@ -156,10 +157,11 @@ export async function assignSubmissionCoach(
   submissionId: string,
   coachId: string,
 ): Promise<Submission> {
-  return updateSubmission(submissionId, {
-    assignedOperatorId: coachId,
-    status: "assigned",
-  });
+  // A coach owes the feedback — that is what an assignment names now (ADR 018).
+  // `assignOperator` writes the join and keeps the vestigial column in step,
+  // both inside one transaction.
+  await assignOperator(submissionId, coachId, "feedback");
+  return updateSubmission(submissionId, { status: "assigned" });
 }
 
 /**
