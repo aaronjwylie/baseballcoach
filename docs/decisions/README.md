@@ -24,6 +24,7 @@ A divergence without an ADR is a bug. A divergence with one is a decision.
 | [014](014-retention-starts-on-collection.md) | Retention starts when the customer collects | **Accepted and built — amends ADR 012's clock** |
 | [015](015-schema-by-domain.md) | Every table lives in the domain that owns it | **Accepted and built — splits CLAUDE.md §5/§8's shared schema file** |
 | [016](016-operator-not-account.md) | One word for the people who log in: `operator` | **Accepted and built — retires `user`/`account`; migration 0001** |
+| [017](017-singular-table-names.md) | Singular table names, and the `Table` suffix | **Accepted and built — amends `_NomenclatureLaw` §1/§2; migration 0002** |
 
 ## Format
 

@@ -53,7 +53,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * The queue only ever holds paid submissions (`listSubmissions` filters the
+ * The queue only ever holds paid submissionTable (`listSubmissions` filters the
  * pre-payment states out), but the map is exhaustive so a new status can't be
  * added without deciding how the portal shows it.
  */
@@ -147,7 +147,7 @@ export default async function AdminHomePage({
 }) {
   await requireRole("admin");
   const { status } = await searchParams;
-  const [all, coaches] = await Promise.all([listSubmissions(), listCoaches()]);
+  const [all, coachTable] = await Promise.all([listSubmissions(), listCoaches()]);
 
   const activeKey = TABS.some((t) => t.key === status) ? status! : "all";
   const rows = all.filter(TABS.find((t) => t.key === activeKey)!.match);
@@ -224,8 +224,8 @@ export default async function AdminHomePage({
           {rows.length === 0 ? (
             <p className="p-8 text-center text-sm text-ink-muted">
               {all.length === 0
-                ? "No submissions yet. They'll appear here once a customer uploads and pays."
-                : "No submissions in this view."}
+                ? "No submissionTable yet. They'll appear here once a customer uploads and pays."
+                : "No submissionTable in this view."}
             </p>
           ) : (
             <>
@@ -244,7 +244,7 @@ export default async function AdminHomePage({
                   folders={foldersBySubmission.get(s.id)}
                   progress={progressBySubmission.get(s.id)}
                   events={eventsBySubmission.get(s.id) ?? []}
-                  coaches={coaches}
+                  coachTable={coachTable}
                 />
               ))}
             </>
@@ -268,7 +268,7 @@ function SubmissionRow({
   folders,
   progress,
   events,
-  coaches,
+  coachTable,
 }: {
   submission: Submission;
   files: SubmissionFile[];
@@ -276,9 +276,9 @@ function SubmissionRow({
   folders?: Record<FileKind, SubmissionFile[]>;
   progress?: { reached: Set<SubmissionStatus>; emails: Map<string, boolean> };
   events: SubmissionEvent[];
-  coaches: Coach[];
+  coachTable: Coach[];
 }) {
-  const assignedCoach = coaches.find((c) => c.id === submission.assignedCoachId);
+  const assignedCoach = coachTable.find((c) => c.id === submission.assignedCoachId);
   const empty: Record<FileKind, SubmissionFile[]> = {
     intake: [], intake_translation: [], response: [], response_translation: [],
   };
@@ -352,7 +352,7 @@ function SubmissionRow({
         key={submission.assignedCoachId ?? "unassigned"}
         submissionId={submission.id}
         assignedCoachId={submission.assignedCoachId}
-        coaches={coaches}
+        coachTable={coachTable}
       />
       <p className="text-[11px] text-ink-muted">
         Assigning is also what makes translation need derivable — the coach decides it.

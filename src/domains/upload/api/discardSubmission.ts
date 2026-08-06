@@ -52,7 +52,7 @@ export async function discardUnpaidSubmission(
     }
   }
 
-  // The file rows go with it — `submissionFiles` cascades on the foreign key.
+  // The file rows go with it — `submissionFileTable` cascades on the foreign key.
   await deleteSubmission(submissionId);
   return true;
 }

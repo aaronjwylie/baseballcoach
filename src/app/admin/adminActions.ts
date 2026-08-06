@@ -291,7 +291,7 @@ export async function resolveSubmissionAction(
  *
  * It needs an explicit action because the download can't be it — an admin
  * downloads a file to check it as often as to translate it, and inferring intent
- * from a click would put submissions out for translation nobody sent.
+ * from a click would put submissionTable out for translation nobody sent.
  */
 export async function sendForTranslationAction(
   formData: FormData,

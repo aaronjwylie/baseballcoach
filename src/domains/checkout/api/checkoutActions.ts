@@ -247,7 +247,7 @@ export async function resendCodeAction(): Promise<ActionResult> {
  * shouldn't. So the next thing they do is what surfaces it, which is why both
  * the verify and the resend path ask.
  *
- * Scoped to ① and to unpaid submissions on purpose. A receipt or a feedback
+ * Scoped to ① and to unpaid submissionTable on purpose. A receipt or a feedback
  * link bouncing is a real problem, but it is **the admin's** problem: those arrive
  * after money has changed hands, and nothing here may act destructively on a
  * paid submission.

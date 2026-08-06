@@ -8,7 +8,7 @@
  */
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { operators } from "../model/operatorsTable";
+import { operatorTable } from "../model/operatorTable";
 import { signSession, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
 import { setUserPassword } from "./operatorApi";
@@ -31,9 +31,9 @@ interface ResetPayload {
 export async function requestPasswordReset(email: string): Promise<void> {
   const clean = email.trim().toLowerCase();
   const [row] = await db
-    .select({ id: operators.id, passwordHash: operators.passwordHash })
-    .from(operators)
-    .where(eq(operators.email, clean))
+    .select({ id: operatorTable.id, passwordHash: operatorTable.passwordHash })
+    .from(operatorTable)
+    .where(eq(operatorTable.email, clean))
     .limit(1);
   if (!row) return;
 
@@ -58,9 +58,9 @@ export async function resetPasswordWithToken(
   if (!payload || payload.purpose !== PURPOSE) return { ok: false, error: STALE };
 
   const [row] = await db
-    .select({ passwordHash: operators.passwordHash })
-    .from(operators)
-    .where(eq(operators.id, payload.sub))
+    .select({ passwordHash: operatorTable.passwordHash })
+    .from(operatorTable)
+    .where(eq(operatorTable.id, payload.sub))
     .limit(1);
   // A mismatch means the password already changed since the link was issued —
   // the link is single-use and this one is spent.

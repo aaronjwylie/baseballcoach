@@ -19,7 +19,7 @@
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { submissionFiles } from "../model/submissionFilesTable";
+import { submissionFileTable } from "../model/submissionFileTable";
 import {
   INTAKE_KINDS,
   RESPONSE_KINDS,
@@ -34,7 +34,7 @@ export async function addSubmissionFile(
   kind: FileKind = "intake",
 ): Promise<SubmissionFile> {
   const [row] = await db
-    .insert(submissionFiles)
+    .insert(submissionFileTable)
     .values({
       submissionId: input.submissionId,
       filename: input.filename,
@@ -53,14 +53,14 @@ export async function listSubmissionFiles(
 ): Promise<SubmissionFile[]> {
   const rows = await db
     .select()
-    .from(submissionFiles)
+    .from(submissionFileTable)
     .where(
       and(
-        eq(submissionFiles.submissionId, submissionId),
-        inArray(submissionFiles.kind, INTAKE_KINDS),
+        eq(submissionFileTable.submissionId, submissionId),
+        inArray(submissionFileTable.kind, INTAKE_KINDS),
       ),
     )
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .orderBy(asc(submissionFileTable.uploadedAt));
   return rows.map(fromFileRow);
 }
 
@@ -70,19 +70,19 @@ export async function listFeedbackFiles(
 ): Promise<SubmissionFile[]> {
   const rows = await db
     .select()
-    .from(submissionFiles)
+    .from(submissionFileTable)
     .where(
       and(
-        eq(submissionFiles.submissionId, submissionId),
-        inArray(submissionFiles.kind, RESPONSE_KINDS),
+        eq(submissionFileTable.submissionId, submissionId),
+        inArray(submissionFileTable.kind, RESPONSE_KINDS),
       ),
     )
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .orderBy(asc(submissionFileTable.uploadedAt));
   return rows.map(fromFileRow);
 }
 
 /**
- * Intake files for several submissions at once — the portal's read. One query
+ * Intake files for several submissionTable at once — the portal's read. One query
  * for a whole page; the caller groups by `submissionId`.
  */
 export async function listFilesForSubmissions(
@@ -93,14 +93,14 @@ export async function listFilesForSubmissions(
 
   const rows = await db
     .select()
-    .from(submissionFiles)
+    .from(submissionFileTable)
     .where(
       and(
-        inArray(submissionFiles.submissionId, submissionIds),
-        inArray(submissionFiles.kind, INTAKE_KINDS),
+        inArray(submissionFileTable.submissionId, submissionIds),
+        inArray(submissionFileTable.kind, INTAKE_KINDS),
       ),
     )
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .orderBy(asc(submissionFileTable.uploadedAt));
 
   for (const row of rows) {
     const file = fromFileRow(row);
@@ -126,14 +126,14 @@ export async function listFilesByKinds(
   if (kinds.length === 0) return [];
   const rows = await db
     .select()
-    .from(submissionFiles)
+    .from(submissionFileTable)
     .where(
       and(
-        eq(submissionFiles.submissionId, submissionId),
-        inArray(submissionFiles.kind, kinds),
+        eq(submissionFileTable.submissionId, submissionId),
+        inArray(submissionFileTable.kind, kinds),
       ),
     )
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .orderBy(asc(submissionFileTable.uploadedAt));
   return rows.map(fromFileRow);
 }
 
@@ -148,9 +148,9 @@ export async function listFilesByFolder(
 ): Promise<Record<FileKind, SubmissionFile[]>> {
   const rows = await db
     .select()
-    .from(submissionFiles)
-    .where(eq(submissionFiles.submissionId, submissionId))
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .from(submissionFileTable)
+    .where(eq(submissionFileTable.submissionId, submissionId))
+    .orderBy(asc(submissionFileTable.uploadedAt));
 
   const folders = {
     intake: [],
@@ -172,9 +172,9 @@ export async function listAllSubmissionFiles(
 ): Promise<SubmissionFile[]> {
   const rows = await db
     .select()
-    .from(submissionFiles)
-    .where(eq(submissionFiles.submissionId, submissionId))
-    .orderBy(asc(submissionFiles.uploadedAt));
+    .from(submissionFileTable)
+    .where(eq(submissionFileTable.submissionId, submissionId))
+    .orderBy(asc(submissionFileTable.uploadedAt));
   return rows.map(fromFileRow);
 }
 
@@ -190,9 +190,9 @@ export async function clearAllFileLocators(
   submissionId: string,
 ): Promise<void> {
   await db
-    .update(submissionFiles)
+    .update(submissionFileTable)
     .set({ fileUrl: null })
-    .where(eq(submissionFiles.submissionId, submissionId));
+    .where(eq(submissionFileTable.submissionId, submissionId));
 }
 
 export async function getSubmissionFile(
@@ -200,8 +200,8 @@ export async function getSubmissionFile(
 ): Promise<SubmissionFile | null> {
   const [row] = await db
     .select()
-    .from(submissionFiles)
-    .where(eq(submissionFiles.id, id))
+    .from(submissionFileTable)
+    .where(eq(submissionFileTable.id, id))
     .limit(1);
   return row ? fromFileRow(row) : null;
 }
@@ -217,12 +217,12 @@ export async function countSubmissionFiles(
   submissionId: string,
 ): Promise<number> {
   const rows = await db
-    .select({ id: submissionFiles.id })
-    .from(submissionFiles)
+    .select({ id: submissionFileTable.id })
+    .from(submissionFileTable)
     .where(
       and(
-        eq(submissionFiles.submissionId, submissionId),
-        eq(submissionFiles.kind, "intake"),
+        eq(submissionFileTable.submissionId, submissionId),
+        eq(submissionFileTable.kind, "intake"),
       ),
     );
   return rows.length;
@@ -236,12 +236,12 @@ export async function countSubmissionFiles(
  */
 export async function clearFileLocators(submissionId: string): Promise<void> {
   await db
-    .update(submissionFiles)
+    .update(submissionFileTable)
     .set({ fileUrl: null })
     .where(
       and(
-        eq(submissionFiles.submissionId, submissionId),
-        inArray(submissionFiles.kind, INTAKE_KINDS),
+        eq(submissionFileTable.submissionId, submissionId),
+        inArray(submissionFileTable.kind, INTAKE_KINDS),
       ),
     );
 }
@@ -256,12 +256,12 @@ export async function clearFileLocators(submissionId: string): Promise<void> {
  */
 export async function clearFileLocator(fileId: string): Promise<void> {
   await db
-    .update(submissionFiles)
+    .update(submissionFileTable)
     .set({ fileUrl: null })
-    .where(eq(submissionFiles.id, fileId));
+    .where(eq(submissionFileTable.id, fileId));
 }
 
 /** Drop a file record outright — used when an upload half-completes. */
 export async function deleteSubmissionFile(id: string): Promise<void> {
-  await db.delete(submissionFiles).where(eq(submissionFiles.id, id));
+  await db.delete(submissionFileTable).where(eq(submissionFileTable.id, id));
 }

@@ -31,9 +31,9 @@ needs a gloss every time it appears is a term that's wrong in the code.
 | Segment folder | fixed lowercase set | `model` · `api` · `ui` · `lib` · `config` |
 | Barrel | `index.ts` | |
 | Slice doc | `_<Slice>Documentation.md` | `_SubmissionDocumentation.md` |
-| Table declaration file | `camelCase` `xTable`, **matching its export** | `submissionsTable.ts` → `submissions` |
-| Enum declaration file | `camelCase` `xEnum`, **matching its export** | `submissionStatusEnum.ts` → `submissionStatus` |
-| DB table | `snake_case`, **plural** | `submissions` · `submission_files` · `submission_events` |
+| Table declaration file | `camelCase` `xTable`, **matching its export exactly** | `submissionTable.ts` → `submissionTable` |
+| Enum declaration file | `camelCase`, its export **plus `Enum`** | `submissionStatusEnum.ts` → `submissionStatus` |
+| DB table | `snake_case`, **singular** — named for what *one row* is | `submission` · `submission_file` · `submission_event` |
 | DB column | `snake_case` | `customer_email` · `emailed_at` |
 | Drizzle field | `camelCase` — the mapper owns the crossing | `customerEmail` |
 | id field | `xId`, `camelCase` | `submissionId` · `stripePaymentId` · `assignedCoachId` |
@@ -53,29 +53,27 @@ conventions win inside the framework's own directory, and nowhere else.
 A domain folder and everything in it use **one** word, never two forms of the same idea:
 
 ```
-submission · submissionApi · SubmissionPatch · submission_files · _SubmissionDocumentation
+submission · submissionApi · SubmissionPatch · submission_file · _SubmissionDocumentation
 ```
 
-A mix of `submission` and `submissions` in code is the exact smell this kills. *(Plural is
-correct in two places, and only two: the DB table name, and the file that declares it — see
-below.)*
+A mix of `submission` and `submissions` in code is the exact smell this kills — and since
+2026-08-05 there is no plural anywhere to mix with. Tables are singular, named for what **one
+row** is: `submission`, `coach`, `operator` ([ADR 017](docs/decisions/017-singular-table-names.md)).
 
-**Amended 2026-08-05** ([ADR 015](docs/decisions/015-schema-by-domain.md)). The split put
-`submissionsTable.ts` in the same folder as `submission.ts`, which reads as the violation this
-rule exists to catch. It's allowed, for one reason: **a declaration file is named for its
-export**, and the export is `submissions` because that's the table's name. Call the file
-`submissionTable.ts` and grepping `submissions` no longer finds where `submissions` is
-declared, which is the exact findability failure the whole convention is for.
+**The JavaScript export carries the `Table` suffix; the SQL name does not.**
 
-That leaves the plural doing real work rather than drifting: **inside `model/`, plural marks
-the storage plane and singular marks the domain plane.** `submission.ts` is what a submission
-*is*; `submissionsTable.ts` is where it's *stored*. Same stem, different axis, same trick as
-the noun/participle rule below.
+```
+submissionTable.ts   →   export const submissionTable = pgTable("submission", …)
+```
 
-**This applies across axes, not just within a folder.** The same concept named one way in the
-schema and another in the status enum is the same violation, one level up — it just takes
-longer to notice. Two vocabularies for one pair of concepts is how a codebase starts needing a
-translator.
+Not decoration. `submission` is the obvious name for *one row you just fetched*, and it is used
+217 times as a local. Name the table object the same thing and the two fight in every file that
+touches both — which is why the scripts had grown `import { submissions as submissionsTable }`
+by hand. The suffix makes the alias unnecessary, so the filename, the export, and what you type
+are one word.
+
+An earlier version of this section said plural marked the storage plane and singular the domain
+plane. That was a way of living with a mismatch, not a rule; the mismatch is gone.
 
 ### The grammar rule that keeps stems shared without collisions
 
@@ -86,7 +84,7 @@ When one stem must appear on two different axes, **the grammar carries the diffe
 | **File kind** | a **noun** | *what is this file?* | `intake` · `intake_translation` |
 | **Status** | a **participle** | *what has happened?* | `intake_translating` · `intake_translated` |
 
-So `intake` is one concept with one stem, and `submissionFiles.kind === 'intake_translation'`
+So `intake` is one concept with one stem, and `submissionFileTable.kind === 'intake_translation'`
 never reads as `submission.status === 'intake_translated'`. Same word, different part of
 speech, no ambiguity at the call site.
 

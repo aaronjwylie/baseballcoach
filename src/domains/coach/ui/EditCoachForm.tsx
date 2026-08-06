@@ -103,7 +103,7 @@ export function EditCoachForm({ coach }: { coach: Coach }) {
 
       <label className="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" name="isActive" defaultChecked={coach.isActive} />
-        Active — can be assigned new submissions
+        Active — can be assigned new submissionTable
       </label>
 
       <Button type="submit" disabled={pending}>

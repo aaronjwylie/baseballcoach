@@ -1,7 +1,7 @@
 /**
  * The trail — one row per status transition.
  *
- * Chosen over sixteen nullable `*At` columns on `submissions`, and it answers
+ * Chosen over sixteen nullable `*At` columns on `submissionTable`, and it answers
  * strictly more. A column remembers one moment; this remembers every one, in
  * order, with who caused it. That matters because a status can be reached twice:
  * the admin resets a submission from `awaiting_approval` back to `in_review`, the
@@ -17,12 +17,12 @@
  *
  * Writes are **best-effort in spirit but transactional in fact**: `record` runs
  * inside the same transaction as the update that caused it, so the trail cannot
- * disagree with `submissions.status`. If the insert fails, the transition fails
+ * disagree with `submissionTable.status`. If the insert fails, the transition fails
  * with it — a status change nobody can account for is worse than no change.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { submissionEvents } from "../model/submissionEventsTable";
+import { submissionEventTable } from "../model/submissionEventTable";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
 import type {
@@ -82,7 +82,7 @@ export async function recordSubmissionEvent(
   note?: string,
   tx: Db = db,
 ): Promise<void> {
-  await tx.insert(submissionEvents).values({
+  await tx.insert(submissionEventTable).values({
     submissionId,
     kind: "status",
     status,
@@ -116,7 +116,7 @@ export async function noteEmailSent(
   note?: string,
 ): Promise<void> {
   try {
-    await db.insert(submissionEvents).values({
+    await db.insert(submissionEventTable).values({
       submissionId,
       kind: "email",
       // No rung: a message isn't a place on the ladder, and giving it one would
@@ -162,7 +162,7 @@ export async function noteVerification(
   tx?: Db,
 ): Promise<void> {
   try {
-    await (tx ?? db).insert(submissionEvents).values({
+    await (tx ?? db).insert(submissionEventTable).values({
       submissionId,
       kind: "verification",
       // No rung, for the same reason a send has none: the trail is read to work
@@ -199,17 +199,17 @@ export async function noteEmailOutcome(
 ): Promise<{ submissionId: string; label: string } | null> {
   const [origin] = await db
     .select({
-      submissionId: submissionEvents.submissionId,
-      label: submissionEvents.label,
+      submissionId: submissionEventTable.submissionId,
+      label: submissionEventTable.label,
     })
-    .from(submissionEvents)
-    .where(eq(submissionEvents.messageId, messageId))
-    .orderBy(asc(submissionEvents.at))
+    .from(submissionEventTable)
+    .where(eq(submissionEventTable.messageId, messageId))
+    .orderBy(asc(submissionEventTable.at))
     .limit(1);
 
   if (!origin) return null;
 
-  await db.insert(submissionEvents).values({
+  await db.insert(submissionEventTable).values({
     submissionId: origin.submissionId,
     kind: "email",
     status: null,
@@ -240,12 +240,12 @@ export async function bounceOf(
   labelPrefix: string,
 ): Promise<BounceKind | null> {
   const rows = await db
-    .select({ label: submissionEvents.label, note: submissionEvents.note })
-    .from(submissionEvents)
+    .select({ label: submissionEventTable.label, note: submissionEventTable.note })
+    .from(submissionEventTable)
     .where(
       and(
-        eq(submissionEvents.submissionId, submissionId),
-        eq(submissionEvents.outcome, "bounced"),
+        eq(submissionEventTable.submissionId, submissionId),
+        eq(submissionEventTable.outcome, "bounced"),
       ),
     );
 
@@ -262,7 +262,7 @@ export async function bounceOf(
 }
 
 /**
- * The trail for a whole page of submissions, in one read.
+ * The trail for a whole page of submissionTable, in one read.
  *
  * The progress view needs two things per row — which rungs it has passed
  * through, and which messages landed — and both live in the same table. One
@@ -287,9 +287,9 @@ export async function listProgressFacts(
 
   const rows = await db
     .select()
-    .from(submissionEvents)
-    .where(inArray(submissionEvents.submissionId, submissionIds))
-    .orderBy(asc(submissionEvents.at));
+    .from(submissionEventTable)
+    .where(inArray(submissionEventTable.submissionId, submissionIds))
+    .orderBy(asc(submissionEventTable.at));
 
   for (const row of rows) {
     const entry = facts.get(row.submissionId);
@@ -318,9 +318,9 @@ export async function listSubmissionEvents(
 ): Promise<SubmissionEvent[]> {
   const rows = await db
     .select()
-    .from(submissionEvents)
-    .where(eq(submissionEvents.submissionId, submissionId))
-    .orderBy(asc(submissionEvents.at));
+    .from(submissionEventTable)
+    .where(eq(submissionEventTable.submissionId, submissionId))
+    .orderBy(asc(submissionEventTable.at));
 
   return rows.map((row) => ({
     id: row.id,

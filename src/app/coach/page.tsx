@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
 import { storage } from "@/shared/storage";
 import { requireRole } from "@/domains/operator";
-import { getCoachByUserId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/coach";
 import {
   findByCoach,
   listFeedbackFiles,
@@ -24,11 +24,11 @@ export const metadata: Metadata = {
 
 export default async function CoachHomePage() {
   const session = await requireRole("coach");
-  const coach = await getCoachByUserId(session.operatorId);
-  const submissions = coach ? await findByCoach(coach.id) : [];
+  const coach = await getCoachByOperatorId(session.operatorId);
+  const submissionTable = coach ? await findByCoach(coach.id) : [];
   // One query for the page rather than one per card.
   const filesBySubmission = await listFilesForSubmissions(
-    submissions.map((s) => s.id),
+    submissionTable.map((s) => s.id),
   );
 
   // Prod uploads straight to Blob; dev proxies to disk. Same seam the customer
@@ -37,7 +37,7 @@ export default async function CoachHomePage() {
 
   // A coach's work is "open" until they hand it to the admin; once sent it's awaiting
   // approval (or delivered), and out of their hands.
-  const open = submissions.filter(
+  const open = submissionTable.filter(
     isWithCoach,
   );
 
@@ -51,7 +51,7 @@ export default async function CoachHomePage() {
       ),
     ),
   );
-  const done = submissions.filter(
+  const done = submissionTable.filter(
     hasResponse,
   );
 

@@ -37,7 +37,7 @@ import {
   approveAndComplete,
 } from "@/domains/feedback";
 import { db } from "@/shared/db";
-import { submissions as submissionsTable } from "@/db/schema";
+import { submissionTable } from "@/db/schema";
 import { eq as eqFn } from "drizzle-orm";
 
 const pass = (msg: string) => console.log(`   ✓ ${msg}`);
@@ -190,13 +190,13 @@ async function main() {
 
   // Backdate the collection past the retention window.
   await db
-    .update(submissionsTable)
+    .update(submissionTable)
     .set({
       collectedAt: new Date(
         Date.now() - (settings.retainCollectedDays + 1) * 24 * 3600_000,
       ),
     })
-    .where(eqFn(submissionsTable.id, submission.id));
+    .where(eqFn(submissionTable.id, submission.id));
 
   const afterSweep = await runRetentionSweep();
   check(
@@ -227,7 +227,7 @@ async function main() {
   );
 
   // ── 6 · abandoned: nothing unpaid is retained ──────────────────────────
-  console.log(`\n6 · abandoned submissions leave nothing behind`);
+  console.log(`\n6 · abandoned submissionTable leave nothing behind`);
   const orphan = await createSubmission({
     customerEmail: `flow-orphan-${Date.now()}@seed.test`,
     playerName: "Orphan Probe",
@@ -245,7 +245,7 @@ async function main() {
     completedAt: undefined,
   });
   await db
-    .update(submissionsTable)
+    .update(submissionTable)
     .set({
       // `updatedAt`, not `submittedAt`: "gone quiet" is about the last sign of
       // life, so a customer still working — or one whose card just failed —
@@ -254,7 +254,7 @@ async function main() {
         Date.now() - (settings.retainUnpaidHours + 1) * 3600_000,
       ),
     })
-    .where(eqFn(submissionsTable.id, orphan.id));
+    .where(eqFn(submissionTable.id, orphan.id));
 
   const abandoned = await runRetentionSweep();
   check(

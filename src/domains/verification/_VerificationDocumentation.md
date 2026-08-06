@@ -97,7 +97,7 @@ New on 2026-07-30; there was no verification of any kind before.
   The flow cookie *is* that token, but it only answers "did this browser start a
   submission", not "is this a real customer we can reach". Verification answers
   both, and the second answer is worth two extra round trips.
-- **The code lives on `submissions`, not its own table.** A submission has at most
+- **The code lives on `submission`, not its own table.** A submission has at most
   one active code and the lifecycles are 1:1; a separate table would have bought a
   join and a foreign key to hold four columns.
 - **Codes are bcrypt-hashed rather than compared directly.** Slower than needed

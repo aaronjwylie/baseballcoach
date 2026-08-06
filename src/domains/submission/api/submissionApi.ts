@@ -1,5 +1,5 @@
 /**
- * Submission queries — everything the app does to the `submissions` table.
+ * Submission queries — everything the app does to the `submissionTable` table.
  *
  * Callers get a domain `Submission`; nobody outside this file (and its row
  * mapper) sees a Drizzle row or a column name. The customer's uploaded files
@@ -7,7 +7,7 @@
  */
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { submissions } from "../model/submissionsTable";
+import { submissionTable } from "../model/submissionTable";
 import {
   SUBMISSION_STATUSES,
   isReleased,
@@ -31,8 +31,8 @@ import { recordSubmissionEvent } from "./submissionEventApi";
  */
 function toUpdateValues(
   patch: SubmissionPatch,
-): Partial<typeof submissions.$inferInsert> {
-  const v: Partial<typeof submissions.$inferInsert> = {};
+): Partial<typeof submissionTable.$inferInsert> {
+  const v: Partial<typeof submissionTable.$inferInsert> = {};
   if (patch.customerEmail !== undefined) v.customerEmail = patch.customerEmail.trim().toLowerCase();
   if (patch.playerName !== undefined) v.playerName = patch.playerName;
   if (patch.playerAge !== undefined) v.playerAge = patch.playerAge;
@@ -73,7 +73,7 @@ export async function createSubmission(
 ): Promise<Submission> {
   return db.transaction(async (tx) => {
     const [row] = await tx
-      .insert(submissions)
+      .insert(submissionTable)
       .values({
         customerEmail: input.customerEmail.trim().toLowerCase(),
         playerName: input.playerName,
@@ -105,7 +105,7 @@ export async function createSubmission(
  * button, sets the same value and must not appear in the history as a second
  * event.
  *
- * Both statements share a transaction: `submissions.status` and its trail cannot
+ * Both statements share a transaction: `submissionTable.status` and its trail cannot
  * disagree, even if the process dies between them.
  *
  * `note` is carried for the operator overrides, which owe an explanation.
@@ -121,16 +121,16 @@ export async function updateSubmission(
         ? undefined
         : (
             await tx
-              .select({ status: submissions.status })
-              .from(submissions)
-              .where(eq(submissions.id, id))
+              .select({ status: submissionTable.status })
+              .from(submissionTable)
+              .where(eq(submissionTable.id, id))
               .limit(1)
           )[0]?.status;
 
     const [row] = await tx
-      .update(submissions)
+      .update(submissionTable)
       .set({ ...toUpdateValues(patch), updatedAt: new Date() })
-      .where(eq(submissions.id, id))
+      .where(eq(submissionTable.id, id))
       .returning();
 
     if (patch.status !== undefined && patch.status !== previous) {
@@ -142,13 +142,13 @@ export async function updateSubmission(
 }
 
 /**
- * Delete a submission outright. `submissionFiles` rows cascade with it.
+ * Delete a submission outright. `submissionFileTable` rows cascade with it.
  *
- * Only for submissions that were never paid for — the guard lives in
+ * Only for submissionTable that were never paid for — the guard lives in
  * `discardUnpaidSubmission`, which is the only thing that should call this.
  */
 export async function deleteSubmission(id: string): Promise<void> {
-  await db.delete(submissions).where(eq(submissions.id, id));
+  await db.delete(submissionTable).where(eq(submissionTable.id, id));
 }
 
 /** Assign a coach and move the submission to `assigned`. Admin action. */
@@ -225,18 +225,18 @@ export async function markCustomerCollected(
  */
 export async function archiveSubmission(id: string): Promise<Submission> {
   const [row] = await db
-    .update(submissions)
+    .update(submissionTable)
     .set({ archivedAt: new Date(), updatedAt: new Date() })
-    .where(eq(submissions.id, id))
+    .where(eq(submissionTable.id, id))
     .returning();
   return fromRow(row);
 }
 
 export async function unarchiveSubmission(id: string): Promise<Submission> {
   const [row] = await db
-    .update(submissions)
+    .update(submissionTable)
     .set({ archivedAt: null, updatedAt: new Date() })
-    .where(eq(submissions.id, id))
+    .where(eq(submissionTable.id, id))
     .returning();
   return fromRow(row);
 }
@@ -244,8 +244,8 @@ export async function unarchiveSubmission(id: string): Promise<Submission> {
 export async function getSubmission(id: string): Promise<Submission | null> {
   const [row] = await db
     .select()
-    .from(submissions)
-    .where(eq(submissions.id, id))
+    .from(submissionTable)
+    .where(eq(submissionTable.id, id))
     .limit(1);
   return row ? fromRow(row) : null;
 }
@@ -255,14 +255,14 @@ export async function findByStripePaymentId(
 ): Promise<Submission | null> {
   const [row] = await db
     .select()
-    .from(submissions)
-    .where(eq(submissions.stripePaymentId, paymentId))
+    .from(submissionTable)
+    .where(eq(submissionTable.stripePaymentId, paymentId))
     .limit(1);
   return row ? fromRow(row) : null;
 }
 
 /**
- * A customer's submissions (their email is stored lowercased).
+ * A customer's submissionTable (their email is stored lowercased).
  *
  * `draft` rows are excluded: an abandoned first step is not something a customer
  * should see listed as a submission, and it carries no useful status.
@@ -272,9 +272,9 @@ export async function findByCustomerEmail(
 ): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
-    .where(eq(submissions.customerEmail, email.trim().toLowerCase()))
-    .orderBy(desc(submissions.submittedAt));
+    .from(submissionTable)
+    .where(eq(submissionTable.customerEmail, email.trim().toLowerCase()))
+    .orderBy(desc(submissionTable.submittedAt));
   return rows.filter((row) => row.status !== "draft").map(fromRow);
 }
 
@@ -287,11 +287,11 @@ export async function findByCustomerEmail(
 export async function listSubmissions(): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
+    .from(submissionTable)
     /*
       **Everything, including the scratch pads.**
 
-      This filtered to paid submissions on the reasoning that an unfinished
+      This filtered to paid submissionTable on the reasoning that an unfinished
       attempt isn't work. True, but it isn't the same as "not worth seeing": a
       row sitting at `draft` is someone filling in the form *right now*, and at
       this volume that's the most interesting thing on the page. Hiding it also
@@ -307,7 +307,7 @@ export async function listSubmissions(): Promise<Submission[]> {
       hid everything from `sent_to_coach` onward. Whatever this returns should be
       derived or unfiltered — never a list someone has to remember to update.
     */
-    .orderBy(desc(submissions.submittedAt));
+    .orderBy(desc(submissionTable.submittedAt));
   return rows.map(fromRow);
 }
 
@@ -315,17 +315,17 @@ export async function listSubmissions(): Promise<Submission[]> {
 export async function findByCoach(coachId: string): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
-    .where(eq(submissions.assignedCoachId, coachId))
-    .orderBy(desc(submissions.submittedAt));
+    .from(submissionTable)
+    .where(eq(submissionTable.assignedCoachId, coachId))
+    .orderBy(desc(submissionTable.submittedAt));
   return rows.map(fromRow);
 }
 
-/** The status-lookup read: a customer's submissions, trimmed to what's safe.
+/** The status-lookup read: a customer's submissionTable, trimmed to what's safe.
  * Feedback files are deliberately not exposed here — delivery rides on the
  * signed link in the customer's email, not on this email lookup. */
 /**
- * A customer's submissions, sanitised for their own eyes.
+ * A customer's submissionTable, sanitised for their own eyes.
  *
  * ⚠️ **Sensitive — call only behind proof of the inbox.** It carries a child's
  * first name, a focus and a date, keyed on an email address that is trivially
@@ -344,7 +344,7 @@ export async function lookupPublicSubmissions(
 }
 
 /**
- * Completed submissions whose uploads are due for deletion.
+ * Completed submissionTable whose uploads are due for deletion.
  *
  * The customer has their feedback and the coach is done, so the *files* go while
  * the *record* stays — the receipt and the portal still need to say what was
@@ -357,11 +357,11 @@ export async function findResolvedDue(
 ): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
+    .from(submissionTable)
     .where(
       and(
-        isNull(submissions.filesPurgedAt),
-        inArray(submissions.status, RELEASED_STATUSES),
+        isNull(submissionTable.filesPurgedAt),
+        inArray(submissionTable.status, RELEASED_STATUSES),
         /*
           Two clocks, and the later one wins.
 
@@ -377,13 +377,13 @@ export async function findResolvedDue(
         */
         or(
           and(
-            isNotNull(submissions.collectedAt),
-            lt(submissions.collectedAt, collectedBefore),
+            isNotNull(submissionTable.collectedAt),
+            lt(submissionTable.collectedAt, collectedBefore),
           ),
           and(
-            isNull(submissions.collectedAt),
-            isNotNull(submissions.completedAt),
-            lt(submissions.completedAt, deliveredBefore),
+            isNull(submissionTable.collectedAt),
+            isNotNull(submissionTable.completedAt),
+            lt(submissionTable.completedAt, deliveredBefore),
           ),
         ),
       ),
@@ -392,7 +392,7 @@ export async function findResolvedDue(
 }
 
 /**
- * Released submissions approaching deletion that haven't been warned yet.
+ * Released submissionTable approaching deletion that haven't been warned yet.
  *
  * The one genuinely *scheduled* effect in the system. Everything else the sweep
  * does is derivable from state — "delete what's due" needs no memory — but "warn
@@ -400,7 +400,7 @@ export async function findResolvedDue(
  * `deletionWarnedAt` is for. Without it this would send every night for seven
  * nights.
  *
- * Only submissions with a collection clock are warned. One that was never
+ * Only submissionTable with a collection clock are warned. One that was never
  * collected is running on the backstop, and warning someone about files they
  * never came for would be the first they'd heard of any of it.
  */
@@ -409,14 +409,14 @@ export async function findWarningDue(
 ): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
+    .from(submissionTable)
     .where(
       and(
-        isNull(submissions.filesPurgedAt),
-        isNull(submissions.deletionWarnedAt),
-        inArray(submissions.status, RELEASED_STATUSES),
-        isNotNull(submissions.collectedAt),
-        lt(submissions.collectedAt, collectedBefore),
+        isNull(submissionTable.filesPurgedAt),
+        isNull(submissionTable.deletionWarnedAt),
+        inArray(submissionTable.status, RELEASED_STATUSES),
+        isNotNull(submissionTable.collectedAt),
+        lt(submissionTable.collectedAt, collectedBefore),
       ),
     );
   return rows.map(fromRow);
@@ -458,14 +458,14 @@ export async function findAbandonedDue(
 ): Promise<Submission[]> {
   const rows = await db
     .select()
-    .from(submissions)
+    .from(submissionTable)
     .where(
       and(
-        inArray(submissions.status, ["draft", "awaiting_payment"]),
-        lt(submissions.updatedAt, before),
+        inArray(submissionTable.status, ["draft", "awaiting_payment"]),
+        lt(submissionTable.updatedAt, before),
       ),
     )
-    .orderBy(submissions.updatedAt)
+    .orderBy(submissionTable.updatedAt)
     .limit(limit);
   return rows.map(fromRow);
 }

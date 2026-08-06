@@ -14,7 +14,7 @@ import { logout } from "@/domains/operator/api/auth";
  * page's narrow form column (which is exactly what it used to do).
  *
  * `active` is derived from the path rather than passed per page: the section
- * links use a prefix match so `/admin/coaches/:id` still lights up "Coaches",
+ * links use a prefix match so `/admin/coachTable/:id` still lights up "Coaches",
  * while the two portal homes (`/admin`, `/coach`) match exactly so they don't
  * light up on every child route.
  */

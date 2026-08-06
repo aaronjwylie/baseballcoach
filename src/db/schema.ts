@@ -24,9 +24,9 @@
  * drizzle-kit maps them to snake_case columns, so the app reads camelCase and
  * the database stays idiomatic SQL.
  *
- * Six tables: `operators` (operator logins), `coaches` (the people who review),
- * `submissions` (the spine — one row per request), `submissionFiles` (the files,
- * both directions, discriminated by `kind`), `submissionEvents` (one row per
+ * Six tables: `operatorTable` (operator logins), `coachTable` (the people who review),
+ * `submissionTable` (the spine — one row per request), `submissionFileTable` (the files,
+ * both directions, discriminated by `kind`), `submissionEventTable` (one row per
  * status transition — the trail), and `settings` (the operator's knobs).
  *
  * Grouped enums-then-tables for reading only. Initialisation order comes from
@@ -44,9 +44,9 @@ export * from "@/domains/submission/model/submissionEventKindEnum";
 export * from "@/domains/submission/model/emailOutcomeEnum";
 
 // Tables, each with its inferred row types.
-export * from "@/domains/operator/model/operatorsTable";
-export * from "@/domains/coach/model/coachesTable";
-export * from "@/domains/submission/model/submissionsTable";
-export * from "@/domains/submission/model/submissionFilesTable";
-export * from "@/domains/submission/model/submissionEventsTable";
-export * from "@/domains/settings/model/settingsTable";
+export * from "@/domains/operator/model/operatorTable";
+export * from "@/domains/coach/model/coachTable";
+export * from "@/domains/submission/model/submissionTable";
+export * from "@/domains/submission/model/submissionFileTable";
+export * from "@/domains/submission/model/submissionEventTable";
+export * from "@/domains/settings/model/settingTable";

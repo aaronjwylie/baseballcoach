@@ -35,7 +35,7 @@
 > a webhook. That's why Stripe's will work too.
 >
 > **Migrations run to `0012`.** `0008` grows the status enum to sixteen and adds
-> `submission_events`; `0009` adds the two file-set columns; `0010` adds the
+> `submission_event`; `0009` adds the two file-set columns; `0010` adds the
 > retention anchors and replaces `retain_resolved_hours` with three settings;
 > `0011` widens the trail to record sends as well as status moves.
 > `0012` adds the delivery outcome and the message id.
@@ -54,7 +54,7 @@
 > deletes **all four folders** including the coach's response. Vercel Hobby still
 > permits only one cron run a day; an hourly schedule fails the deploy, and has.
 >
-> **Operator notifications go to every `admin` in the `users` table.** There is no
+> **Operator notifications go to every `admin` in the `operator` table.** There is no
 > env var for this — add an admin user to add a recipient. Five of the nine emails
 > go to the admin, so a production install with no admin row is a queue that announces
 > nothing.
@@ -598,7 +598,7 @@ The Stripe webhook URL. See the warning at the top.
 | --- | --- |
 | 🔴 **Rotate the production database password** | **Before handover/close-out.** It was pasted into a chat transcript on 2026-08-05 to run the ledger baseline, so treat it as exposed. Supabase → Project Settings → Database → Reset database password; the Vercel integration refreshes its own vars. **The underlying cause is worth fixing too** — Ben has no Supabase or Vercel login ([§1](#1-ownership-model)), so credentials reach him by hand. Grant project access instead of passing a secret a second time |
 | ~~🔴 **Baseline production before deploying the squashed migration history**~~ | ✅ **Done 2026-08-05.** Production was at `0016` with all 70 columns present; the ledger now holds the squash alone and the original seventeen rows are preserved in `drizzle.__drizzle_migrations_backup_1785909077580` |
-| ~~🔴 **Apply migrations `0001` + `0002` to Supabase**~~ | ✅ **Stale — cleared 2026-08-05.** Production carries all six tables with live data (27 submissions, 44 trail events), including `submission_events` and `settings`, which only exist from migrations `0011`/`0012`. The schema is well past `0002`. Verified by REST probe, not by reading the ledger — see the note below |
+| ~~🔴 **Apply migrations `0001` + `0002` to Supabase**~~ | ✅ **Stale — cleared 2026-08-05.** Production carries all six tables with live data (27 submissions, 44 trail events), including `submission_event` and `settings`, which only exist from migrations `0011`/`0012`. The schema is well past `0002`. Verified by REST probe, not by reading the ledger — see the note below |
 | 🔴 **Set `CRON_SECRET` in Vercel** | **Aaron** — the retention sweep returns 503 without it |
 | **Stripe keys + webhook** (§5–§6) | **The last launch blocker for money** — no payments until done |
 | ~~**Verify the Resend domain + set `EMAIL_FROM`**~~ | ✅ Done — domain verified, sending live (§8). Now load-bearing: the verification code is emailed |

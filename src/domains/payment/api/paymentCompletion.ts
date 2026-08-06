@@ -78,7 +78,7 @@ export async function completePayment({
  * closed the tab, and a customer who assumes the whole submission failed does
  * not come back.
  *
- * **Buy them time.** The abandonment sweep reaps unpaid submissions on a clock,
+ * **Buy them time.** The abandonment sweep reaps unpaid submissionTable on a clock,
  * and a failed payment is the strongest possible evidence that someone is still
  * working on this one. Touching the row restarts that clock, so a customer who
  * goes to find another card doesn't return to find their upload deleted. This is

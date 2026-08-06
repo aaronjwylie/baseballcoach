@@ -59,7 +59,7 @@ export async function issueFeedbackViewCode(
   emailRaw: string,
 ): Promise<PendingFeedbackCode | null> {
   const email = emailRaw.trim().toLowerCase();
-  const submissions = await findByCustomerEmail(email);
+  const submissionTable = await findByCustomerEmail(email);
   /*
     Any submission earns a code, not just a released one.
 
@@ -68,7 +68,7 @@ export async function issueFeedbackViewCode(
     released feedback would have meant a customer mid-review couldn't see their
     own submission at all.
   */
-  if (submissions.length === 0) return null;
+  if (submissionTable.length === 0) return null;
 
   const code = generateCode();
   const hash = await bcrypt.hash(code, 10);
@@ -83,7 +83,7 @@ export async function issueFeedbackViewCode(
  * route maps that to a generic error and the caller can retry within the window.
  */
 export interface StatusAccess {
-  submissions: PublicSubmission[];
+  submissionTable: PublicSubmission[];
   groups: FeedbackGroup[];
 }
 
@@ -114,7 +114,7 @@ export async function verifyFeedbackViewCode(
   if (!matches) return null;
 
   return {
-    submissions: await lookupPublicSubmissions(email),
+    submissionTable: await lookupPublicSubmissions(email),
     groups: await listFeedbackForEmail(email),
   };
 }
@@ -125,9 +125,9 @@ export async function listFeedbackForEmail(
   emailRaw: string,
 ): Promise<FeedbackGroup[]> {
   const email = emailRaw.trim().toLowerCase();
-  const submissions = await findByCustomerEmail(email);
+  const submissionTable = await findByCustomerEmail(email);
   const groups: FeedbackGroup[] = [];
-  for (const submission of submissions) {
+  for (const submission of submissionTable) {
     if (!isReleased(submission)) continue;
     const files = (await listFeedbackFiles(submission.id)).filter(
       (f) => !!f.fileUrl,

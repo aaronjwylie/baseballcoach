@@ -25,7 +25,7 @@ export async function requireSession(): Promise<OperatorSession> {
 }
 
 /**
- * Require one of the given roles. Wrong-role operators are sent to their own
+ * Require one of the given roles. Wrong-role operatorTable are sent to their own
  * portal rather than /login, since they *are* signed in.
  */
 export async function requireRole(...allowed: Role[]): Promise<OperatorSession> {

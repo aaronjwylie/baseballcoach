@@ -171,7 +171,7 @@ declarations (`*Table.ts`, `*Enum.ts`), since 2026-08-05
 
 6. **A declaration never imports a barrel** — not `@/db/schema`, not `@/shared/db`, not a
    slice's `index.ts`, nor anything that transitively reaches one. It imports other files
-   **directly, across domains**: `coachesTable` imports `@/domains/operator/model/operatorsTable`,
+   **directly, across domains**: `coachTable` imports `@/domains/operator/model/operatorTable`,
    and `submissionStatusEnum` imports the vocabulary it derives from in `model/submission.ts`.
    A foreign key is a compile-time reference no barrel can carry without closing a cycle through
    itself, and the failure mode is a table arriving `undefined` inside Drizzle with a stack trace
@@ -253,7 +253,7 @@ conventions win in the framework's own directory.
 
 **One stem per concept.** A domain folder and everything in it use **one** word, never two
 forms of the same idea: `submission` · `submissionApi` · `SubmissionPatch` ·
-`_SubmissionDocumentation`. A mix of `submission` and `submissions` is the exact smell this
+`_SubmissionDocumentation`. A mix of `submission` and `submission` is the exact smell this
 kills.
 
 ---

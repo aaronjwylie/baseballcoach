@@ -21,7 +21,7 @@ export default async function EditCoachPage(props: {
   return (
     <Container className="max-w-2xl">
       <div>
-        <Link href="/admin/coaches" className="text-sm text-ink-muted hover:text-ink">
+        <Link href="/admin/coachTable" className="text-sm text-ink-muted hover:text-ink">
           ← Coaches
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">

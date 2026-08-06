@@ -27,7 +27,7 @@ export const env = {
   // https://baseball-sensei.com. `NEXT_PUBLIC_SITE_URL` is the source of truth
   // (set it to the live domain, Production env). It's inlined at build time,
   // so if a build lacks it we fall back to Vercel's own runtime host rather
-  // than shipping `localhost` links to real customers and coaches.
+  // than shipping `localhost` links to real customers and coachTable.
   get siteUrl(): string {
     const explicit = process.env.NEXT_PUBLIC_SITE_URL;
     if (explicit) return explicit.replace(/\/$/, "");

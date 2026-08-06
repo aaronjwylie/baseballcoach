@@ -82,8 +82,8 @@ Three consequences, and the third is the one that bites:
   the schema for reading. If that starts to feel necessary, the split cost more than expected and
   we revisit it rather than paper over it.*
 - **Declaration files are their own plane, and the import rules above don't reach them.** A
-  `*Table.ts` imports other declaration files **directly and cross-domain** — `coachesTable`
-  imports `usersTable`, not `@/domains/operator`. This looks like a violation of rule 7 and of
+  `*Table.ts` imports other declaration files **directly and cross-domain** — `coachTable`
+  imports `operatorTable`, not `@/domains/operator`. This looks like a violation of rule 7 and of
   structure.md §4.5, and it is; it's forced by the module system, not chosen. A foreign key is a
   compile-time reference no barrel can carry, because the barrel already imports the file that
   would import it. Close that loop and one of the two modules initialises half-formed, so a table

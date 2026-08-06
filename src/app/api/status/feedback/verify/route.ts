@@ -10,7 +10,7 @@ import {
 
 /**
  * Check an access code and, on a match, return **the customer's whole view** —
- * their submissions and any feedback ready to download.
+ * their submissionTable and any feedback ready to download.
  *
  * The bcrypt check is the whole gate, so the endpoint is rate-limited to keep a
  * 6-digit code out of brute-force range within its 10-minute life. A miss

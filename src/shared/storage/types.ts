@@ -33,7 +33,7 @@ export interface StorageDriver {
   readonly supportsDirectUpload: boolean;
 
   /**
-   * Save bytes under a logical key (e.g. `submissions/<id>/ab12-clip.mp4`).
+   * Save bytes under a logical key (e.g. `submissionTable/<id>/ab12-clip.mp4`).
    * Returns the **locator** to persist on the row — the key for local disk, the
    * public URL for Blob.
    */

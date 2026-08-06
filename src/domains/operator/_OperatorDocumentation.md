@@ -22,8 +22,8 @@ Invariants:
 
 ## The slice owns its storage — 2026-08-05
 
-`users` and `userRole` are declared here now — `model/operatorsTable.ts` and
-`model/userRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
+`operator` and `operatorRole` are declared here now — `model/operatorTable.ts` and
+`model/operatorRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
 The enum **derives** from `ROLES` in `model/user.ts`, which is also where
 `type Role` comes from: one list, two consumers. `Role` used to be a bare union
 spelled a second time in the schema.
@@ -31,13 +31,13 @@ spelled a second time in the schema.
 **This slice is `user`'s home, and there is no `domains/user/`.** Operator
 identity has always lived under `account`, and a second folder for the same
 concept is the one-stem violation `_NomenclatureLaw.md` §2 exists to catch. Two
-other domains reference the table directly — `coachesTable` (a coach's login) and
-`submissionEventsTable` (`actorId`, null for the customer and the cron).
+other domains reference the table directly — `coachTable` (a coach's login) and
+`submissionEventTable` (`actorId`, null for the customer and the cron).
 
 ## Where we are — 2026-08-01
 
 - ✅ **`listAdminEmails()`** — where operator notifications go, read from the
-  `users` table rather than an env var. The people who should hear about a stalled
+  `operator` table rather than an env var. The people who should hear about a stalled
   hand-off or a new payment are exactly the people who can log in and act on it,
   and a config value would let those two drift the moment an operator changes.
   Distinct from `site.email` (the public address) and `EMAIL_FROM` (who mail is
@@ -61,7 +61,7 @@ other domains reference the table directly — `coachesTable` (a coach's login) 
   guards.
 - ✅ First admin seeded by `npm run db:seed`.
 - ✅ `createOperator` is wired to the admin coach-management screen (creates a
-  `users` + `coaches` pair).
+  `operator` + `coach` pair).
 - ✅ **Change password** at `/account` (any signed-in operator) — verifies the
   current password, then updates the hash. Covers the seeded-admin gap.
 - 🔶 **No forgot-password (unauthenticated email reset) yet** — it needs a reset-token
