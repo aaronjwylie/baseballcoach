@@ -1063,6 +1063,11 @@ Read this section before coding. These have bitten *this* project.
 A feature is "done" when:
 
 1. Code compiles with no TypeScript errors and no ESLint warnings
+1a. **`npm run check:names` passes.** It is the first step of `npm run build`, so a
+   failure blocks the deploy. It catches a table export used as a word — in copy, a
+   URL, a storage path, or prose — which `tsc` and `eslint` structurally cannot, since
+   a wrong string is a well-typed string. Sixty-six such strings shipped on 2026-08-05
+   with every other check green (`_NomenclatureLaw.md` §2b).
 1b. **`npm run simulate` passes.** It walks all sixteen rungs through the real
    domain functions, and it is the only check that catches a guard which stopped
    matching when the ladder grew — a comparison against one literal status stays

@@ -1,8 +1,8 @@
 /**
- * Seed the operatorTable and some sample data for local dev.
+ * Seed the operators and some sample data for local dev.
  *
  * The portal has no public signup — the initial admin (Yuta) is created here,
- * plus one coach and a few submissionTable so the admin queue isn't empty on a
+ * plus one coach and a few submissions so the admin queue isn't empty on a
  * fresh checkout. Idempotent: re-running is a no-op once things exist.
  *
  * Admin/coach credentials come from env with dev defaults.
@@ -41,7 +41,7 @@ async function main() {
   const admin = await ensureUser(adminEmail, adminPassword, "admin");
   console.log(`[seed] admin ${adminEmail} ${admin.created ? "created" : "exists"}`);
 
-  // The admin is always seeded. The sample coach + submissionTable are dev-only
+  // The admin is always seeded. The sample coach + submissions are dev-only
   // fixtures — never pollute a production database with them.
   if (process.env.SEED_SAMPLES !== "1") {
     console.log("[seed] SEED_SAMPLES != 1 — admin only, skipping sample data");
@@ -63,7 +63,7 @@ async function main() {
 
     The bilingual case is the one worth seeding deliberately. A rule written as
     "do the sets match?" rather than "do they overlap?" passes both single-
-    language coachTable and fails only here.
+    language coaches and fails only here.
   */
   const sampleCoaches = [
     { email: "coach@example.com", name: "Coach Tanaka", languages: ["English", "Japanese"], specialties: ["Hitting", "Pitching"] },
@@ -133,9 +133,9 @@ async function main() {
       stripeAmount: 8000,
     });
 
-    console.log("[seed] created 3 sample submissionTable");
+    console.log("[seed] created 3 sample submissions");
   } else {
-    console.log(`[seed] ${n} submissionTable already present — skipping samples`);
+    console.log(`[seed] ${n} submissions already present — skipping samples`);
   }
 
   if (admin.created && !process.env.SEED_ADMIN_PASSWORD) {

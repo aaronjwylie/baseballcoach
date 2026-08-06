@@ -82,7 +82,7 @@ export async function listFeedbackFiles(
 }
 
 /**
- * Intake files for several submissionTable at once — the portal's read. One query
+ * Intake files for several submissions at once — the portal's read. One query
  * for a whole page; the caller groups by `submissionId`.
  */
 export async function listFilesForSubmissions(

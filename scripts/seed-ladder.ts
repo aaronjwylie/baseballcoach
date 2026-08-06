@@ -188,7 +188,7 @@ async function main() {
     console.log(`  ${String(i + 1).padStart(2)} ${status.padEnd(21)} ${NAMES[i]}`);
   }
 
-  console.log(`\n[ladder] seeded ${made} submissionTable, one per rung.`);
+  console.log(`\n[ladder] seeded ${made} submissions, one per rung.`);
   console.log(`[ladder] one has a failed ③ hand-off, so the trail's error state is visible.`);
   process.exit(0);
 }

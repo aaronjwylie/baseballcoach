@@ -63,7 +63,7 @@ export async function getOperatorById(id: string): Promise<Operator | null> {
 
 /**
  * Create a coach's login. Admin-only (the caller enforces that). Returns the new
- * operator; the coachTable row is created alongside by the coach domain.
+ * operator; the coaches row is created alongside by the coach domain.
  */
 export async function createOperator(
   email: string,

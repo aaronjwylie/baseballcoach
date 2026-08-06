@@ -262,7 +262,7 @@ export async function bounceOf(
 }
 
 /**
- * The trail for a whole page of submissionTable, in one read.
+ * The trail for a whole page of submissions, in one read.
  *
  * The progress view needs two things per row — which rungs it has passed
  * through, and which messages landed — and both live in the same table. One
