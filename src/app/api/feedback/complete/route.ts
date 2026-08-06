@@ -11,7 +11,7 @@ import { recordFeedbackFile } from "@/domains/feedback";
  *
  * The browser reports where the object landed, so none of it is trusted: the
  * operator gate runs again, and the submission is taken from the pathname
- * (`submissionTable/<id>/feedback/…`), never from a field the browser could point
+ * (`submissions/<id>/feedback/…`), never from a field the browser could point
  * anywhere. Ownership is re-checked before the row is written.
  */
 const bodySchema = z.object({
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid upload details." }, { status: 400 });
   }
 
-  const match = parsed.data.pathname.match(/^submissionTable\/([^/]+)\/feedback\//);
+  const match = parsed.data.pathname.match(/^submissions\/([^/]+)\/feedback\//);
   if (!match) {
     return NextResponse.json(
       { error: "That upload isn't a feedback file." },

@@ -1,6 +1,6 @@
 /**
  * The status capability — an unguessable link straight to a customer's
- * submissionTable.
+ * submissions.
  *
  * **The link is the proof.** It only ever reaches an address that verified
  * itself at step 2 *and* paid at step 4, so holding it is stronger evidence than
@@ -18,7 +18,7 @@
  *
  * Long-lived, deliberately. A customer digs out a months-old receipt precisely
  * when they've lost track of something, which is the worst moment to be told the
- * link has expired. What it can show is bounded by what the submissionTable
+ * link has expired. What it can show is bounded by what the submissions
  * themselves still hold: once the sweep runs, the rows remain and the downloads
  * answer 410.
  */

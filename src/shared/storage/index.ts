@@ -21,7 +21,7 @@ export const storage: StorageDriver = env.blobToken ? blobDriver : localDriver;
  * submission.
  */
 export function submissionFolder(submissionId: string): string {
-  return `submissionTable/${submissionId}`;
+  return `submissions/${submissionId}`;
 }
 
 /**
@@ -70,7 +70,7 @@ export function translationFileKey(
  * on replace.
  */
 export function coachImageKey(coachId: string, filename: string): string {
-  return `coachTable/${coachId}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
+  return `coaches/${coachId}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;
 }
 
 /**

@@ -11,7 +11,7 @@
  * same word for the same thing.
  *
  * Server-side re-validation is not optional. Client validation is a courtesy to
- * honest operatorTable; anyone can POST directly.
+ * honest operators; anyone can POST directly.
  */
 import { z } from "zod";
 import {

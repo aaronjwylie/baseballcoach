@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default async function AdminCoachesPage() {
   await requireRole("admin");
-  const coachTable = await listCoaches();
+  const coaches = await listCoaches();
 
   return (
     <Container>
@@ -20,15 +20,15 @@ export default async function AdminCoachesPage() {
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">
-              {coachTable.length} coach{coachTable.length === 1 ? "" : "es"}
+              {coaches.length} coach{coaches.length === 1 ? "" : "es"}
             </h2>
             <ul className="mt-3 space-y-3">
-              {coachTable.length === 0 && (
+              {coaches.length === 0 && (
                 <li className="rounded-2xl border border-line bg-white p-5 text-sm text-ink-muted">
-                  No coachTable yet — add one on the right.
+                  No coaches yet — add one on the right.
                 </li>
               )}
-              {coachTable.map((c) => (
+              {coaches.map((c) => (
                 <li key={c.id} className="rounded-2xl border border-line bg-white p-5">
                   <div className="flex items-center justify-between">
                     <div>
@@ -42,7 +42,7 @@ export default async function AdminCoachesPage() {
                         {c.isActive ? "Active" : "Inactive"}
                       </span>
                       <Link
-                        href={`/admin/coachTable/${c.id}`}
+                        href={`/admin/coaches/${c.id}`}
                         className="text-xs font-semibold text-accent hover:underline"
                       >
                         Edit

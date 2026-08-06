@@ -21,11 +21,11 @@ import { assignCoachAction } from "../api/coachActions";
 export function AssignCoachSelect({
   submissionId,
   assignedCoachId,
-  coachTable,
+  coaches,
 }: {
   submissionId: string;
   assignedCoachId?: string | null;
-  coachTable: { id: string; name: string }[];
+  coaches: { id: string; name: string }[];
 }) {
   const [coachId, setCoachId] = useState(assignedCoachId ?? "");
   const router = useRouter();
@@ -48,7 +48,7 @@ export function AssignCoachSelect({
         <option value="" disabled>
           Assign…
         </option>
-        {coachTable.map((c) => (
+        {coaches.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
           </option>

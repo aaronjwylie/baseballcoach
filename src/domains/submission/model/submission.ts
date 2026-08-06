@@ -2,7 +2,7 @@
  * The submission domain model — the vocabulary the whole app speaks.
  *
  * Knows nothing about storage. The Postgres column names live in
- * `./submissionTable.ts`; the row↔domain mapping lives in `api/submissionRow.ts`.
+ * `./submissions.ts`; the row↔domain mapping lives in `api/submissionRow.ts`.
  * If storage ever moves, this file doesn't change.
  *
  * **The vocabularies here are the source.** `./submissionStatusEnum.ts` and
@@ -15,7 +15,7 @@
  * the API, and the UI.
  *
  * **A submission carries a pack of files, not one video.** Its uploads are rows
- * in `submissionFileTable` (see `./submissionFile.ts`); nothing here holds a single
+ * in `submissionFiles` (see `./submissionFile.ts`); nothing here holds a single
  * locator, and phrasing anything as "the video" is how the old one-column model
  * crept back in.
  */
@@ -23,7 +23,7 @@
 /**
  * The languages either side can declare.
  *
- * Two, because that's what the business is: parents in English, coachTable in
+ * Two, because that's what the business is: parents in English, coaches in
  * Japanese, and the ones in the middle. Kept as free text in the column rather
  * than an enum so a third can be added by typing it, and compared
  * case-insensitively so "english" and "English" are the same claim.
@@ -100,7 +100,7 @@ export type Focus = (typeof FOCUS_OPTIONS)[number];
  * **It is a path with branches, not a progress bar.** Four rungs are only
  * touched when a submission needs translating; a coach who reads English takes
  * `assigned → sent_to_coach` and `awaiting_approval → complete` directly.
- * Anything rendering this as a linear track will be wrong for most submissionTable.
+ * Anything rendering this as a linear track will be wrong for most submissions.
  *
  * The vocabulary is **intake / response** — what the customer sent, what the
  * coach wrote (`_NomenclatureLaw.md` §3). Statuses are **participles** (what has
@@ -388,7 +388,7 @@ export interface Submission {
   paidAt?: string;
 
   // The coach's response — a storage locator, served via /api/feedback/[id].
-  // The customer's own uploads are rows in `submissionFileTable`, not a field here.
+  // The customer's own uploads are rows in `submissionFiles`, not a field here.
   feedbackUrl?: string;
   /** What the coach was sent at step 8, and the customer at step 13. */
   coachFileSet?: FileSet;

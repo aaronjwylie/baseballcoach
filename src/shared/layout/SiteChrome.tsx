@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
  *
  * The operator portal (`/admin`, `/coach`, `/account`, `/login`) is an internal
  * tool — the "Pricing / FAQ / Submit a video" header belongs to the customer
- * site, not to the admin managing coachTable. Those routes render bare; everything else
+ * site, not to the admin managing coaches. Those routes render bare; everything else
  * gets the header and footer.
  *
  * A client gate rather than route groups so the marketing/customer pages stay

@@ -6,8 +6,8 @@
  *    are set; clear them (and redeploy) to lift it. It runs on every page but
  *    NOT on `/api` (the matcher excludes it), so webhooks and uploads still work.
  *
- * 2. **Operator auth gate** (optimistic): bounce anonymous operatorTable off the portal,
- *    bounce signed-in operatorTable off /login, keep each role in its own portal. The
+ * 2. **Operator auth gate** (optimistic): bounce anonymous operators off the portal,
+ *    bounce signed-in operators off /login, keep each role in its own portal. The
  *    real, secure checks live in the operator DAL, run per page.
  *
  * Imports `shared/auth/token` directly (not the barrel) to avoid pulling

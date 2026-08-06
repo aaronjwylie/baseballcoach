@@ -1,5 +1,5 @@
 /**
- * The coach domain — the people who review submissionTable, and the admin verbs for
+ * The coach domain — the people who review submissions, and the admin verbs for
  * managing them and assigning work.
  */
 export {

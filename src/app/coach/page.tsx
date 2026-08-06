@@ -25,10 +25,10 @@ export const metadata: Metadata = {
 export default async function CoachHomePage() {
   const session = await requireRole("coach");
   const coach = await getCoachByOperatorId(session.operatorId);
-  const submissionTable = coach ? await findByCoach(coach.id) : [];
+  const submissions = coach ? await findByCoach(coach.id) : [];
   // One query for the page rather than one per card.
   const filesBySubmission = await listFilesForSubmissions(
-    submissionTable.map((s) => s.id),
+    submissions.map((s) => s.id),
   );
 
   // Prod uploads straight to Blob; dev proxies to disk. Same seam the customer
@@ -37,7 +37,7 @@ export default async function CoachHomePage() {
 
   // A coach's work is "open" until they hand it to the admin; once sent it's awaiting
   // approval (or delivered), and out of their hands.
-  const open = submissionTable.filter(
+  const open = submissions.filter(
     isWithCoach,
   );
 
@@ -51,7 +51,7 @@ export default async function CoachHomePage() {
       ),
     ),
   );
-  const done = submissionTable.filter(
+  const done = submissions.filter(
     hasResponse,
   );
 

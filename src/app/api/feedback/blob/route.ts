@@ -13,7 +13,7 @@ import { getSettings, maxFileSizeBytes } from "@/domains/settings";
  *
  * The gate is **operator** rather than the customer flow cookie — a coach may
  * only deliver for their own assignments, the admin for anyone. The submission
- * is named by the pathname (`submissionTable/<id>/feedback/…`), which the browser
+ * is named by the pathname (`submissions/<id>/feedback/…`), which the browser
  * proposes, so it's parsed and ownership re-checked before any token is minted.
  */
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
         const session = await getSession();
         if (!session) throw new Error("Sign in to upload feedback.");
 
-        const match = pathname.match(/^submissionTable\/([^/]+)\/feedback\//);
+        const match = pathname.match(/^submissions\/([^/]+)\/feedback\//);
         if (!match) {
           throw new Error("Feedback must go in the submission's feedback folder.");
         }

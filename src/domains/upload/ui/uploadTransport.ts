@@ -51,7 +51,7 @@ const CUSTOMER_ENDPOINTS: UploadEndpoints = {
 
 export interface UploadRequest {
   mode: UploadMode;
-  /** `submissionTable/<id>` — where this submission's files live. */
+  /** `submissions/<id>` — where this submission's files live. */
   folder: string;
   file: File;
   onProgress: (percentage: number) => void;
