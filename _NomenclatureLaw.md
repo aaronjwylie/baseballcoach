@@ -124,18 +124,27 @@ already existed **structurally could not** catch this class of mistake.
 
 ## 3 · The settled words
 
-The vocabulary is **intake / response** — what the customer sent, what the coach wrote. It runs
+The vocabulary is **intake / feedback** — what the customer sent, what the coach wrote. It runs
 through file kinds, statuses, folders, and conversation alike.
+
+It was **intake / response** until 2026-08-05. `response` was chosen for symmetry with `intake`
+and lost to the fact that nobody says it: the customer is promised *feedback*, the button says
+*Send feedback*, the email is *your feedback is ready*, and the domain folder was `feedback` from
+the start. One word appearing in the schema and a different one in every sentence around it is the
+same violation as two folders for one concept — §2, one level up. Migration `0005` renamed the four
+enum values; see also **§2b**, since a rename this broad is exactly what `check:names` exists to
+police.
 
 | Word | Means |
 |---|---|
 | **customer** | the parent who pays. **Never has an account** |
 | **player** | the child in the footage. A field on a submission, never an entity |
 | **coach** | the reviewer in Japan. Has an operator login |
-| **operator** | anyone who logs in — `admin` (the admin) or `coach`. The word that covers both |
+| **translator** | carries a submission between languages. An operator login too — a role, not a table |
+| **operator** | anyone who logs in — `admin` (the admin), `coach`, or `translator`. The word that covers all three |
 | **submission** | one paid request carrying a **pack** of files, reviewed together — not one video |
 | **intake** | the files the **customer** sent |
-| **response** | the files the **coach** wrote back |
+| **feedback** | the files the **coach** wrote back |
 | **pack** | the set of files moving together. Preferred over "the files" when the togetherness matters |
 | **focus** | what the review is about — `Hitting` · `Pitching` · `Fielding` · `Catching` · `Other` |
 | **the flow** | the customer's four steps on `/start`. Not "the funnel", not "checkout" |
@@ -159,12 +168,13 @@ through file kinds, statuses, folders, and conversation alike.
 | ~~Retired~~ | Use | Why |
 |---|---|---|
 | ~~video~~ (as the unit) | **submission** / **pack** | a submission carries clips, stills and documents. "Video" named it wrongly from the start |
-| ~~feedback file~~ (singular) | **response** | it's a pack now, like the intake |
+| ~~feedback file~~ (singular) | **feedback** (the pack) | it's a pack now, like the intake — the retirement was the *singular*, not the word |
+| ~~response~~ | **feedback** | chosen for symmetry with `intake`, retired because nobody says it — see §3. Renamed 2026-08-05, migration `0005` |
 | ~~resume~~ | — | there is no resume. Every page load starts at step 1 |
 | ~~awaiting_upload~~ | — | retired with the flow that needed it; files arrive before payment |
 | ~~funnel~~ | **the flow** | one word for the customer's path |
 | ~~passthrough~~ | — | the Mux trick. A submission's own uuid is the link |
-| ~~user~~ / ~~account~~ (the entity) | **operator** | settled above since the portal existed, but the code said `account` (folder), `user` (files, table) and `Operator` (types) — three words, and the settled one used only by the types. Worse than untidy: **customers use this product constantly and never get a row**, so a table called `users` named the wrong population. Renamed 2026-08-05, migration `0001` ([ADR 016](docs/decisions/016-operator-not-account.md)) |
+| ~~user~~ / ~~account~~ (the entity) | **operator** | settled above since the portal existed, but the code said `account` (folder), `user` (files, table) and `Operator` (types) — three words, and the settled one used only by the types. Worse than untidy: **customers use this product constantly and never get a row**, so a table called `users` named the wrong population. Renamed 2026-08-05, migration `0001` ([ADR 016](docs/decisions/016-operator-not-account.md)). The last one hiding in a function name — `setUserPassword` — went on 2026-08-06 |
 
 ---
 

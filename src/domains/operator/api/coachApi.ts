@@ -12,7 +12,8 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
-import { createOperator, listAdminEmails, setUserPassword } from "./operatorApi";
+import { listAdminEmails } from "./operatorApi";
+import { createOperator, setOperatorPassword } from "./operatorCredentialApi";
 import {
   getSubmission,
   markCoachCollected,
@@ -141,7 +142,7 @@ export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach>
   }
 
   // An admin reset — no current-password check; the admin's authority is the guard.
-  if (password) await setUserPassword(id, password);
+  if (password) await setOperatorPassword(id, password);
 
   const coach = await getCoach(id);
   if (!coach) throw new Error(`coach ${id} vanished mid-update`);

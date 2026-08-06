@@ -3,14 +3,16 @@
 ## The northstar
 
 `operator` is who can log into the operator portal and what they're allowed to
-touch. Two roles: **admin** (the admin) and **coach**. **Customers never get an operator row** —
-they're identified by the email on their submission, not a login.
+touch. Three roles: **admin** (the admin), **coach**, and **translator**.
+**Customers never get an operator row** — they're identified by the email on
+their submission, not a login.
 
 The noun is an `Operator` (`{ id, email, role }`) — the password hash never
-leaves `api/operatorApi.ts`. The verbs are `login` / `logout` (server actions) and
-the guards `requireSession` / `requireRole` (the DAL). The session is a stateless
-HS256 JWT in an httpOnly cookie; the crypto seam lives in `shared/auth`, this
-domain owns the payload shape (`OperatorSession = { userId, role }`).
+leaves `api/operatorCredentialApi.ts`. The verbs are `login` / `logout` (server
+actions) and the guards `requireSession` / `requireRole` (the DAL). The session
+is a stateless HS256 JWT in an httpOnly cookie; the crypto seam lives in
+`shared/auth`, this domain owns the payload shape
+(`OperatorSession = { operatorId, role }`).
 
 Invariants:
 
@@ -20,18 +22,51 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
+## The password stops at one file — 2026-08-06
+
+`api/operatorApi.ts` split in two. The record — `listAdminEmails`,
+`getOperatorById`, `findOperatorByEmail` — stayed. Everything that touches the
+stored hash moved to **`api/operatorCredentialApi.ts`**, which is now the only
+file in `src/` that reads or writes `operatorTable.passwordHash`, and the only
+one in this domain that imports bcrypt. One grep confirms it, which is the
+whole reason the split is worth its two files:
+
+```
+grep -rn "passwordHash" src/
+```
+
+Three things fell out of doing it rather than just asserting it:
+
+- **`createOperator` moved to the credentials side.** It reads like a record
+  function, and the alternative was exporting a `hashPassword` helper for the
+  record side to call — but a hasher that leaves the file can be called from
+  anywhere, which is the containment traded away for a tidier filename. Creating
+  an operator row *is* minting a credential; the parts of a person that aren't a
+  login live on `operator_profile`, created by `coachApi.createCoach`.
+- **The forgot-password flow was the one real exception.** It reads a 24-char
+  slice of the hash to bind its emailed link, making the link single-use with no
+  schema change. That survives as `passwordFingerprint()` — the slicing happens
+  behind the boundary and the caller gets a string it can only compare.
+- **`setUserPassword` → `setOperatorPassword`.** `user` is a retired word
+  (`_NomenclatureLaw.md` §3); this was the last live one in a function name.
+
+The four credential functions also came **off the barrel**. None had ever been
+imported from outside the domain — the three callers are neighbours and reach
+them relatively. Exporting them published a password-setting function to the
+whole app on the strength of nobody having called it yet.
+
 ## The slice owns its storage — 2026-08-05
 
 `operator` and `operatorRole` are declared here now — `model/operatorTable.ts` and
 `model/operatorRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
-The enum **derives** from `ROLES` in `model/user.ts`, which is also where
+The enum **derives** from `ROLES` in `model/operator.ts`, which is also where
 `type Role` comes from: one list, two consumers. `Role` used to be a bare union
 spelled a second time in the schema.
 
-**This slice is `user`'s home, and there is no `domains/user/`.** Operator
-identity has always lived under `account`, and a second folder for the same
-concept is the one-stem violation `_NomenclatureLaw.md` §2 exists to catch. Two
-other domains reference the table directly — `coachTable` (a coach's login) and
+**This slice is the home for operator identity, and there is no `domains/user/`.**
+A second folder for the same concept is the one-stem violation
+`_NomenclatureLaw.md` §2 exists to catch. Two other tables reference this one
+directly — `submissionAssignmentTable` (who owes a file) and
 `submissionEventTable` (`actorId`, null for the customer and the cron).
 
 ## Where we are — 2026-08-01

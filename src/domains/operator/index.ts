@@ -13,14 +13,16 @@ export { RequestResetForm } from "./ui/RequestResetForm";
 export { ResetPasswordForm } from "./ui/ResetPasswordForm";
 export { login, logout, changePasswordAction } from "./api/auth";
 export { getSession, requireSession, requireRole } from "./api/dal";
-export {
-  verifyCredentials,
-  getOperatorById,
-  createOperator,
-  changePassword,
-  setUserPassword,
-  listAdminEmails,
-} from "./api/operatorApi";
+export { getOperatorById, listAdminEmails } from "./api/operatorApi";
+/*
+  `operatorCredentialApi` is deliberately absent.
+
+  Its four functions were all exported here and none of them was ever imported
+  from outside this domain — `auth`, `coachApi` and `passwordResetApi` reach
+  them relatively, as neighbours. Leaving them on the barrel published a
+  password-setting function to the whole app on the strength of nobody having
+  called it yet.
+*/
 export type {
   Role,
   Operator,

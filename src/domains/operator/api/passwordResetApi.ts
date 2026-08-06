@@ -6,12 +6,13 @@
  * the hash, and the spent token's binding no longer matches. Short-lived (one
  * hour), and signed with AUTH_SECRET like the session, so it can't be forged.
  */
-import { eq } from "drizzle-orm";
-import { db } from "@/shared/db";
-import { operatorTable } from "../model/operatorTable";
 import { signSession, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { setUserPassword } from "./operatorApi";
+import { findOperatorByEmail } from "./operatorApi";
+import {
+  passwordFingerprint,
+  setOperatorPassword,
+} from "./operatorCredentialApi";
 import { sendPasswordResetEmail } from "./resetEmail";
 
 const RESET_MAX_AGE_S = 60 * 60; // one hour
@@ -30,15 +31,14 @@ interface ResetPayload {
  */
 export async function requestPasswordReset(email: string): Promise<void> {
   const clean = email.trim().toLowerCase();
-  const [row] = await db
-    .select({ id: operatorTable.id, passwordHash: operatorTable.passwordHash })
-    .from(operatorTable)
-    .where(eq(operatorTable.email, clean))
-    .limit(1);
-  if (!row) return;
+  const operator = await findOperatorByEmail(clean);
+  if (!operator) return;
+
+  const fingerprint = await passwordFingerprint(operator.id);
+  if (!fingerprint) return;
 
   const token = await signSession(
-    { sub: row.id, ph: row.passwordHash.slice(0, 24), purpose: PURPOSE },
+    { sub: operator.id, ph: fingerprint, purpose: PURPOSE },
     RESET_MAX_AGE_S,
   );
   const link = `${env.siteUrl}/reset-password?token=${encodeURIComponent(token)}`;
@@ -57,17 +57,12 @@ export async function resetPasswordWithToken(
   const payload = await verifySessionToken<ResetPayload>(token);
   if (!payload || payload.purpose !== PURPOSE) return { ok: false, error: STALE };
 
-  const [row] = await db
-    .select({ passwordHash: operatorTable.passwordHash })
-    .from(operatorTable)
-    .where(eq(operatorTable.id, payload.sub))
-    .limit(1);
   // A mismatch means the password already changed since the link was issued —
-  // the link is single-use and this one is spent.
-  if (!row || row.passwordHash.slice(0, 24) !== payload.ph) {
-    return { ok: false, error: STALE };
-  }
+  // the link is single-use and this one is spent. A missing operator lands in
+  // the same branch, which is the safe direction for a null to fall.
+  const fingerprint = await passwordFingerprint(payload.sub);
+  if (fingerprint !== payload.ph) return { ok: false, error: STALE };
 
-  await setUserPassword(payload.sub, newPassword);
+  await setOperatorPassword(payload.sub, newPassword);
   return { ok: true };
 }
