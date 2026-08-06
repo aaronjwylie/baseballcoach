@@ -44,6 +44,22 @@ const SIDE_OF: Record<FileKind, "intake" | "feedback"> = {
   feedback_translation: "feedback",
 };
 
+/**
+ * What to call the person who owes this kind of file.
+ *
+ * The trail reads "coach assigned — {id}", not "feedback assigned — {id}": a
+ * row a human reads should name the person's job, not the artefact. `intake` is
+ * **null on purpose** — it is the one kind nobody is assigned to produce,
+ * because the customer supplies it, and a Record makes that asymmetry something
+ * this file states rather than something a caller has to remember.
+ */
+export const ASSIGNEE_ROLE: Record<FileKind, string | null> = {
+  intake: null,
+  intake_translation: "intake translator",
+  feedback: "coach",
+  feedback_translation: "feedback translator",
+};
+
 export const INTAKE_KINDS: readonly FileKind[] = FILE_KINDS.filter(
   (kind) => SIDE_OF[kind] === "intake",
 );

@@ -64,6 +64,13 @@
       "when": 1786052952419,
       "tag": "0008_drop_assigned_operator_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786057595627,
+      "tag": "0009_assignment_event_kind",
+      "breakpoints": true
     }
   ]
 }

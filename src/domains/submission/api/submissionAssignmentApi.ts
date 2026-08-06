@@ -30,7 +30,8 @@
  * so for now the status transition is the only row written.
  */
 import { and, eq, inArray } from "drizzle-orm";
-import { db } from "@/shared/db";
+import { db, type Db } from "@/shared/db";
+import { noteAssignment } from "./submissionEventApi";
 import { submissionAssignmentTable } from "../model/submissionAssignmentTable";
 import { submissionTable } from "../model/submissionTable";
 import type { FileKind } from "../model/submissionFile";
@@ -55,6 +56,10 @@ export async function assignOperator(
   produces: FileKind,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    // Who held it, read before the delete — a reassignment owes the trail two
+    // rows, and after the delete there is nothing left to name the first one.
+    const previous = await assigneeFor(submissionId, produces, tx);
+
     await tx
       .delete(submissionAssignmentTable)
       .where(
@@ -66,6 +71,13 @@ export async function assignOperator(
     await tx
       .insert(submissionAssignmentTable)
       .values({ submissionId, operatorId, produces });
+
+    if (previous && previous !== operatorId) {
+      await noteAssignment(submissionId, previous, produces, false, tx);
+    }
+    if (previous !== operatorId) {
+      await noteAssignment(submissionId, operatorId, produces, true, tx);
+    }
 
     // Assignment is a write on the submission too — the abandonment sweep
     // measures from `updatedAt`, and work landing on someone's desk is a sign
@@ -83,6 +95,8 @@ export async function unassignOperator(
   produces: FileKind,
 ): Promise<void> {
   await db.transaction(async (tx) => {
+    const previous = await assigneeFor(submissionId, produces, tx);
+
     await tx
       .delete(submissionAssignmentTable)
       .where(
@@ -91,6 +105,10 @@ export async function unassignOperator(
           eq(submissionAssignmentTable.produces, produces),
         ),
       );
+    if (previous) {
+      await noteAssignment(submissionId, previous, produces, false, tx);
+    }
+
     await tx
       .update(submissionTable)
       .set({ updatedAt: new Date() })
@@ -161,8 +179,9 @@ export async function assignmentsBySubmission(
 export async function assigneeFor(
   submissionId: string,
   produces: FileKind,
+  tx: Db = db,
 ): Promise<string | null> {
-  const [row] = await db
+  const [row] = await tx
     .select({ operatorId: submissionAssignmentTable.operatorId })
     .from(submissionAssignmentTable)
     .where(

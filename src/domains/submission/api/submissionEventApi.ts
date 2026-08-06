@@ -21,9 +21,9 @@
  * with it — a status change nobody can account for is worse than no change.
  */
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { db } from "@/shared/db";
+import { db, type Db } from "@/shared/db";
 import { assignmentsBySubmission } from "./submissionAssignmentApi";
-import type { FileKind } from "../model/submissionFile";
+import { ASSIGNEE_ROLE, type FileKind } from "../model/submissionFile";
 import { submissionEventTable } from "../model/submissionEventTable";
 import { readSession } from "@/shared/auth";
 import type { SubmissionStatus } from "../model/submission";
@@ -31,9 +31,6 @@ import type {
   SubmissionEventKind,
   EmailOutcome,
 } from "../model/submissionEvent";
-
-/** A transaction handle, or the connection itself. */
-type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface SubmissionEvent {
   id: string;
@@ -179,6 +176,56 @@ export async function noteVerification(
     });
   } catch (err) {
     console.error(`[trail] recording a verification failed:`, err);
+  }
+}
+
+/**
+ * Work landed on someone's desk, or came off it.
+ *
+ * **The row the join can't hold.** `submission_assignment` answers *who has
+ * this now* and nothing else — unassigning deletes the row, reassigning
+ * replaces it — so without this, changing coaches erased the fact that the
+ * first one ever had it. That is exactly the history worth having when a
+ * submission has been sitting for a week.
+ *
+ * One row per assignment and one per removal, each carrying the operator's id
+ * rather than a position. "assigned — 1, 2, 3" answers *how many* and nothing
+ * else; the id answers *who*, and a fourth assignment needs no new row shape.
+ *
+ * **Not the `assigned` rung.** The ladder moving is a different fact, recorded
+ * separately by the caller — writing both as one put the rung in the trail
+ * twice.
+ *
+ * Best-effort, like the other notes: it is called inside the transaction that
+ * did the work, but a failure to write history must never undo the history.
+ */
+export async function noteAssignment(
+  submissionId: string,
+  operatorId: string,
+  produces: FileKind,
+  assigned: boolean,
+  tx?: Db,
+): Promise<void> {
+  try {
+    // `intake` is the kind nobody is assigned to produce. Reaching here with it
+    // means a caller invented an assignment the model doesn't have.
+    const role = ASSIGNEE_ROLE[produces];
+    if (!role) return;
+
+    await (tx ?? db).insert(submissionEventTable).values({
+      submissionId,
+      kind: "assignment",
+      // No rung — a hand-off between people isn't a place on the ladder, the
+      // same reason a send and a verification carry none.
+      status: null,
+      label: `${role} ${assigned ? "assigned" : "unassigned"} — ${operatorId}`,
+      // The admin who did it. Read from the session, never passed in: a
+      // parameter gets forgotten, and the forgotten case writes an anonymous
+      // row indistinguishable from a legitimate one.
+      actorId: await currentActorId(),
+    });
+  } catch (err) {
+    console.error(`[trail] recording an assignment failed:`, err);
   }
 }
 

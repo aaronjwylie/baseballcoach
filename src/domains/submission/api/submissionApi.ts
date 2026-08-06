@@ -158,8 +158,9 @@ export async function assignSubmissionCoach(
   coachId: string,
 ): Promise<Submission> {
   // A coach owes the feedback — that is what an assignment names now (ADR 018).
-  // `assignOperator` writes the join and keeps the vestigial column in step,
-  // both inside one transaction.
+  // `assignOperator` writes the join and its trail rows in one transaction; the
+  // rung is recorded separately below, because the ladder moving and the work
+  // landing on a named desk are different facts.
   await assignOperator(submissionId, coachId, "feedback");
   return updateSubmission(submissionId, { status: "assigned" });
 }

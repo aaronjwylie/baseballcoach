@@ -172,6 +172,40 @@ async function walk(label: string, translating: boolean) {
   const assigned = await rung(s.id, "assigned", "admin");
   check(isWithCoach(assigned), "   it's on the coach's desk");
 
+  /*
+    The hand-off leaves its own row, and it is not the rung.
+
+    `submission_assignment` only ever says who has it *now* — a reassignment
+    replaces the row — so without these the first coach's turn vanishes the
+    moment a second one is chosen. That is the case worth asserting, not the
+    happy one.
+  */
+  const handOffs = () =>
+    listSubmissionEvents(s.id).then((es) => es.filter((e) => e.kind === "assignment"));
+  const firstHandOff = await handOffs();
+  check(firstHandOff.length === 1, `   the assignment is in the trail (${firstHandOff.length})`);
+  check(
+    firstHandOff[0]?.label === `coach assigned — ${coach.id}`,
+    "   and it names the coach, not the file kind",
+  );
+
+  const standIn = await ensureCoach(`${label} Stand-In`, coach.languages);
+  await assignSubmissionCoach(s.id, standIn.id);
+  const afterSwap = await handOffs();
+  check(afterSwap.length === 3, `   a reassignment writes two more rows (${afterSwap.length})`);
+  check(
+    afterSwap[1]?.label === `coach unassigned — ${coach.id}`,
+    "   the first coach's turn survives being replaced",
+  );
+  check(
+    (await at(s.id)).status === "assigned",
+    "   and reassigning doesn't re-record the rung",
+  );
+
+  // Put it back, so the rest of the walk runs against the coach whose
+  // languages decided whether this path translates at all.
+  await assignSubmissionCoach(s.id, coach.id);
+
   // ── rungs 5–6: translation, only when the coach needs it ─────────────
   if (translating) {
     await updateSubmission(s.id, { status: "intake_translating" });

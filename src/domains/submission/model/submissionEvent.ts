@@ -15,6 +15,17 @@
  * and nothing was writing it down, so a progress view could only say "the status
  * implies we tried", never "it landed".
  *
+ * `assignment` closes it on the operator's. Who owes a file lives in
+ * `submission_assignment`, which answers *who has it now* and deliberately
+ * nothing else — unassigning deletes the row. Without a trail entry, a
+ * reassignment erased its own predecessor: the record showed the second coach
+ * and no sign the first had ever held it, which is the one thing you want when
+ * a submission has been sitting for a week.
+ *
+ * It is **not** the `assigned` rung. The ladder moving and the work landing on
+ * a named desk are different facts — writing one as the other put the rung in
+ * the trail twice, which `npm run simulate` caught and nothing else would have.
+ *
  * `verification` closes the same gap on the customer's side. Entering the code
  * is the one thing they *do* between a send and a status move, and it was
  * visible only as its side effect — the rung advancing. A **failed** attempt
@@ -26,6 +37,7 @@ export const SUBMISSION_EVENT_KINDS = [
   "status",
   "email",
   "verification",
+  "assignment",
 ] as const;
 
 export type SubmissionEventKind = (typeof SUBMISSION_EVENT_KINDS)[number];

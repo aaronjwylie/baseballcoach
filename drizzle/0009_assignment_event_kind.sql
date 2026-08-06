@@ -1,0 +1,13 @@
+-- A fourth kind of trail entry: work landing on a named desk, or leaving it.
+--
+-- `submission_assignment` answers *who has this now* and deliberately nothing
+-- else — unassigning deletes the row, reassigning replaces it. So until now a
+-- reassignment erased its own predecessor: the record showed the second coach
+-- and no sign the first had ever held it, which is exactly the history you want
+-- when a submission has been sitting for a week.
+--
+-- Alone in its own migration, on purpose. ADD VALUE commits the new label, but
+-- Postgres will not let it be *used* until that commit lands — so anything
+-- writing an `assignment` row in the same transaction would fail. `0004` added
+-- the translator role under the same rule.
+ALTER TYPE "public"."submission_event_kind" ADD VALUE 'assignment';

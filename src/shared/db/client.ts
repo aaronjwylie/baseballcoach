@@ -31,3 +31,13 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const db = drizzle(client, { casing: "snake_case" });
+
+/**
+ * The connection, or a transaction handle on it.
+ *
+ * Any function that may be called both standalone and inside a
+ * `db.transaction(...)` takes one of these. It lived privately in
+ * `submissionEventApi` until a second file needed it — a type describing the
+ * database belongs with the database, not with the first domain to want it.
+ */
+export type Db = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
