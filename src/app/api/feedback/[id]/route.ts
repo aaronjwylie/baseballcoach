@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   getSubmission,
   getSubmissionFile,
-  isResponse,
+  isFeedback,
   isReleased,
 } from "@/domains/submission";
 import { noteCustomerCollected } from "@/domains/feedback";
@@ -31,7 +31,7 @@ export async function GET(
 ) {
   const { id } = await ctx.params;
   const file = await getSubmissionFile(id);
-  if (!file || !isResponse(file) || !file.fileUrl) {
+  if (!file || !isFeedback(file) || !file.fileUrl) {
     return new Response("Not found", { status: 404 });
   }
 

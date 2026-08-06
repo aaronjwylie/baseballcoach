@@ -165,8 +165,8 @@ export function OperatorOverride({
           >
             <option value="intake">Client</option>
             <option value="intake_translation">Client — translated</option>
-            <option value="response">Coach</option>
-            <option value="response_translation">Coach — translated</option>
+            <option value="feedback">Coach</option>
+            <option value="feedback_translation">Coach — translated</option>
           </select>
         </label>
         <button

@@ -82,7 +82,7 @@ export async function uploadTranslationAction(
   // Only the two translation folders are writable here. The originals are the
   // customer's and the coach's own uploads; an admin overwriting either would
   // destroy the record of what was actually submitted.
-  if (rawKind !== "intake_translation" && rawKind !== "response_translation") {
+  if (rawKind !== "intake_translation" && rawKind !== "feedback_translation") {
     return;
   }
   const kind: FileKind = rawKind;
@@ -130,13 +130,13 @@ export async function uploadTranslationAction(
     submission.status === "assigned" || submission.status === "intake_translating";
   const wasResponse =
     submission.status === "awaiting_approval" ||
-    submission.status === "response_translating";
+    submission.status === "feedback_translating";
 
   if (kind === "intake_translation" && wasIntake) {
     await updateSubmission(id, { status: "intake_translated" });
   }
-  if (kind === "response_translation" && wasResponse) {
-    await updateSubmission(id, { status: "response_translated" });
+  if (kind === "feedback_translation" && wasResponse) {
+    await updateSubmission(id, { status: "feedback_translated" });
   }
 
   revalidatePath("/admin");
@@ -308,7 +308,7 @@ export async function sendForTranslationAction(
     submission.status === "assigned"
       ? "intake_translating"
       : submission.status === "awaiting_approval"
-        ? "response_translating"
+        ? "feedback_translating"
         : null;
   if (!next) return;
 

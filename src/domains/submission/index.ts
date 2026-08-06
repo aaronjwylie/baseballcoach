@@ -43,11 +43,11 @@ export {
 export {
   FILE_KINDS,
   INTAKE_KINDS,
-  RESPONSE_KINDS,
+  FEEDBACK_KINDS,
   formatFileSize,
   isAvailable,
   isIntake,
-  isResponse,
+  isFeedback,
   type FileKind,
   type NewSubmissionFile,
   type SubmissionFile,

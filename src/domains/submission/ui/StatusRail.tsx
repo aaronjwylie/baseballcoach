@@ -28,8 +28,8 @@ import {
 const OPTIONAL: ReadonlySet<SubmissionStatus> = new Set([
   "intake_translating",
   "intake_translated",
-  "response_translating",
-  "response_translated",
+  "feedback_translating",
+  "feedback_translated",
 ]);
 
 /** The one rung that wants the eye. */

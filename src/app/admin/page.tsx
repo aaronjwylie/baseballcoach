@@ -127,8 +127,8 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     // the admin and none of it has reached the customer.
     match: (s) =>
       (s.status === "awaiting_approval" ||
-        s.status === "response_translating" ||
-        s.status === "response_translated") &&
+        s.status === "feedback_translating" ||
+        s.status === "feedback_translated") &&
       !s.archivedAt,
   },
   {
@@ -280,7 +280,7 @@ function SubmissionRow({
 }) {
   const assignedCoach = coaches.find((c) => c.id === submission.assignedOperatorId);
   const empty: Record<FileKind, SubmissionFile[]> = {
-    intake: [], intake_translation: [], response: [], response_translation: [],
+    intake: [], intake_translation: [], feedback: [], feedback_translation: [],
   };
   const folderMap = folders ?? empty;
 
@@ -293,7 +293,7 @@ function SubmissionRow({
   */
   const present = (Object.keys(folderMap) as FileKind[]).filter((k) => folderMap[k].length > 0);
   const intakeSets = availableSets(present.filter((k) => k === "intake" || k === "intake_translation"));
-  const responseSets = availableSets(present.filter((k) => k === "response" || k === "response_translation"));
+  const responseSets = availableSets(present.filter((k) => k === "feedback" || k === "feedback_translation"));
 
   // Both declared sets, intersected. Null when either side hasn't said.
   const wantsTranslation = needsTranslation(
@@ -322,8 +322,8 @@ function SubmissionRow({
     files: {
       intake: folderMap.intake.length,
       intake_translation: folderMap.intake_translation.length,
-      response: folderMap.response.length,
-      response_translation: folderMap.response_translation.length,
+      feedback: folderMap.feedback.length,
+      feedback_translation: folderMap.feedback_translation.length,
     },
     reached: progress?.reached ?? new Set<SubmissionStatus>(),
     emails: progress?.emails ?? new Map<string, boolean>(),

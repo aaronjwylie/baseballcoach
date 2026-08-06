@@ -75,7 +75,7 @@ const STATUS_META: Record<
   // what a customer should be told about it.
   //
   // **Sixteen operator states collapse into five customer ones.** A parent has
-  // no use for `response_translating`; they want to know whether it has arrived,
+  // no use for `feedback_translating`; they want to know whether it has arrived,
   // whether it's being worked on, and whether they can still download it. Every
   // middle rung is therefore the same sentence, deliberately — the collapse is
   // the feature, not laziness.
@@ -103,8 +103,8 @@ const STATUS_META: Record<
   sent_to_coach: WITH_YOUR_COACH,
   in_review: WITH_YOUR_COACH,
   awaiting_approval: WITH_YOUR_COACH,
-  response_translating: WITH_YOUR_COACH,
-  response_translated: WITH_YOUR_COACH,
+  feedback_translating: WITH_YOUR_COACH,
+  feedback_translated: WITH_YOUR_COACH,
 
   // Ready to collect. `resolved` is the admin closing his side of the job — nothing
   // changes for the customer, who can still download.

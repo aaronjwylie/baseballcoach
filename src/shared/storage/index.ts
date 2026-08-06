@@ -58,7 +58,7 @@ export function feedbackFileKey(submissionId: string, filename: string): string 
  */
 export function translationFileKey(
   submissionId: string,
-  kind: "intake_translation" | "response_translation",
+  kind: "intake_translation" | "feedback_translation",
   filename: string,
 ): string {
   return `${submissionFolder(submissionId)}/${kind}/${randomUUID().slice(0, 8)}-${safeName(filename)}`;

@@ -43,13 +43,13 @@ const FOLDERS: {
     writable: true,
   },
   {
-    kind: "response",
+    kind: "feedback",
     label: "Coach",
     hint: "What the coach wrote back",
     writable: false,
   },
   {
-    kind: "response_translation",
+    kind: "feedback_translation",
     label: "Coach — translated",
     hint: "Upload the English version for the customer",
     writable: true,

@@ -44,7 +44,7 @@ function pathTo(status: SubmissionStatus): SubmissionStatus[] {
   return all.slice(0, end + 1).filter((rung) => {
     const optional =
       rung === "intake_translating" || rung === "intake_translated" ||
-      rung === "response_translating" || rung === "response_translated";
+      rung === "feedback_translating" || rung === "feedback_translated";
     return !optional || translating;
   });
 }
@@ -69,8 +69,8 @@ function filesAt(status: SubmissionStatus): FileKind[] {
   const reached = new Set(pathTo(status));
   const kinds: FileKind[] = ["intake"];
   if (reached.has("intake_translated")) kinds.push("intake_translation");
-  if (reached.has("awaiting_approval")) kinds.push("response");
-  if (reached.has("response_translated")) kinds.push("response_translation");
+  if (reached.has("awaiting_approval")) kinds.push("feedback");
+  if (reached.has("feedback_translated")) kinds.push("feedback_translation");
   return kinds;
 }
 
