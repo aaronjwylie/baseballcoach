@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/domains/operator";
 import { getSubmissionFile, isIntake } from "@/domains/submission";
-import { noteCoachCollected } from "@/domains/coach";
+import { noteCoachCollected } from "@/domains/operator";
 import { storage } from "@/shared/storage";
 
 // Private blobs stream through this route rather than redirecting, so a large

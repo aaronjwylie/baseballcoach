@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
 import { requireRole } from "@/domains/operator";
-import { listCoaches, AddCoachForm } from "@/domains/coach";
+import { listCoaches, AddCoachForm } from "@/domains/operator";
 
 export const metadata: Metadata = {
   title: "Admin — Coaches",

@@ -10,13 +10,9 @@
  */
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { operatorTable } from "@/domains/operator/model/operatorTable";
-import { operatorProfileTable } from "@/domains/operator/model/operatorProfileTable";
-import {
-  createOperator,
-  listAdminEmails,
-  setUserPassword,
-} from "@/domains/operator";
+import { operatorTable } from "../model/operatorTable";
+import { operatorProfileTable } from "../model/operatorProfileTable";
+import { createOperator, listAdminEmails, setUserPassword } from "./operatorApi";
 import {
   getSubmission,
   markCoachCollected,

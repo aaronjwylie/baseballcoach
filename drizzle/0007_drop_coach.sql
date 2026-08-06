@@ -1,0 +1,15 @@
+-- The coach table goes.
+--
+-- Kept intact through 0003 as the rollback for the identity split, and it was
+-- never written to again: every field lives on `operator` (name, isActive) or
+-- `operator_profile` (languages, specialties, image, bio), verified 1:1 with no
+-- drift before the code was repointed, and `submission.assigned_operator_id`
+-- stopped referencing it in the same migration.
+--
+-- Dropped now because `domains/coach` dissolved and the declaration had nowhere
+-- honest left to live — a table nothing reads, in a folder that no longer
+-- exists, is worse than either keeping it deliberately or removing it.
+--
+-- Recoverable if ever needed: 0003 holds the SQL that filled it, and the source
+-- data is still in the two tables it was copied to.
+DROP TABLE "coach";
