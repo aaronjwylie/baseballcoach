@@ -1,8 +1,8 @@
 /**
- * Operator identity — **operatorTable only, never customers**.
+ * Operator identity — **operators only, never customers**.
  *
  * A row here is a login. The first `admin` is seeded (`npm run db:seed`);
- * coachTable are created from the admin portal, each paired with a `coachTable` row.
+ * coaches are created from the admin portal, each paired with a `coach` row.
  * There is no self-signup and no customer-facing auth at all.
  */
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";

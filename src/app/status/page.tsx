@@ -14,7 +14,7 @@ export default function StatusPage() {
       <Container className="max-w-xl">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Check your submissionTable
+            Check your submissions
           </h1>
           <p className="mt-4 text-ink-muted">
             Enter the email you used at checkout. No password — your email is

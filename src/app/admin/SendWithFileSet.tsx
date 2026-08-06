@@ -18,7 +18,7 @@ const LABELS: Record<FileSet, string> = {
  * rather than two, so the two can't drift into different wordings or different
  * defaults for the same question.
  *
- * **The control disappears when there's nothing to choose.** Most submissionTable
+ * **The control disappears when there's nothing to choose.** Most submissions
  * have no translation, and a radio with one option is a question that wastes the
  * reader's attention on a decision they don't have. `sets` comes from
  * `availableSets`, which only returns more than one entry when both an original

@@ -5,7 +5,7 @@ import { FeedbackAccess } from "@/domains/feedback/ui/FeedbackAccess";
 import type { PublicSubmission } from "../model/publicSubmission";
 
 /**
- * A customer's submissionTable, rendered.
+ * A customer's submissions, rendered.
  *
  * Extracted from `StatusLookup` so **both doors show the same page**: the
  * capability link from an email lands here directly, and the typed-email lookup
@@ -13,17 +13,17 @@ import type { PublicSubmission } from "../model/publicSubmission";
  * drift, and the row a customer sees would depend on how they arrived.
  */
 export function StatusList({
-  submissionTable,
+  submissions,
   email,
 }: {
-  submissionTable: PublicSubmission[];
+  submissions: PublicSubmission[];
   email: string;
 }) {
-  if (submissionTable.length === 0) {
+  if (submissions.length === 0) {
     return (
       <div className="rounded-2xl border border-line bg-white p-6 text-center">
         <p className="text-ink">
-          No submissionTable found for <span className="font-medium">{email}</span>.
+          No submissions found for <span className="font-medium">{email}</span>.
         </p>
         <p className="mt-1.5 text-sm text-ink-muted">
           Double-check the address, or start a new review.
@@ -38,11 +38,11 @@ export function StatusList({
   return (
     <>
       <ul className="space-y-3">
-        {submissionTable.map((submission, index) => (
+        {submissions.map((submission, index) => (
           <StatusRow key={index} submission={submission} />
         ))}
       </ul>
-      {submissionTable.some((s) => s.hasFeedback) && (
+      {submissions.some((s) => s.hasFeedback) && (
         <div className="mt-6">
           <FeedbackAccess email={email} />
         </div>

@@ -25,6 +25,7 @@ A divergence without an ADR is a bug. A divergence with one is a decision.
 | [015](015-schema-by-domain.md) | Every table lives in the domain that owns it | **Accepted and built — splits CLAUDE.md §5/§8's shared schema file** |
 | [016](016-operator-not-account.md) | One word for the people who log in: `operator` | **Accepted and built — retires `user`/`account`; migration 0001** |
 | [017](017-singular-table-names.md) | Singular table names, and the `Table` suffix | **Accepted and built — amends `_NomenclatureLaw` §1/§2; migration 0002** |
+| [018](018-translator-role.md) | The translator role: `operator` + `operatorProfile`, assignment becomes a join | ⚠️ **Proposed — not built.** Three open questions to settle first |
 
 ## Format
 

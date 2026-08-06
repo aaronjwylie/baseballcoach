@@ -10,7 +10,7 @@ import { runRetentionSweep } from "@/domains/upload";
  * precision on the RESOLVED rule only: "delete uploads 24h after completion"
  * becomes 24–48h in practice, since the job can only notice an elapsed window
  * when it runs. The ABANDONED rule doesn't depend on this schedule at all —
- * `startSubmissionAction` sweeps unpaid submissionTable too, so the flow cleans up
+ * `startSubmissionAction` sweeps unpaid submissions too, so the flow cleans up
  * after itself under any real traffic. Move to `0 * * * *` on Pro.
  * (This note lived in `vercel.json` as a `"//"` key, which Vercel's schema
  * rejects — it broke every build until it was moved here.)
@@ -21,7 +21,7 @@ import { runRetentionSweep } from "@/domains/upload";
  * place in the app where absent config must not degrade gracefully.
  *
  * `maxDuration` is raised because the work is proportional to how many
- * submissionTable came due, and each file is a round trip to Blob.
+ * submissions came due, and each file is a round trip to Blob.
  */
 export const maxDuration = 300;
 

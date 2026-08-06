@@ -8,7 +8,7 @@ import {
 import { StatusList } from "@/domains/submission/ui/StatusList";
 
 export const metadata: Metadata = {
-  title: "Your submissionTable",
+  title: "Your submissions",
   // A capability link. Keep it out of search results.
   robots: { index: false, follow: false },
 };
@@ -44,7 +44,7 @@ export default async function StatusByTokenPage({
           </h1>
           <p className="mt-4 text-ink-soft">
             It may have been mistyped or cut short by an email client. You can
-            still look your submissionTable up by email — we&rsquo;ll send a code to
+            still look your submissions up by email — we&rsquo;ll send a code to
             confirm it&rsquo;s you.
           </p>
           <p className="mt-8">
@@ -60,14 +60,14 @@ export default async function StatusByTokenPage({
     );
   }
 
-  const submissionTable = await lookupPublicSubmissions(email);
+  const submissions = await lookupPublicSubmissions(email);
 
   return (
     <section className="py-14 sm:py-20">
       <Container className="max-w-xl">
         <div className="text-center">
           <h1 className="text-3xl font-medium tracking-tight text-ink sm:text-4xl">
-            Your submissionTable
+            Your submissions
           </h1>
           <p className="mt-4 text-ink-soft">
             Everything sent from <strong className="text-ink">{email}</strong>.
@@ -75,7 +75,7 @@ export default async function StatusByTokenPage({
         </div>
 
         <div className="mt-10">
-          <StatusList submissionTable={submissionTable} email={email} />
+          <StatusList submissions={submissions} email={email} />
         </div>
 
         <p className="mt-8 text-center text-xs text-ink-muted">

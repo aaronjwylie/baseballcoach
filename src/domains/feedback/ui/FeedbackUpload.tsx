@@ -67,7 +67,7 @@ export function FeedbackUpload({
         setProgress({ name: file.name, pct: 0 });
         const uploaded = await uploadFile({
           mode: uploadMode,
-          folder: `submissionTable/${submissionId}/feedback`,
+          folder: `submissions/${submissionId}/feedback`,
           file,
           endpoints,
           onProgress: (pct) => setProgress({ name: file.name, pct }),
