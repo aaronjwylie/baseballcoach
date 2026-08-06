@@ -202,7 +202,7 @@ async function walk(label: string, translating: boolean) {
   check((await sendFeedbackForApproval(s.id)) === null, "   can't deliver with no response file");
   await addSubmissionFile(
     { submissionId: s.id, filename: "review.mp4", contentType: "video/mp4", sizeBytes: 88_000_000, fileUrl: `sim/${s.id}/review.mp4` },
-    "response",
+    "feedback",
   );
   await sendFeedbackForApproval(s.id);
   const delivered = await rung(s.id, "awaiting_approval", "admin");
@@ -212,15 +212,15 @@ async function walk(label: string, translating: boolean) {
 
   // ── rungs 10–11: the response's translation ──────────────────────────
   if (translating) {
-    await updateSubmission(s.id, { status: "response_translating" });
-    await rung(s.id, "response_translating", "translator");
+    await updateSubmission(s.id, { status: "feedback_translating" });
+    await rung(s.id, "feedback_translating", "translator");
     await addSubmissionFile(
       { submissionId: s.id, filename: "review-EN.mp4", contentType: "video/mp4", sizeBytes: 88_000_000, fileUrl: `sim/${s.id}/review-en.mp4` },
-      "response_translation",
+      "feedback_translation",
     );
-    await updateSubmission(s.id, { status: "response_translated" });
-    await rung(s.id, "response_translated", "admin");
-    // No moving it back: approving from `response_translated` is exactly what a
+    await updateSubmission(s.id, { status: "feedback_translated" });
+    await rung(s.id, "feedback_translated", "admin");
+    // No moving it back: approving from `feedback_translated` is exactly what a
     // translated submission has to do, and pretending otherwise hid a real bug.
   }
 

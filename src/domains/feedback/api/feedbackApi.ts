@@ -53,7 +53,7 @@ export async function saveFeedbackFile(
   const fileUrl = await storage.save(key, bytes, contentType);
   return addSubmissionFile(
     { submissionId, filename, contentType, sizeBytes: bytes.byteLength, fileUrl },
-    "response",
+    "feedback",
   );
 }
 
@@ -65,7 +65,7 @@ export async function recordFeedbackFile(
   submissionId: string,
   input: { filename: string; contentType: string; sizeBytes: number; fileUrl: string },
 ): Promise<SubmissionFile> {
-  return addSubmissionFile({ submissionId, ...input }, "response");
+  return addSubmissionFile({ submissionId, ...input }, "feedback");
 }
 
 /**
@@ -183,13 +183,13 @@ export async function approveAndComplete(
   /*
     Two rungs can be approved, not one — the mirror of the hand-off.
 
-    A translated response sits at `response_translated`, so a guard that only
+    A translated response sits at `feedback_translated`, so a guard that only
     accepted `awaiting_approval` meant a review could be translated and then
     never sent. Silently: the action returned null and the click did nothing.
   */
   const approvable =
     submission?.status === "awaiting_approval" ||
-    submission?.status === "response_translated";
+    submission?.status === "feedback_translated";
   if (!submission || !approvable) return null;
 
   /*
@@ -201,7 +201,7 @@ export async function approveAndComplete(
   */
   const files = await listFilesByKinds(
     submissionId,
-    kindsForSet("response", fileSet),
+    kindsForSet("feedback", fileSet),
   );
   if (files.length === 0) return null;
 

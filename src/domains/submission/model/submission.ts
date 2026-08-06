@@ -118,8 +118,8 @@ export type Focus = (typeof FOCUS_OPTIONS)[number];
  * | `sent_to_coach` | step 8 — emailed with the chosen language set, not yet picked up |
  * | `in_review` | step 9 — **the coach actually has the files** |
  * | `awaiting_approval` | step 10 — a response exists; the customer can't see it |
- * | `response_translating` | step 11 — the response has gone out for translation |
- * | `response_translated` | step 12 — the translated version is back and stored |
+ * | `feedback_translating` | step 11 — the response has gone out for translation |
+ * | `feedback_translated` | step 12 — the translated version is back and stored |
  * | `complete` | step 13 — released to the customer |
  * | `collected` | step 14 — **the customer downloaded it.** The retention clock starts |
  * | `resolved` | step 15 — the admin closed it; the thank-you has gone |
@@ -136,8 +136,8 @@ export const SUBMISSION_STATUSES = [
   "sent_to_coach",
   "in_review",
   "awaiting_approval",
-  "response_translating",
-  "response_translated",
+  "feedback_translating",
+  "feedback_translated",
   "complete",
   "collected",
   "resolved",
@@ -182,8 +182,8 @@ const PAID_AT_STATUS: Record<SubmissionStatus, boolean> = {
   sent_to_coach: true,
   in_review: true,
   awaiting_approval: true,
-  response_translating: true,
-  response_translated: true,
+  feedback_translating: true,
+  feedback_translated: true,
   complete: true,
   collected: true,
   resolved: true,
@@ -216,8 +216,8 @@ const HAS_RESPONSE_AT_STATUS: Record<SubmissionStatus, boolean> = {
   sent_to_coach: false,
   in_review: false,
   awaiting_approval: true,
-  response_translating: true,
-  response_translated: true,
+  feedback_translating: true,
+  feedback_translated: true,
   complete: true,
   collected: true,
   resolved: true,
@@ -253,8 +253,8 @@ const RELEASED_AT_STATUS: Record<SubmissionStatus, boolean> = {
   sent_to_coach: false,
   in_review: false,
   awaiting_approval: false,
-  response_translating: false,
-  response_translated: false,
+  feedback_translating: false,
+  feedback_translated: false,
   complete: true,
   collected: true,
   resolved: true,
@@ -285,8 +285,8 @@ const WITH_COACH_AT_STATUS: Record<SubmissionStatus, boolean> = {
   sent_to_coach: true,
   in_review: true,
   awaiting_approval: false,
-  response_translating: false,
-  response_translated: false,
+  feedback_translating: false,
+  feedback_translated: false,
   complete: false,
   collected: false,
   resolved: false,
@@ -335,8 +335,8 @@ const COURT_AT_STATUS: Record<SubmissionStatus, Court> = {
   in_review: "coach",
   // Delivered — nothing reaches the customer until the admin releases it.
   awaiting_approval: "admin",
-  response_translating: "translator",
-  response_translated: "admin",
+  feedback_translating: "translator",
+  feedback_translated: "admin",
   // Released. The clock doesn't start until they collect, so it's their move.
   complete: "customer",
   // Collected — the only thing left is the admin closing it.
@@ -517,8 +517,8 @@ export const RUNG_LABEL: Record<SubmissionStatus, string> = {
   sent_to_coach: "Sent",
   in_review: "Reviewing",
   awaiting_approval: "Submitted",
-  response_translating: "Translating",
-  response_translated: "Translated",
+  feedback_translating: "Translating",
+  feedback_translated: "Translated",
   complete: "Delivered",
   collected: "Collected",
   resolved: "Resolved",

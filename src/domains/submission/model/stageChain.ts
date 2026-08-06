@@ -245,7 +245,7 @@ const reached = (status: SubmissionStatus) => (_s: Submission, f: ProgressFacts)
  *
  * **Two lines still appear at two rungs, and should.** "Handed to the coach" is
  * the way out of both `assigned` and `intake_translated`; "Approved and sent" is
- * the way out of both `awaiting_approval` and `response_translated`. Those are
+ * the way out of both `awaiting_approval` and `feedback_translated`. Those are
  * one action reachable by two routes — translate first, or don't — not a fact
  * stated twice.
  */
@@ -302,7 +302,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
   ],
   in_review: [
-    { what: "Response uploaded", next: "Upload the response", from: "response", act: "waitCoach", records: [...attached("response")], toldOnFail: ["Coach/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Coach/portal: the file appears in their folder"], met: has("response") },
+    { what: "Response uploaded", next: "Upload the response", from: "feedback", act: "waitCoach", records: [...attached("feedback")], toldOnFail: ["Coach/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Coach/portal: the file appears in their folder"], met: has("feedback") },
   ],
   awaiting_approval: [
     { what: "Admin and the coach told", next: "Tell Admin and the coach", from: "⑤", passive: true, records: [...sendRecords("⑤ response submitted → Admin + coach")], failures: [...sendFailures("⑤ response submitted → Admin + coach")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/email: ⑤ response submitted", "Coach/email: ⑤ the same notice"], met: sent("⑤ response submitted → Admin + coach") },
@@ -312,11 +312,11 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       why: "optional — skipped when the response is already readable",
       act: "sendForTranslation",
       passive: true,
-      toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.response_translation > 0,
+      toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.feedback_translation > 0,
     },
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
   ],
-  response_translating: [
+  feedback_translating: [
     {
       what: "Response downloaded", next: "Download the response",
       from: "off-platform",
@@ -325,9 +325,9 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       
       toldOnFail: ["Admin/none: nothing, by design — the step happens off-platform and the upload is the only proof"], toldOnSuccess: ["Admin/none: nothing, by design — there is no signal to surface"], met: () => false,
     },
-    { what: "Translation uploaded", next: "Upload the translation", from: "response_translation", act: "uploadResponse", records: [...attached("response_translation")], toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("response_translation") },
+    { what: "Translation uploaded", next: "Upload the translation", from: "feedback_translation", act: "uploadResponse", records: [...attached("feedback_translation")], toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("feedback_translation") },
   ],
-  response_translated: [
+  feedback_translated: [
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
   ],
   complete: [

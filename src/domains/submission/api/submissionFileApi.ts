@@ -4,12 +4,12 @@
  *
  * The table holds **four kinds** (the four folders), kept apart by the `kind`
  * column — `intake` and `intake_translation` for what the customer sent,
- * `response` and `response_translation` for what the coach wrote back. Every
+ * `response` and `feedback_translation` for what the coach wrote back. Every
  * read here is scoped to one side, so the two never bleed together.
  *
  * **Reads scope by *side*, not by a single kind.** "The customer's files" means
  * the originals *and* their translation, because a translation sits beside its
- * original rather than replacing it. `INTAKE_KINDS` / `RESPONSE_KINDS` carry
+ * original rather than replacing it. `INTAKE_KINDS` / `FEEDBACK_KINDS` carry
  * that, so adding a fifth kind can't silently fall out of a query.
  *
  * ⚠️ Retention: today the sweep empties intake files only. The settled northstar
@@ -22,7 +22,7 @@ import { db } from "@/shared/db";
 import { submissionFileTable } from "../model/submissionFileTable";
 import {
   INTAKE_KINDS,
-  RESPONSE_KINDS,
+  FEEDBACK_KINDS,
   type FileKind,
   type NewSubmissionFile,
   type SubmissionFile,
@@ -74,7 +74,7 @@ export async function listFeedbackFiles(
     .where(
       and(
         eq(submissionFileTable.submissionId, submissionId),
-        inArray(submissionFileTable.kind, RESPONSE_KINDS),
+        inArray(submissionFileTable.kind, FEEDBACK_KINDS),
       ),
     )
     .orderBy(asc(submissionFileTable.uploadedAt));
@@ -155,8 +155,8 @@ export async function listFilesByFolder(
   const folders = {
     intake: [],
     intake_translation: [],
-    response: [],
-    response_translation: [],
+    feedback: [],
+    feedback_translation: [],
   } as Record<FileKind, SubmissionFile[]>;
 
   for (const row of rows) {

@@ -24,8 +24,8 @@
 export const FILE_KINDS = [
   "intake",
   "intake_translation",
-  "response",
-  "response_translation",
+  "feedback",
+  "feedback_translation",
 ] as const;
 
 export type FileKind = (typeof FILE_KINDS)[number];
@@ -37,19 +37,19 @@ export type FileKind = (typeof FILE_KINDS)[number];
  *
  * A Record, not a list, so a fifth kind can't be added without deciding.
  */
-const SIDE_OF: Record<FileKind, "intake" | "response"> = {
+const SIDE_OF: Record<FileKind, "intake" | "feedback"> = {
   intake: "intake",
   intake_translation: "intake",
-  response: "response",
-  response_translation: "response",
+  feedback: "feedback",
+  feedback_translation: "feedback",
 };
 
 export const INTAKE_KINDS: readonly FileKind[] = FILE_KINDS.filter(
   (kind) => SIDE_OF[kind] === "intake",
 );
 
-export const RESPONSE_KINDS: readonly FileKind[] = FILE_KINDS.filter(
-  (kind) => SIDE_OF[kind] === "response",
+export const FEEDBACK_KINDS: readonly FileKind[] = FILE_KINDS.filter(
+  (kind) => SIDE_OF[kind] === "feedback",
 );
 
 /**
@@ -73,12 +73,12 @@ export type FileSet = (typeof FILE_SETS)[number];
  * place that decides where it belongs.
  */
 export function kindsForSet(
-  side: "intake" | "response",
+  side: "intake" | "feedback",
   set: FileSet,
 ): FileKind[] {
-  const original: FileKind = side === "intake" ? "intake" : "response";
+  const original: FileKind = side === "intake" ? "intake" : "feedback";
   const translation: FileKind =
-    side === "intake" ? "intake_translation" : "response_translation";
+    side === "intake" ? "intake_translation" : "feedback_translation";
 
   if (set === "original") return [original];
   if (set === "translation") return [translation];
@@ -94,7 +94,7 @@ export function kindsForSet(
  * things to choose between.
  */
 export function availableSets(kinds: readonly FileKind[]): FileSet[] {
-  const side = kinds.some(isIntakeKind) ? "intake" : "response";
+  const side = kinds.some(isIntakeKind) ? "intake" : "feedback";
   const hasOriginal = kinds.includes(kindsForSet(side, "original")[0]);
   const hasTranslation = kinds.includes(kindsForSet(side, "translation")[0]);
 
@@ -114,8 +114,8 @@ export function isIntake(file: Pick<SubmissionFile, "kind">): boolean {
 }
 
 /** True for a file the coach wrote back, translated or not. */
-export function isResponse(file: Pick<SubmissionFile, "kind">): boolean {
-  return SIDE_OF[file.kind] === "response";
+export function isFeedback(file: Pick<SubmissionFile, "kind">): boolean {
+  return SIDE_OF[file.kind] === "feedback";
 }
 
 export interface SubmissionFile {
