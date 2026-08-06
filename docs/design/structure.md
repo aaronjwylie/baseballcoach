@@ -38,8 +38,7 @@ domains/
   upload/       getting their files to us (storage)
   payment/      paying for one (Stripe) — the LAST step
   feedback/     the coach's response coming back
-  operator/     operator identity — who logs into the portal
-  coach/        the reviewers, and assigning work to them
+  operator/     everyone who logs in — admin, coach, translator — and their profiles
   settings/     the limits the admin tunes without a deploy
   landing/      the sales pitch
 ```

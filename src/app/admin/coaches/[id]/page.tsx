@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
 import { requireRole } from "@/domains/operator";
-import { getCoach, EditCoachForm } from "@/domains/coach";
+import { getCoach, EditCoachForm } from "@/domains/operator";
 
 export const metadata: Metadata = {
   title: "Admin — Edit coach",

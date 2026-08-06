@@ -7,7 +7,7 @@
  */
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/operator";
 import { getSubmission } from "@/domains/submission";
 import { sendFeedbackForApproval } from "./feedbackApi";
 

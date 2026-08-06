@@ -28,3 +28,29 @@ export type {
   LoginState,
   ChangePasswordState,
 } from "./model/operator";
+
+/*
+  The coach surface, absorbed when `domains/coach` dissolved (ADR 018 §5). A
+  coach is an operator with a profile, so its queries were reading this
+  domain's tables from another folder — a dependency violation that only
+  existed because `coach` used to own a table.
+*/
+export {
+  listCoaches,
+  getCoachByOperatorId,
+  getCoach,
+  createCoach,
+  updateCoach,
+  noteCoachCollected,
+} from "./api/coachApi";
+export {
+  createCoachAction,
+  updateCoachAction,
+  assignCoachAction,
+  notifyCoachAction,
+  type CoachFormState,
+} from "./api/coachActions";
+export { AddCoachForm } from "./ui/AddCoachForm";
+export { EditCoachForm } from "./ui/EditCoachForm";
+export { AssignCoachSelect } from "./ui/AssignCoachSelect";
+export type { Coach, NewCoach } from "./model/coach";

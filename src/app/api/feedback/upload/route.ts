@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/operator";
 import { getSubmission } from "@/domains/submission";
 import { saveFeedbackFile } from "@/domains/feedback";
 

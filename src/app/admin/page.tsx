@@ -29,7 +29,7 @@ import {
   notifyCoachAction,
   AssignCoachSelect,
   type Coach,
-} from "@/domains/coach";
+} from "@/domains/operator";
 import { requireRole } from "@/domains/operator";
 import { RowActionForm } from "./RowActionForm";
 import { SendWithFileSet } from "./SendWithFileSet";

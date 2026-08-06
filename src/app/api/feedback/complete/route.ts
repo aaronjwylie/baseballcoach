@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/operator";
 import { getSubmission } from "@/domains/submission";
 import { recordFeedbackFile } from "@/domains/feedback";
 

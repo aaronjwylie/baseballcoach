@@ -170,6 +170,10 @@ diagnose.
 
 ### 5 · `domains/coach` dissolves; `domains/operator` keeps its name
 
+**Done 2026-08-06.** The slice's files moved into `operator`, its barrel merged, its
+documentation folded in, and the `coach` table dropped in migration `0007`. Nine domains,
+not ten.
+
 | what's in it | where it goes |
 | --- | --- |
 | the coach record + CRUD | `operator` |

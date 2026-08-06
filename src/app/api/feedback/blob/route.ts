@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { env } from "@/shared/config/env";
 import { getSession } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/operator";
 import { getSubmission } from "@/domains/submission";
 import { ALLOWED_MIME_TYPES, isAllowedFilename } from "@/domains/upload";
 import { getSettings, maxFileSizeBytes } from "@/domains/settings";

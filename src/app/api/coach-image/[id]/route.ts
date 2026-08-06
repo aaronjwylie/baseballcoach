@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCoach } from "@/domains/coach";
+import { getCoach } from "@/domains/operator";
 import { storage } from "@/shared/storage";
 
 /**

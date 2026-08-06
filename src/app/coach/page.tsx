@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
 import { storage } from "@/shared/storage";
 import { requireRole } from "@/domains/operator";
-import { getCoachByOperatorId } from "@/domains/coach";
+import { getCoachByOperatorId } from "@/domains/operator";
 import {
   findByCoach,
   listFeedbackFiles,

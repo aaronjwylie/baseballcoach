@@ -46,7 +46,6 @@ export * from "@/domains/submission/model/emailOutcomeEnum";
 // Tables, each with its inferred row types.
 export * from "@/domains/operator/model/operatorTable";
 export * from "@/domains/operator/model/operatorProfileTable";
-export * from "@/domains/coach/model/coachTable";
 export * from "@/domains/submission/model/submissionTable";
 export * from "@/domains/submission/model/submissionFileTable";
 export * from "@/domains/submission/model/submissionEventTable";
