@@ -59,6 +59,9 @@ export type ChainAction =
   | "uploadResponse"
   | "waitCustomer"
   | "waitCoach"
+  // Waiting on a named translator, not on the admin doing it themselves. The
+  // distinction only became expressible when a translator could log in.
+  | "waitTranslator"
   | "waitCron";
 
 export interface ChainLine {
@@ -284,15 +287,17 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
     { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
   ],
-  intake_translating: [
+  sent_to_intake_translator: [
     {
-      what: "Originals downloaded", next: "Download the originals",
-      from: "off-platform",
-      why: "nothing observes this — the upload is the proof",
-      passive: true,
+      what: "Translator downloaded the originals", next: "Translator downloads the originals",
+      from: "trail · intake_translating",
+      why: "the only evidence the translator actually has it",
+      act: "waitTranslator",
       
-      toldOnFail: ["Admin/none: nothing, by design — the step happens off-platform and the upload is the only proof"], toldOnSuccess: ["Admin/none: nothing, by design — there is no signal to surface"], met: () => false,
+      toldOnFail: ["Translator/portal: the download is gone — the folder was purged before they collected (410)"], toldOnSuccess: ["Translator/portal: the file downloads", "Admin/email: the translator has it"], met: reached("intake_translating"),
     },
+  ],
+  intake_translating: [
     { what: "Translated files uploaded", next: "Upload the translated files", from: "intake_translation", act: "uploadIntake", records: [...attached("intake_translation")], toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("intake_translation") },
   ],
   intake_translated: [
@@ -324,15 +329,17 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
     },
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
   ],
-  feedback_translating: [
+  sent_to_feedback_translator: [
     {
-      what: "Response downloaded", next: "Download the response",
-      from: "off-platform",
-      why: "nothing observes this — the upload is the proof",
-      passive: true,
+      what: "Translator downloaded the feedback", next: "Translator downloads the feedback",
+      from: "trail · feedback_translating",
+      why: "the only evidence the translator actually has it",
+      act: "waitTranslator",
       
-      toldOnFail: ["Admin/none: nothing, by design — the step happens off-platform and the upload is the only proof"], toldOnSuccess: ["Admin/none: nothing, by design — there is no signal to surface"], met: () => false,
+      toldOnFail: ["Translator/portal: the download is gone — the folder was purged before they collected (410)"], toldOnSuccess: ["Translator/portal: the file downloads", "Admin/email: the translator has it"], met: reached("feedback_translating"),
     },
+  ],
+  feedback_translating: [
     { what: "Translation uploaded", next: "Upload the translation", from: "feedback_translation", act: "uploadResponse", records: [...attached("feedback_translation")], toldOnFail: ["Admin/portal: “That file was rejected — too large, wrong type, or empty.” *(not built)*"], toldOnSuccess: ["Admin/portal: the files appear in the folder"], met: has("feedback_translation") },
   ],
   feedback_translated: [

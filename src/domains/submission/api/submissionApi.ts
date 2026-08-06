@@ -198,6 +198,36 @@ export async function markCoachCollected(
 }
 
 /**
+ * A translator has collected their side — `sent_to_*_translator` → `*_translating`.
+ *
+ * The translator's half of `markCoachCollected`, and it exists for the same
+ * reason: a hand-off is the one place a submission stalls on a *person*, and
+ * until this ran the queue could not tell "emailed to a translator yesterday"
+ * from "the translator is halfway through". Both looked like `translating`.
+ *
+ * **Which leg is derived from where it already is**, not passed in. A caller
+ * that had to say which leg would be a caller that could say the wrong one, and
+ * the two legs are never both outstanding — the ladder is one path.
+ *
+ * Idempotent by the same trick as the others: it only moves a submission
+ * sitting on the rung that precedes it, so a re-download is a no-op.
+ */
+export async function markTranslatorCollected(
+  id: string,
+): Promise<Submission | null> {
+  const submission = await getSubmission(id);
+  if (!submission) return null;
+  const next =
+    submission.status === "sent_to_intake_translator"
+      ? "intake_translating"
+      : submission.status === "sent_to_feedback_translator"
+        ? "feedback_translating"
+        : null;
+  if (!next) return null;
+  return updateSubmission(id, { status: next });
+}
+
+/**
  * The customer has their feedback — `complete` → `collected`.
  *
  * **This is what starts the retention clock**, which is why it can only happen

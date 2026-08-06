@@ -555,7 +555,7 @@ of the flow**, before verification, files, or payment — see
 | `customerNotes` | text | the customer's words, never overwritten |
 | `languages` | text[] | what the customer reads, declared at step 1. Intersected with the coach's to decide whether translation is needed |
 | `internalNotes` | text | system messages + operator notes |
-| `status` | enum | **sixteen rungs** — see the ladder below |
+| `status` | enum | **eighteen rungs** — see the ladder below |
 | `emailVerifiedAt` | timestamptz, null | set when the 6-digit code is accepted; **the upload gate** |
 | `verificationCodeHash` | text, null | bcrypt hash — the code itself is never stored |
 | `verificationExpiresAt` | timestamptz, null | the flow window from issue |
@@ -631,7 +631,7 @@ The trail. One row per status transition.
 bounced" loses that both were true and when — and a delivery three seconds later
 reads very differently from one three minutes later.
 
-**Chosen over sixteen nullable `*At` columns**, and it answers strictly more: a
+**Chosen over one nullable `*At` column per rung**, and it answers strictly more: a
 column remembers one moment, and a submission can reach the same rung twice once
 an operator can reset a status. Written inside the same transaction as the update
 that caused it, so the trail cannot disagree with `submissions.status`.
@@ -659,28 +659,33 @@ a deploy ([ADR 012](docs/decisions/012-retention-and-operator-settings.md)).
 
 ### `status` lifecycle — the ladder (enum, in order)
 
-Sixteen rungs. The enum's own order matches the ladder's, so `ORDER BY status`
+Eighteen rungs. The enum's own order matches the ladder's, so `ORDER BY status`
 means "how far along" without a lookup.
 
 ```
 draft → awaiting_payment → new → assigned →
-  intake_translating → intake_translated →          (optional)
+  sent_to_intake_translator → intake_translating →
+  intake_translated →                                (optional)
 sent_to_coach → in_review → awaiting_approval →
-  response_translating → response_translated →      (optional)
+  sent_to_feedback_translator → feedback_translating →
+  feedback_translated →                              (optional)
 complete → collected → resolved → purge_imminent → purged
 ```
 
 **It is a path with branches, not a progress bar.** A coach who shares a
 language with the customer takes `assigned → sent_to_coach` and
 `awaiting_approval → complete` directly;
-four rungs are only touched when a submission needs translating. Anything
+**six** rungs are only touched when a submission needs translating. Anything
 rendering this as a linear track will be wrong for most submissions.
 
 Three rungs carry the weight:
 
 - **`new`** — paid. The boundary: before it a scratch pad, after it a record.
 - **`in_review`** — **the coach actually has the files**, earned by their first
-  download, not by an email being sent.
+  download, not by an email being sent. `intake_translating` and
+  `feedback_translating` are the translator's equivalent and are earned the same
+  way (2026-08-06, ADR 018 Q3) — a hand-off is the only place a submission
+  stalls on a person, so each one is worth two rungs rather than one.
 - **`collected`** — **the customer has downloaded it**, which starts the
   retention clock.
 
@@ -874,7 +879,7 @@ doc's table carries no `(not built)` markers for the first time.
 - ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts`, `/login`,
   change-password, operator forgot-password, plus the short-lived customer *flow*
   cookie (not an account).
-- ✅ **The ladder + the trail** — sixteen statuses and `submission_event`, with
+- ✅ **The ladder + the trail** — eighteen statuses and `submission_event`, with
   four exhaustive predicates guarding every question about them.
 - ✅ **The four folders** — `intake` · `intake_translation` · `response` ·
   `response_translation`, with translation need **derived** from the assigned
@@ -1068,7 +1073,7 @@ A feature is "done" when:
    URL, a storage path, or prose — which `tsc` and `eslint` structurally cannot, since
    a wrong string is a well-typed string. Sixty-six such strings shipped on 2026-08-05
    with every other check green (`_NomenclatureLaw.md` §2b).
-1b. **`npm run simulate` passes.** It walks all sixteen rungs through the real
+1b. **`npm run simulate` passes.** It walks all eighteen rungs through the real
    domain functions, and it is the only check that catches a guard which stopped
    matching when the ladder grew — a comparison against one literal status stays
    valid TypeScript forever. It has already found three such bugs, two of which

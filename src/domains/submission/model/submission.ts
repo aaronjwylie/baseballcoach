@@ -97,7 +97,7 @@ export type Focus = (typeof FOCUS_OPTIONS)[number];
  * it, and which email fires is
  * [`_SubmissionDocumentation.md` §2](../_SubmissionDocumentation.md).
  *
- * **It is a path with branches, not a progress bar.** Four rungs are only
+ * **It is a path with branches, not a progress bar.** Six rungs are only
  * touched when a submission needs translating; a coach who reads English takes
  * `assigned → sent_to_coach` and `awaiting_approval → complete` directly.
  * Anything rendering this as a linear track will be wrong for most submissions.
@@ -113,12 +113,14 @@ export type Focus = (typeof FOCUS_OPTIONS)[number];
  * | `awaiting_payment` | step 2 — the email is proven; uploads may begin |
  * | `new` | step 4 — **the payment cleared.** The boundary |
  * | `assigned` | step 5 — a coach is chosen, and translation need becomes derivable |
- * | `intake_translating` | step 6 — the customer's files have gone out for translation |
+ * | `sent_to_intake_translator` | step 6 — emailed to the translator, not yet picked up |
+ * | `intake_translating` | step 7 — **the translator actually has the files** |
  * | `intake_translated` | step 7 — the translated set is back and stored |
  * | `sent_to_coach` | step 8 — emailed with the chosen language set, not yet picked up |
  * | `in_review` | step 9 — **the coach actually has the files** |
  * | `awaiting_approval` | step 10 — a response exists; the customer can't see it |
- * | `feedback_translating` | step 11 — the response has gone out for translation |
+ * | `sent_to_feedback_translator` | step 11 — emailed to the translator, not yet picked up |
+ * | `feedback_translating` | step 12 — **the translator actually has the files** |
  * | `feedback_translated` | step 12 — the translated version is back and stored |
  * | `complete` | step 13 — released to the customer |
  * | `collected` | step 14 — **the customer downloaded it.** The retention clock starts |
@@ -131,11 +133,13 @@ export const SUBMISSION_STATUSES = [
   "awaiting_payment",
   "new",
   "assigned",
+  "sent_to_intake_translator",
   "intake_translating",
   "intake_translated",
   "sent_to_coach",
   "in_review",
   "awaiting_approval",
+  "sent_to_feedback_translator",
   "feedback_translating",
   "feedback_translated",
   "complete",
@@ -146,6 +150,28 @@ export const SUBMISSION_STATUSES = [
 ] as const;
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
+
+/**
+ * The rungs only a submission needing translation ever touches.
+ *
+ * Six of the eighteen. A coach who shares a language with the customer takes
+ * `assigned → sent_to_coach` and `awaiting_approval → complete` straight
+ * through, which is why the ladder is a path with branches and not a progress
+ * bar.
+ *
+ * Declared once because three places ask it — the rail greys them out, the
+ * simulator counts them, and the queue folds them into their neighbouring tab.
+ * The count in particular used to be a literal `16`, which is the kind of
+ * number that stays valid TypeScript forever after it stops being true.
+ */
+export const TRANSLATION_RUNGS: readonly SubmissionStatus[] = [
+  "sent_to_intake_translator",
+  "intake_translating",
+  "intake_translated",
+  "sent_to_feedback_translator",
+  "feedback_translating",
+  "feedback_translated",
+];
 
 /** Statuses the customer-facing flow itself writes. */
 export type AppWrittenStatus = Extract<
@@ -177,11 +203,13 @@ const PAID_AT_STATUS: Record<SubmissionStatus, boolean> = {
   // makes answering mandatory rather than assumed.
   new: true,
   assigned: true,
+  sent_to_intake_translator: true,
   intake_translating: true,
   intake_translated: true,
   sent_to_coach: true,
   in_review: true,
   awaiting_approval: true,
+  sent_to_feedback_translator: true,
   feedback_translating: true,
   feedback_translated: true,
   complete: true,
@@ -211,11 +239,13 @@ const HAS_RESPONSE_AT_STATUS: Record<SubmissionStatus, boolean> = {
   awaiting_payment: false,
   new: false,
   assigned: false,
+  sent_to_intake_translator: false,
   intake_translating: false,
   intake_translated: false,
   sent_to_coach: false,
   in_review: false,
   awaiting_approval: true,
+  sent_to_feedback_translator: true,
   feedback_translating: true,
   feedback_translated: true,
   complete: true,
@@ -248,11 +278,13 @@ const RELEASED_AT_STATUS: Record<SubmissionStatus, boolean> = {
   awaiting_payment: false,
   new: false,
   assigned: false,
+  sent_to_intake_translator: false,
   intake_translating: false,
   intake_translated: false,
   sent_to_coach: false,
   in_review: false,
   awaiting_approval: false,
+  sent_to_feedback_translator: false,
   feedback_translating: false,
   feedback_translated: false,
   complete: true,
@@ -280,11 +312,13 @@ const WITH_COACH_AT_STATUS: Record<SubmissionStatus, boolean> = {
   assigned: true,
   // Translation happens between assignment and hand-off; the coach has nothing
   // to do yet, but the row is legitimately theirs.
+  sent_to_intake_translator: true,
   intake_translating: true,
   intake_translated: true,
   sent_to_coach: true,
   in_review: true,
   awaiting_approval: false,
+  sent_to_feedback_translator: false,
   feedback_translating: false,
   feedback_translated: false,
   complete: false,
@@ -326,6 +360,9 @@ const COURT_AT_STATUS: Record<SubmissionStatus, Court> = {
   // Assigned, but not yet handed over: still the admin's move, whether that means
   // sending it on or sending it out to be translated.
   assigned: "admin",
+  // Emailed. The rung exists to make "told" and "started" visible on the
+  // translator side too — the same gap `sent_to_coach` marks for the coach.
+  sent_to_intake_translator: "translator",
   intake_translating: "translator",
   // The translation is back; the hand-off is the admin's again.
   intake_translated: "admin",
@@ -335,6 +372,7 @@ const COURT_AT_STATUS: Record<SubmissionStatus, Court> = {
   in_review: "coach",
   // Delivered — nothing reaches the customer until the admin releases it.
   awaiting_approval: "admin",
+  sent_to_feedback_translator: "translator",
   feedback_translating: "translator",
   feedback_translated: "admin",
   // Released. The clock doesn't start until they collect, so it's their move.
@@ -508,7 +546,7 @@ export function choiceForLanguages(
  *
  * Exhaustive over the enum, so a new rung is a compile error here too.
  *
- * One word each, so sixteen of them read as one process rather than sixteen
+ * One word each, so eighteen of them read as one process rather than eighteen
  * sentences. The rung says *where*; the line under it says what's owed.
  */
 export const RUNG_LABEL: Record<SubmissionStatus, string> = {
@@ -516,11 +554,13 @@ export const RUNG_LABEL: Record<SubmissionStatus, string> = {
   awaiting_payment: "Upload",
   new: "New",
   assigned: "Assigned",
+  sent_to_intake_translator: "Sent",
   intake_translating: "Translating",
   intake_translated: "Translated",
   sent_to_coach: "Sent",
   in_review: "Reviewing",
   awaiting_approval: "Submitted",
+  sent_to_feedback_translator: "Sent",
   feedback_translating: "Translating",
   feedback_translated: "Translated",
   complete: "Delivered",

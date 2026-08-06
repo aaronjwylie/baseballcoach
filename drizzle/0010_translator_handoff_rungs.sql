@@ -1,0 +1,23 @@
+-- Two rungs, so a translator's hand-off reads like a coach's.
+--
+-- The coach side spends three rungs on one hand-off: `assigned` (picked),
+-- `sent_to_coach` (emailed, not opened) and `in_review` (they actually have
+-- it). The translator side spent one — `intake_translating` covered emailed,
+-- opened and working alike — so the queue could not tell "sent yesterday and
+-- untouched" from "halfway done". That gap is the only place a submission
+-- stalls on a person rather than on the system, which is the whole reason
+-- `in_review` exists.
+--
+-- Note what this does to the two existing names: `intake_translating` now means
+-- **the translator has the files**, which is what the participle always said.
+-- The sent-but-not-collected state moves to the new rung in front of it.
+--
+-- BEFORE is load-bearing. The enum's declaration order is the ladder's order —
+-- `ORDER BY status` means "how far along" without a lookup — and ADD VALUE
+-- appends to the end unless told otherwise, which would have put "sent to the
+-- translator" after "purged".
+--
+-- Alone in its migration, like `0004` and `0009`: ADD VALUE commits the label,
+-- but Postgres will not let it be *used* until that commit lands.
+ALTER TYPE "public"."submission_status" ADD VALUE 'sent_to_intake_translator' BEFORE 'intake_translating';--> statement-breakpoint
+ALTER TYPE "public"."submission_status" ADD VALUE 'sent_to_feedback_translator' BEFORE 'feedback_translating';

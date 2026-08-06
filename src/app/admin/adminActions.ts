@@ -127,9 +127,12 @@ export async function uploadTranslationAction(
     already-translated submission is filed without disturbing where it is.
   */
   const wasIntake =
-    submission.status === "assigned" || submission.status === "intake_translating";
+    submission.status === "assigned" ||
+    submission.status === "sent_to_intake_translator" ||
+    submission.status === "intake_translating";
   const wasResponse =
     submission.status === "awaiting_approval" ||
+    submission.status === "sent_to_feedback_translator" ||
     submission.status === "feedback_translating";
 
   if (kind === "intake_translation" && wasIntake) {
@@ -303,12 +306,19 @@ export async function sendForTranslationAction(
   const submission = await getSubmission(id);
   if (!submission) return;
 
-  // Each side can only be sent from the rung that precedes it.
+  /*
+    Each side can only be sent from the rung that precedes it.
+
+    Sending stops at `sent_to_*_translator`, not at `*_translating`. The
+    translator's own download is what earns the second — the same split
+    `sent_to_coach` → `in_review` makes on the coach side, and for the same
+    reason: it is the only place a submission stalls on a person.
+  */
   const next =
     submission.status === "assigned"
-      ? "intake_translating"
+      ? "sent_to_intake_translator"
       : submission.status === "awaiting_approval"
-        ? "feedback_translating"
+        ? "sent_to_feedback_translator"
         : null;
   if (!next) return;
 

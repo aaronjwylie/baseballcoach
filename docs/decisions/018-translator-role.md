@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-05
 **Status:** phases 1 and 2 **built and deployed** (2026-08-06). Phase 3 — the assignment join —
-is designed but not built, and waits on Q2. **Q1 is resolved**; Q2 and Q3 remain open.
+is built and deployed. **All three questions are resolved** — Q1 and Q2 on 2026-08-05, Q3 on
+2026-08-06 (migration `0010`).
 **Would amend:** `_NomenclatureLaw.md` §3 (operator covers three roles), CLAUDE.md §8 (retires the
 `coach` table into `operatorProfile`, adds `submission_assignment`), and drops
 `submission.assignedCoachId`.
@@ -211,11 +212,38 @@ column names. **Do this first, or accept renaming enum values that rows already 
 Still a real decision — it widens the blast radius of an otherwise additive change — but the
 cheap option (defer it again) is no longer free.
 
-**Q3 · Do steps 5 and 11 need their own rungs?** They share `intake_translating` /
-`response_translating` with the work that follows, so the queue cannot tell *"sent to a
-translator"* from *"the translator has it"* — precisely the distinction `sent_to_coach` vs
-`in_review` exists to make on the coach side. It matters more once a real person is waiting. The
-northstar left it open rather than add two rungs to a sixteen-rung ladder.
+**Q3 · Do steps 5 and 11 need their own rungs? — RESOLVED yes, 2026-08-06 (migration `0010`).**
+
+They shared `intake_translating` / `feedback_translating` with the work that follows, so the queue
+could not tell *"sent to a translator"* from *"the translator has it"* — precisely the distinction
+`sent_to_coach` vs `in_review` exists to make on the coach side.
+
+**The argument that bought `in_review` never mentioned coaches.** It is that a hand-off is the only
+place a submission stalls on a *person* rather than on the system, and that the admin has to see
+that without opening the row. That applies verbatim to a translator; they simply hadn't been given
+it. One concept spelled two ways across two roles is `_NomenclatureLaw.md` §2 one level up.
+
+So: `sent_to_intake_translator` and `sent_to_feedback_translator`, both legs, sixteen rungs → **eighteen**.
+
+Three things worth recording about how it landed:
+
+- **The two existing names were already wrong.** `intake_translating` meant *emailed, not opened* —
+  but the participle says work in progress. The new rung takes the sent state and
+  `intake_translating` now means what it always said: the translator has the files.
+- **The second rung is earned, not declared.** `markTranslatorCollected` is `markCoachCollected`'s
+  half, fired by the translator's own download in `/api/files/[id]`. Which leg is **derived from
+  where the submission already sits**, never passed in — a caller that has to name the leg is a
+  caller that can name the wrong one.
+- **`assigned` is not duplicated for translators.** Picking a translator is already recorded, as an
+  `assignment` trail row with actor and timestamp (`0009`), and surfaced through `ProgressFacts`.
+  The coach's `assigned` rung exists because the ladder needs *somewhere* to be between paid and
+  sent — it is structural, not a reward for being chosen.
+
+Cost was smaller than the deferral assumed: the customer never sees these rungs (their lookup
+collapses the middle into one sentence), the download-observing machinery already existed, and every
+exhaustive `Record` turned the change into eight compile errors rather than eight things to
+remember. `TRANSLATION_RUNGS` now has one home — `simulate`'s hardcoded `16` was the kind of number
+that stays valid TypeScript long after it stops being true.
 
 ## Consequences if accepted
 

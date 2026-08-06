@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/domains/operator";
 import { getSubmissionFile, isIntake } from "@/domains/submission";
 import { noteCoachCollected } from "@/domains/operator";
+import { markTranslatorCollected } from "@/domains/submission";
 import { storage } from "@/shared/storage";
 
 // Private blobs stream through this route rather than redirecting, so a large
@@ -55,6 +56,21 @@ export async function GET(
   */
   if (session.role === "coach" && isIntake(file)) {
     void noteCoachCollected(file.submissionId, session.operatorId);
+  }
+
+  /*
+    The translator's equivalent. Same shape, same reasons — an admin opening the
+    file is checking on the work, not doing it.
+
+    No file-kind gate here, unlike the coach's: a translator collects the intake
+    on the way out and the feedback on the way back, so which folder they opened
+    doesn't say whether this is a pick-up. Where the submission already sits
+    does, and `markTranslatorCollected` reads that rather than being told.
+  */
+  if (session.role === "translator") {
+    void markTranslatorCollected(file.submissionId).catch((err) => {
+      console.error("[files] recording a translator collection failed:", err);
+    });
   }
 
   const opened = await storage.open(file.fileUrl);

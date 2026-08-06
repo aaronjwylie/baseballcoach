@@ -40,6 +40,9 @@ import {
   listAllSubmissionFiles,
   listSubmissionEvents,
   markCoachCollected,
+  markTranslatorCollected,
+  TRANSLATION_RUNGS,
+  SUBMISSION_STATUSES,
   markCustomerCollected,
   markSubmissionSentToCoach,
   needsTranslation,
@@ -208,7 +211,15 @@ async function walk(label: string, translating: boolean) {
 
   // ── rungs 5–6: translation, only when the coach needs it ─────────────
   if (translating) {
-    await updateSubmission(s.id, { status: "intake_translating" });
+    await updateSubmission(s.id, { status: "sent_to_intake_translator" });
+    await rung(s.id, "sent_to_intake_translator", "translator");
+    // The rung is earned by the translator opening the files, exactly as
+    // `in_review` is earned by the coach — not by the admin declaring it.
+    check(
+      (await markTranslatorCollected(s.id))?.status === "intake_translating",
+      "   the translator's download earns intake_translating",
+    );
+    check((await markTranslatorCollected(s.id)) === null, "   a re-download changes nothing");
     await rung(s.id, "intake_translating", "translator");
     await addSubmissionFile(
       { submissionId: s.id, filename: "clip-1-JA.mp4", contentType: "video/mp4", sizeBytes: 42_000_000, fileUrl: `sim/${s.id}/ja.mp4` },
@@ -246,7 +257,12 @@ async function walk(label: string, translating: boolean) {
 
   // ── rungs 10–11: the response's translation ──────────────────────────
   if (translating) {
-    await updateSubmission(s.id, { status: "feedback_translating" });
+    await updateSubmission(s.id, { status: "sent_to_feedback_translator" });
+    await rung(s.id, "sent_to_feedback_translator", "translator");
+    check(
+      (await markTranslatorCollected(s.id))?.status === "feedback_translating",
+      "   the return leg earns its rung the same way",
+    );
     await rung(s.id, "feedback_translating", "translator");
     await addSubmissionFile(
       { submissionId: s.id, filename: "review-EN.mp4", contentType: "video/mp4", sizeBytes: 88_000_000, fileUrl: `sim/${s.id}/review-en.mp4` },
@@ -308,7 +324,11 @@ async function walk(label: string, translating: boolean) {
   const events = await listSubmissionEvents(s.id);
   const rungs = events.filter((e) => e.kind === "status").map((e) => e.status);
   const mails = events.filter((e) => e.kind === "email");
-  const expected = translating ? 16 : 12;
+  // Derived, not a literal. The `16` that used to sit here stayed valid
+  // TypeScript for exactly as long as it took someone to add a rung.
+  const expected = translating
+    ? SUBMISSION_STATUSES.length
+    : SUBMISSION_STATUSES.length - TRANSLATION_RUNGS.length;
   check(rungs.length === expected, `   ${rungs.length} rungs recorded (expected ${expected})`);
   check(new Set(rungs).size === rungs.length, "   no rung recorded twice");
   console.log(`   trail: ${rungs.join(" → ")}`);

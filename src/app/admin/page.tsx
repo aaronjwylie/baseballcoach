@@ -108,6 +108,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     // hasn't been handed anything yet.
     match: (s) =>
       (s.status === "assigned" ||
+        s.status === "sent_to_intake_translator" ||
         s.status === "intake_translating" ||
         s.status === "intake_translated") &&
       !s.archivedAt,
@@ -127,6 +128,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     // the admin and none of it has reached the customer.
     match: (s) =>
       (s.status === "awaiting_approval" ||
+        s.status === "sent_to_feedback_translator" ||
         s.status === "feedback_translating" ||
         s.status === "feedback_translated") &&
       !s.archivedAt,

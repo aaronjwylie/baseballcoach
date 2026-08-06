@@ -6,6 +6,7 @@ import {
   RUNG_LABEL,
   SUBMISSION_STATUSES,
   type SubmissionStatus,
+  TRANSLATION_RUNGS,
 } from "../model/submission";
 
 /**
@@ -24,13 +25,8 @@ import {
  */
 
 /** Operator-facing names. The customer's lookup collapses these; this doesn't. */
-/** The four rungs only a submission needing translation touches. */
-const OPTIONAL: ReadonlySet<SubmissionStatus> = new Set([
-  "intake_translating",
-  "intake_translated",
-  "feedback_translating",
-  "feedback_translated",
-]);
+/** The rungs only a submission needing translation touches. */
+const OPTIONAL: ReadonlySet<SubmissionStatus> = new Set(TRANSLATION_RUNGS);
 
 /** The one rung that wants the eye. */
 const WARN: ReadonlySet<SubmissionStatus> = new Set(["purge_imminent"]);

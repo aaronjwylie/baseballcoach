@@ -96,13 +96,19 @@ the file. `build.py` replaces the table and leaves the prose alone.
   that it hasn't been taken.
 - **Six rows carry an empty column**, all in the sweep tail (15c, 16c, 17c, 18a,
   18b, 18d). Deletion has no failure path here — it retries on the next sweep.
-- **Assignment wants a join.** `assignedCoachId` is a single column and the
-  document assumes more than one coach or translator per submission is normal.
-- **Eighteen steps against sixteen statuses.** Steps 5 and 11 — the hand-offs
-  *to* a translator — share `intake_translating` / `response_translating` with
-  the work that follows them, so the queue can't tell "sent to a translator" from
-  "the translator is working on it" without reading the trail. Left open rather
-  than adding two more rungs to a long ladder.
-- **The file kinds and the statuses use different words.** Kinds are
-  `intake` / `feedback`; the statuses are still `intake_*` / `response_*`. The
-  rename stopped at the enum on purpose — that's a migration.
+### Closed since — 2026-08-06
+
+Three gaps this list carried are now shut, all by ADR 018:
+
+- ~~**Assignment wants a join.**~~ Built. `submission_assignment` holds one row
+  per promise to produce a file, and the single `assignedCoachId` column is
+  dropped (`0006`, `0008`). More than one person per submission is now the
+  ordinary case rather than the one the schema couldn't express.
+- ~~**Eighteen steps against sixteen statuses.**~~ **Eighteen against eighteen.**
+  Steps 5 and 11 have their own rungs — `sent_to_intake_translator` and
+  `sent_to_feedback_translator` — so "emailed to a translator" and "the
+  translator has it" are different places, the way `sent_to_coach` and
+  `in_review` already were on the coach side. The second is earned by the
+  translator's own download, not declared by the admin (`0010`).
+- ~~**The file kinds and the statuses use different words.**~~ Renamed. Both
+  say `feedback`; `response` is retired (`0005`, `_NomenclatureLaw.md` §3).
