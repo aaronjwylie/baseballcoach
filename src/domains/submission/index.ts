@@ -143,3 +143,12 @@ export {
 export { StatusList } from "./ui/StatusList";
 export { StatusLookup } from "./ui/StatusLookup";
 export { SubmissionFileList } from "./ui/SubmissionFileList";
+
+export {
+  assignOperator,
+  unassignOperator,
+  listAssignments,
+  assigneeFor,
+  assignmentsFor,
+  type Assignment,
+} from "./api/submissionAssignmentApi";
