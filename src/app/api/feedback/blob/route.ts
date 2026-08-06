@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
         if (session.role !== "admin") {
           const coach = await getCoachByOperatorId(session.operatorId);
-          if (!coach || submission.assignedCoachId !== coach.id) {
+          if (!coach || submission.assignedOperatorId !== coach.id) {
             throw new Error("That isn't your submission.");
           }
         }

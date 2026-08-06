@@ -95,8 +95,8 @@ export async function sendFeedbackForApproval(
 
   // ⑤ — tell the admin it's waiting, and the coach that it arrived. Best-effort: the
   // work is delivered either way, and a webhook must never fail on mail.
-  const coach = updated.assignedCoachId
-    ? await getCoach(updated.assignedCoachId)
+  const coach = updated.assignedOperatorId
+    ? await getCoach(updated.assignedOperatorId)
     : null;
   const admins = await listAdminEmails();
   const submitted = await sendResponseSubmittedEmail({

@@ -1,14 +1,17 @@
 /**
  * Coach queries + creation.
  *
- * Creating a coach makes two rows: an `operatorTable` login (via the operator domain) and
- * a `coachTable` profile keyed to it. The only place the app touches the `coachTable`
- * table.
+ * A coach is an **operator with a profile** (ADR 018) — the login row says who
+ * they are and what role they hold, the profile row says what they cover. There
+ * is no coach table any more, and `Coach.id` is the operator's id: one person,
+ * one identifier, whichever way you arrived at them.
+ *
+ * This file is the only place those two rows are turned into a `Coach`.
  */
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "@/domains/operator/model/operatorTable";
-import { coachTable } from "../model/coachTable";
+import { operatorProfileTable } from "@/domains/operator/model/operatorProfileTable";
 import {
   createOperator,
   listAdminEmails,
@@ -24,71 +27,87 @@ import { env } from "@/shared/config/env";
 import type { Coach, NewCoach } from "../model/coach";
 import { sendCoachCollectedEmail } from "./coachEmail";
 
-// The email is the coach's login, so it lives on the joined `operatorTable` row, not
-// on `coachTable` — one home per fact.
-function toCoach(row: typeof coachTable.$inferSelect, email: string): Coach {
+function toCoach(
+  operator: typeof operatorTable.$inferSelect,
+  profile: typeof operatorProfileTable.$inferSelect,
+): Coach {
   return {
-    id: row.id,
-    operatorId: row.operatorId,
-    email,
-    name: row.name,
-    specialties: row.specialties,
-    languages: row.languages,
-    isActive: row.isActive,
-    imageUrl: row.imageUrl ?? undefined,
-    bio: row.bio ?? undefined,
+    id: operator.id,
+    email: operator.email,
+    name: operator.name,
+    isActive: operator.isActive,
+    specialties: profile.specialties,
+    languages: profile.languages,
+    imageUrl: profile.imageUrl ?? undefined,
+    bio: profile.bio ?? undefined,
   };
 }
 
-export async function listCoaches(): Promise<Coach[]> {
-  const rows = await db
+/**
+ * An inner join, deliberately: **a profile row is what makes someone a coach.**
+ * An admin has none, so they cannot appear here by accident — the shape of the
+ * query is the filter, rather than a role check someone has to remember.
+ */
+function coachQuery() {
+  return db
     .select()
-    .from(coachTable)
-    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
-    .orderBy(asc(coachTable.name));
-  return rows.map((r) => toCoach(r.coach, r.operator.email));
+    .from(operatorTable)
+    .innerJoin(
+      operatorProfileTable,
+      eq(operatorProfileTable.operatorId, operatorTable.id),
+    );
 }
 
-export async function getCoachByOperatorId(operatorId: string): Promise<Coach | null> {
-  const [row] = await db
-    .select()
-    .from(coachTable)
-    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
-    .where(eq(coachTable.operatorId, operatorId))
-    .limit(1);
-  return row ? toCoach(row.coach, row.operator.email) : null;
+export async function listCoaches(): Promise<Coach[]> {
+  const rows = await coachQuery().orderBy(asc(operatorTable.name));
+  return rows.map((r) => toCoach(r.operator, r.operator_profile));
+}
+
+export async function getCoach(id: string): Promise<Coach | null> {
+  const [row] = await coachQuery().where(eq(operatorTable.id, id)).limit(1);
+  return row ? toCoach(row.operator, row.operator_profile) : null;
+}
+
+/**
+ * Kept for the callers that hold a session's operator id.
+ *
+ * It is the same lookup now — `Coach.id` *is* the operator id — but the name
+ * still says which id the caller has in hand, which is worth more than removing
+ * one line.
+ */
+export function getCoachByOperatorId(operatorId: string): Promise<Coach | null> {
+  return getCoach(operatorId);
 }
 
 export async function createCoach(input: NewCoach): Promise<Coach> {
-  const operator = await createOperator(input.email, input.password, "coach");
-  const [row] = await db
-    .insert(coachTable)
+  const operator = await createOperator(
+    input.email,
+    input.password,
+    "coach",
+    input.name,
+  );
+  const [profile] = await db
+    .insert(operatorProfileTable)
     .values({
       operatorId: operator.id,
-      name: input.name,
       specialties: input.specialties,
       languages: input.languages,
       bio: input.bio,
     })
     .returning();
-  return toCoach(row, operator.email);
-}
-
-export async function getCoach(id: string): Promise<Coach | null> {
   const [row] = await db
     .select()
-    .from(coachTable)
-    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
-    .where(eq(coachTable.id, id))
+    .from(operatorTable)
+    .where(eq(operatorTable.id, operator.id))
     .limit(1);
-  return row ? toCoach(row.coach, row.operator.email) : null;
+  return toCoach(row, profile);
 }
 
 export interface CoachPatch {
   name?: string;
-  /** The login email, updated on the `operatorTable` row. */
+  /** The login email, on the operator row. */
   email?: string;
-  /** A new login password, set on the `operatorTable` row. Omit to leave it unchanged. */
+  /** A new login password. Omit to leave it unchanged. */
   password?: string;
   /** Storage locator for the coach's photo. */
   imageUrl?: string;
@@ -99,37 +118,38 @@ export interface CoachPatch {
   isActive?: boolean;
 }
 
+/**
+ * A patch now lands on two rows, so it's split by *which* of the two facts it
+ * changes: who they are (name, email, whether they may sign in) against what
+ * they cover (languages, specialties, and the public page).
+ */
 export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach> {
-  const { email, password, ...profile } = patch;
+  const { email, password, name, isActive, ...profile } = patch;
 
-  // The profile fields live on `coachTable`; only touch it if any were given.
-  const [row] = Object.keys(profile).length
-    ? await db.update(coachTable).set(profile).where(eq(coachTable.id, id)).returning()
-    : await db.select().from(coachTable).where(eq(coachTable.id, id)).limit(1);
+  const operatorPatch = {
+    ...(email !== undefined ? { email: email.trim().toLowerCase() } : {}),
+    ...(name !== undefined ? { name } : {}),
+    ...(isActive !== undefined ? { isActive } : {}),
+  };
 
-  // The email is the login — update it on the `operatorTable` row (a unique-constraint
-  // violation surfaces to the action as a caught error).
-  let currentEmail: string;
-  if (email !== undefined) {
-    const [u] = await db
-      .update(operatorTable)
-      .set({ email: email.trim().toLowerCase() })
-      .where(eq(operatorTable.id, row.operatorId))
-      .returning({ email: operatorTable.email });
-    currentEmail = u.email;
-  } else {
-    const [u] = await db
-      .select({ email: operatorTable.email })
-      .from(operatorTable)
-      .where(eq(operatorTable.id, row.operatorId))
-      .limit(1);
-    currentEmail = u.email;
+  // A unique-constraint violation on the email surfaces to the action as a
+  // caught error, which is why this is not wrapped here.
+  if (Object.keys(operatorPatch).length) {
+    await db.update(operatorTable).set(operatorPatch).where(eq(operatorTable.id, id));
+  }
+  if (Object.keys(profile).length) {
+    await db
+      .update(operatorProfileTable)
+      .set(profile)
+      .where(eq(operatorProfileTable.operatorId, id));
   }
 
   // An admin reset — no current-password check; the admin's authority is the guard.
-  if (password) await setUserPassword(row.operatorId, password);
+  if (password) await setUserPassword(id, password);
 
-  return toCoach(row, currentEmail);
+  const coach = await getCoach(id);
+  if (!coach) throw new Error(`coach ${id} vanished mid-update`);
+  return coach;
 }
 
 /**
@@ -152,10 +172,11 @@ export async function noteCoachCollected(
 ): Promise<void> {
   try {
     const submission = await getSubmission(submissionId);
-    if (!submission?.assignedCoachId) return;
+    if (!submission?.assignedOperatorId) return;
+    if (submission.assignedOperatorId !== operatorId) return;
 
     const coach = await getCoachByOperatorId(operatorId);
-    if (!coach || coach.id !== submission.assignedCoachId) return;
+    if (!coach) return;
 
     const collected = await markCoachCollected(submissionId);
     if (!collected) return;

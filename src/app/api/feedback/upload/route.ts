@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   if (session.role !== "admin") {
     const coach = await getCoachByOperatorId(session.operatorId);
-    if (!coach || submission.assignedCoachId !== coach.id) {
+    if (!coach || submission.assignedOperatorId !== coach.id) {
       return NextResponse.json({ error: "Not your submission." }, { status: 403 });
     }
   }

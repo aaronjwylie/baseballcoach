@@ -69,11 +69,12 @@ export async function createOperator(
   email: string,
   password: string,
   role: Role,
+  name: string,
 ): Promise<Operator> {
   const passwordHash = await bcrypt.hash(password, 10);
   const rows = await db
     .insert(operatorTable)
-    .values({ email: email.trim().toLowerCase(), passwordHash, role })
+    .values({ email: email.trim().toLowerCase(), passwordHash, role, name })
     .returning({ id: operatorTable.id, email: operatorTable.email, role: operatorTable.role });
   return rows[0];
 }

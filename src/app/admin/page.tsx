@@ -278,7 +278,7 @@ function SubmissionRow({
   events: SubmissionEvent[];
   coaches: Coach[];
 }) {
-  const assignedCoach = coaches.find((c) => c.id === submission.assignedCoachId);
+  const assignedCoach = coaches.find((c) => c.id === submission.assignedOperatorId);
   const empty: Record<FileKind, SubmissionFile[]> = {
     intake: [], intake_translation: [], response: [], response_translation: [],
   };
@@ -349,9 +349,9 @@ function SubmissionRow({
   ) : act === "assign" ? (
     <div className="flex flex-col items-start gap-2">
       <AssignCoachSelect
-        key={submission.assignedCoachId ?? "unassigned"}
+        key={submission.assignedOperatorId ?? "unassigned"}
         submissionId={submission.id}
-        assignedCoachId={submission.assignedCoachId}
+        assignedOperatorId={submission.assignedOperatorId}
         coaches={coaches}
       />
       <p className="text-[11px] text-ink-muted">

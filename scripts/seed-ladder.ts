@@ -24,7 +24,8 @@ import {
   submissionTable,
   submissionFileTable,
   submissionEventTable,
-  coachTable,
+  operatorTable,
+  operatorProfileTable,
 } from "@/db/schema";
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "@/domains/submission";
 import type { FileKind } from "@/domains/submission";
@@ -92,7 +93,19 @@ async function main() {
   }
   if (old.length) console.log(`[ladder] cleared ${old.length} from a previous run`);
 
-  const coachRows = await db.select().from(coachTable);
+  const coachRows = (
+    await db
+      .select({
+        id: operatorTable.id,
+        name: operatorTable.name,
+        languages: operatorProfileTable.languages,
+      })
+      .from(operatorTable)
+      .innerJoin(
+        operatorProfileTable,
+        eq(operatorProfileTable.operatorId, operatorTable.id),
+      )
+  );
   if (coachRows.length === 0) {
     console.error("[ladder] no coaches — run `npm run db:seed` first");
     process.exit(1);
@@ -124,7 +137,7 @@ async function main() {
         ...(reached.has("new")
           ? { paidAt: new Date(started + 600_000), stripeAmount: 8000, stripePaymentId: `pi_${MARK}${i}` }
           : {}),
-        ...(reached.has("assigned") ? { assignedCoachId: coach.id } : {}),
+        ...(reached.has("assigned") ? { assignedOperatorId: coach.id } : {}),
         ...(reached.has("sent_to_coach") ? { coachFileSet: translating ? "translation" : "original" } : {}),
         ...(reached.has("complete")
           ? {
