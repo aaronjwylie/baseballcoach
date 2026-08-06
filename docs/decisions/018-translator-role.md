@@ -1,8 +1,8 @@
 # ADR 018 — The translator role: `operator` + `operatorProfile`, and assignment becomes a join
 
 **Date:** 2026-08-05
-**Status:** ⚠️ **proposed — not built.** Written to be marked up. The three open questions at the
-bottom are genuinely open; the decisions above them are ready to argue with.
+**Status:** phases 1 and 2 **built and deployed** (2026-08-06). Phase 3 — the assignment join —
+is designed but not built, and waits on Q2. **Q1 is resolved**; Q2 and Q3 remain open.
 **Would amend:** `_NomenclatureLaw.md` §3 (operator covers three roles), CLAUDE.md §8 (retires the
 `coach` table into `operatorProfile`, adds `submission_assignment`), and drops
 `submission.assignedCoachId`.
@@ -124,15 +124,36 @@ Two reasons a column can't survive. A submission can carry **two translators** �
 can take a different translator"* — and the trail is built around `assigned — {id}` /
 `unassigned — {id}`, one row each, with the count derived rather than stored.
 
+**An assignment is a promise to produce a file**, and that framing is what makes the table
+simple. It carries no role and no nullable discriminator, because the thing being promised
+already has a vocabulary — the four folders:
+
 ```
 submission_assignment
   id            uuid, pk
   submissionId  → submission, cascade, indexed
   operatorId    → operator
-  role          operator_role     -- who they are on this submission
-  leg           file_kind, null   -- 'intake' | 'feedback' — translators only (see Q1)
+  produces      file_kind          -- what they owe us
   assignedAt    timestamptz
+
+  coach                →  produces "feedback"
+  intake translator    →  produces "intake_translation"
+  feedback translator  →  produces "feedback_translation"
 ```
+
+**No `role` column.** The operator already carries their role; storing it again would be a second
+home for a fact (law #2). Which role a row implies is derivable, and never needs to be.
+
+**No nulls.** Every assignment produces exactly one kind of thing. The first draft had a `role`
+plus a nullable `leg` meaningful only for translators — the same smell as an admin carrying four
+empty profile columns, and rejected for the same reason (see Q1, now resolved).
+
+The fourth kind, `intake`, is the one nobody is assigned to produce: the customer supplies it.
+That asymmetry is real, and the shape shows it rather than hiding it behind a null.
+
+It also answers a question `leg` could not. **"What is still outstanding on this submission?"**
+becomes *assignments with no matching file yet* — an actual query, rather than inferring work from
+a status. Two translators on one submission stop being a special case and become two rows.
 
 **A row is deleted to unassign — no `unassignedAt`.** The trail already holds the history, so this
 table answers only *who has it now*. That is the same relationship `submission.status` has to
@@ -161,20 +182,30 @@ already four domains (`checkout`, `verification`, `upload`, `payment`) named for
 
 ## Open questions — these are the ones to mark up
 
-**Q1 · `leg` is nullable and means something for only one role.** A translator is assigned to the
-intake leg or the feedback leg; a coach has no leg, because they receive intake and produce
-feedback in one assignment. A nullable discriminator meaningful for a subset of rows is a smell.
-The alternatives seem worse — two roles (`intake_translator`, `feedback_translator`) overloads
-`role` with scheduling, and a second assignment table reintroduces the duplication §1 removes — but
-this is the weakest part of the design.
+**Q1 · ~~`leg` is nullable and means something for only one role.~~ — RESOLVED 2026-08-06.**
 
-*Revisited after §1 changed shape:* a profile table doesn't help here — `leg` is a property of an
-**assignment**, not of a person, so it has nowhere else to go. The question stands.
+The column is gone. Asking *what an assignment actually is* dissolved the question: it is a
+**promise to produce a file**, so the row names the file kind and nothing else. A coach produces
+`feedback`, a translator produces `intake_translation` or `feedback_translation`. No null, no
+discriminator, and no role column duplicating what the operator already says.
 
-**Q2 · Should `response` → `feedback` ride along?** The northstar already renamed the file kinds
-and says the enum was deliberately left alone because it's a migration. If we are migrating
-anyway, doing it here avoids a third pass over the same enums. It also widens the blast radius of
-a change that is otherwise additive.
+Worth recording how it was found, because the method generalises: the first draft asked *"what
+extra fact does an assignment need?"* and got a nullable one. Asking instead *"what is this row
+for?"* produced a shape where nothing is optional. **A stubborn nullable column is usually a sign
+the row is modelling the wrong noun.**
+
+The same reframing had already happened twice in this ADR — `coach` dissolving into `operator`,
+and the admin not fitting one identity table. All three came from counting what is actually
+there and asking who each fact is true of.
+
+**Q2 · `response` → `feedback` — now a precondition, not a nicety.** Resolving Q1 raised its
+status: the assignment table stores a `file_kind`, and the kind a coach produces is spelled
+`response` in the enum but `feedback` everywhere the northstar and the emails speak. Building the
+join on the old spelling would bake the inconsistency into a new table's data, not just its
+column names. **Do this first, or accept renaming enum values that rows already point at.**
+
+Still a real decision — it widens the blast radius of an otherwise additive change — but the
+cheap option (defer it again) is no longer free.
 
 **Q3 · Do steps 5 and 11 need their own rungs?** They share `intake_translating` /
 `response_translating` with the work that follows, so the queue cannot tell *"sent to a
