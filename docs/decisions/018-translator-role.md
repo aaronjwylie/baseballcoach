@@ -1,10 +1,11 @@
-# ADR 018 — The translator role: `operator` absorbs `coach`, and assignment becomes a join
+# ADR 018 — The translator role: `operator` + `operatorProfile`, and assignment becomes a join
 
 **Date:** 2026-08-05
 **Status:** ⚠️ **proposed — not built.** Written to be marked up. The three open questions at the
 bottom are genuinely open; the decisions above them are ready to argue with.
-**Would amend:** `_NomenclatureLaw.md` §3 (operator covers three roles), CLAUDE.md §8 (drops the
-`coach` table, adds `submission_assignment`), and retires `submission.assignedCoachId`.
+**Would amend:** `_NomenclatureLaw.md` §3 (operator covers three roles), CLAUDE.md §8 (retires the
+`coach` table into `operatorProfile`, adds `submission_assignment`), and drops
+`submission.assignedCoachId`.
 
 ## Context
 
@@ -28,30 +29,67 @@ So this is not a new mechanism. It is the mechanism that already exists, given a
 
 ## Decision
 
-### 1 · `operator` absorbs `coach`; the `coach` table goes
+### 1 · Two tables: `operator` for logging in, `operatorProfile` for doing the work
 
-`coach` is a 1:1 table beside `operator` holding `name`, `specialties`, `languages`, `isActive`,
-`imageUrl`, `bio`. A translator needs all of those — Ben's call is that translators get bios and
-photos too, even though nothing renders them yet.
-
-Once coach and translator have the same shape, the difference between them is **one column,
-`role`**, and a separate table stops earning its keep:
+**An operator is someone who logs in.** That is the whole definition, and it is what the word has
+meant in `_NomenclatureLaw.md` §3 since the portal was built.
 
 ```
-operator   id · email · passwordHash · role · name · languages · isActive · bio · imageUrl · specialties
+operator          id · email · passwordHash · role · name · isActive
+operatorProfile   operatorId · languages · bio · imageUrl · specialties
 ```
 
-**The test a table has to pass is "does it hold facts nothing else holds".** `coach` never did —
-it held facts about an operator. It looked like a domain because *coach* is a person in the
-business, which is not the same thing.
+An **admin** has an `operator` row and no profile. A **coach** and a **translator** each have both,
+and are distinguished by `role` alone — they carry identical fields, since translators get bios and
+photos too.
 
-Three things fall out:
+The split is by *who a fact is true of*, which sorts into three tiers:
 
-- **`needsTranslation` gets a wider question.** "Who covers this language pair?" becomes one query
-  over `operator`, whatever their role. Today it can only see coaches.
-- **`isActive` starts gating what it sounds like it gates.** On `coach` it leaves the login
-  working; on `operator` it doesn't.
-- **Somebody who both coaches and translates is one human, one row, one login.**
+| tier | fields | admin |
+| --- | --- | --- |
+| everyone who logs in | `email` · `passwordHash` · `role` · `name` · `isActive` | ✅ |
+| people who take assigned work | `languages` | ❌ |
+| people shown on the website | `bio` · `imageUrl` · `specialties` | ❌ |
+
+**The presence of a profile row carries meaning**: this person does assigned work and can appear
+publicly. That is the load-bearing part. With everything on one table an empty `languages` cannot
+distinguish *"this is an admin"* from *"nobody has filled in this coach's languages yet"* — and the
+second case is a live problem, named in [CLAUDE.md §10](../../CLAUDE.md) as the thing currently
+stopping the translation rule from doing anything. Two tables make that distinction structural
+rather than a convention someone has to remember.
+
+The `coach` table is retired into `operatorProfile`.
+
+#### Alternatives considered
+
+**One table, nullable extras.** The first draft of this ADR. Rejected: an admin would carry four
+permanently empty columns, and the ambiguity above is unresolvable. One null column would be a
+shrug; four is a shape that is wrong.
+
+**A table per person — `admin`, `coach`, `translator`.** The instinct is to model four people as
+four tables, and it was seriously considered. Rejected on four counts:
+
+- **`admin` would hold nothing.** Every fact about an admin is a login fact. The table would be a
+  lone `operatorId` — a boolean wearing a table.
+- **`coach` and `translator` would be column-identical**, so it isn't separation, it is duplication
+  with a delay. Add `timezone` to one and the bug is forgetting the other.
+- **The assignment join needs a single foreign key.** Two tables force either `coachId` *or*
+  `translatorId` — two nullable columns, the exact smell Q1 is already uneasy about — or a
+  polymorphic reference, which Postgres cannot enforce with a foreign key at all. "Who covers
+  Japanese?" also becomes a permanent `UNION`.
+- **`role` would have two homes** — the column, and which table you are in. That is law #2.
+
+What genuinely separates a coach from a translator is *what they are asked to do*, and `role`
+already carries that. If the fields ever diverge — translators gaining language *pairs*, say — split
+then. Splitting later is cheap; un-duplicating two tables that have drifted is not.
+
+**Renaming `operator` to `auth` or `login`.** The folder is visibly auth-heavy — four of six `api/`
+files and all four `ui/` files are sessions and passwords. But that is a side effect of everything
+else being correctly placed: an operator's other verbs live in the domains they act on (assigning is
+`coach`, approving is `feedback`, purging is `submission`). What remains is the small set of things
+they do to *themselves*. Rejected because `shared/auth` already exists — a `domains/auth` beside it
+would provoke "which one?" every time — and because the operator record would then live in a folder
+named for a verb. [PRINCIPLES §4](../../PRINCIPLES.md): a slice holds its noun *and* its verbs.
 
 ### 2 · No new word for "coach or translator"
 
@@ -109,7 +147,7 @@ be used until that transaction commits** — and Drizzle wraps each migration in
 `translator` and writing any row that uses it must be two migrations. Cheap to obey, confusing to
 diagnose.
 
-### 5 · `domains/coach` dissolves
+### 5 · `domains/coach` dissolves; `domains/operator` keeps its name
 
 | what's in it | where it goes |
 | --- | --- |
@@ -129,6 +167,9 @@ feedback in one assignment. A nullable discriminator meaningful for a subset of 
 The alternatives seem worse — two roles (`intake_translator`, `feedback_translator`) overloads
 `role` with scheduling, and a second assignment table reintroduces the duplication §1 removes — but
 this is the weakest part of the design.
+
+*Revisited after §1 changed shape:* a profile table doesn't help here — `leg` is a property of an
+**assignment**, not of a person, so it has nowhere else to go. The question stands.
 
 **Q2 · Should `response` → `feedback` ride along?** The northstar already renamed the file kinds
 and says the enum was deliberately left alone because it's a migration. If we are migrating
