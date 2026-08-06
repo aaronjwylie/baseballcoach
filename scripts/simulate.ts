@@ -23,9 +23,9 @@ import "./loadEnv";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import {
-  submissions as submissionsTable,
-  coaches as coachesTable,
-  users as usersTable,
+  submissionTable,
+  coachTable,
+  operatorTable,
 } from "@/db/schema";
 import {
   addSubmissionFile,
@@ -247,9 +247,9 @@ async function walk(label: string, translating: boolean) {
   await rung(s.id, "resolved", "system");
 
   // ── rung 15: purge_imminent — the warning ────────────────────────────
-  await db.update(submissionsTable)
+  await db.update(submissionTable)
     .set({ collectedAt: new Date(Date.now() - (settings.retainCollectedDays - 2) * day) })
-    .where(eq(submissionsTable.id, s.id));
+    .where(eq(submissionTable.id, s.id));
   const warned = await runRetentionSweep();
   check(warned.warningsSent >= 1, `   the warning fires before the purge (${warned.warningsSent})`);
   await rung(s.id, "purge_imminent", "system");
@@ -257,9 +257,9 @@ async function walk(label: string, translating: boolean) {
   check((await listAllSubmissionFiles(s.id)).some((f) => f.fileUrl), "   nothing deleted yet");
 
   // ── rung 16: purged ──────────────────────────────────────────────────
-  await db.update(submissionsTable)
+  await db.update(submissionTable)
     .set({ collectedAt: new Date(Date.now() - (settings.retainCollectedDays + 1) * day) })
-    .where(eq(submissionsTable.id, s.id));
+    .where(eq(submissionTable.id, s.id));
   const swept = await runRetentionSweep();
   check(swept.resolvedPurged >= 1, `   purged (${swept.filesDeleted} files)`);
   await rung(s.id, "purged", "system");
@@ -288,21 +288,21 @@ async function walk(label: string, translating: boolean) {
 async function ensureCoach(name: string, languages: string[]) {
   const [existing] = await db
     .select()
-    .from(coachesTable)
-    .where(eq(coachesTable.name, name));
+    .from(coachTable)
+    .where(eq(coachTable.name, name));
   if (existing) {
     if (existing.languages.join() !== languages.join()) {
       const [fixed] = await db
-        .update(coachesTable)
+        .update(coachTable)
         .set({ languages })
-        .where(eq(coachesTable.id, existing.id))
+        .where(eq(coachTable.id, existing.id))
         .returning();
       return fixed;
     }
     return existing;
   }
   const [user] = await db
-    .insert(usersTable)
+    .insert(operatorTable)
     .values({
       email: `${name.toLowerCase().replace(/[^a-z]+/g, "-")}@sim.local`,
       passwordHash: "x",
@@ -310,8 +310,8 @@ async function ensureCoach(name: string, languages: string[]) {
     })
     .returning();
   const [created] = await db
-    .insert(coachesTable)
-    .values({ userId: user.id, name, languages, specialties: ["Hitting"] })
+    .insert(coachTable)
+    .values({ operatorId: user.id, name, languages, specialties: ["Hitting"] })
     .returning();
   return created;
 }

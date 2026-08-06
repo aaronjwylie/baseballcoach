@@ -6,9 +6,9 @@
  *    are set; clear them (and redeploy) to lift it. It runs on every page but
  *    NOT on `/api` (the matcher excludes it), so webhooks and uploads still work.
  *
- * 2. **Operator auth gate** (optimistic): bounce anonymous users off the portal,
- *    bounce signed-in users off /login, keep each role in its own portal. The
- *    real, secure checks live in the account DAL, run per page.
+ * 2. **Operator auth gate** (optimistic): bounce anonymous operatorTable off the portal,
+ *    bounce signed-in operatorTable off /login, keep each role in its own portal. The
+ *    real, secure checks live in the operator DAL, run per page.
  *
  * Imports `shared/auth/token` directly (not the barrel) to avoid pulling
  * `next/headers` into the proxy bundle.
@@ -16,7 +16,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import type { OperatorSession } from "@/domains/account";
+import type { OperatorSession } from "@/domains/operator";
 
 /** HTTP Basic Auth over the whole site. Returns a 401 challenge, or null to pass. */
 function siteGate(req: NextRequest): NextResponse | null {

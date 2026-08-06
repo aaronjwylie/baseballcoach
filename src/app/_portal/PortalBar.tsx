@@ -6,7 +6,7 @@ import { Button, Container } from "@/shared/ui";
 // Import the server action from its "use server" module directly, NOT the
 // domain barrel — the barrel also re-exports the DAL and Postgres client, which
 // a client component would drag into the browser bundle (CLAUDE.md §12).
-import { logout } from "@/domains/account/api/auth";
+import { logout } from "@/domains/operator/api/auth";
 
 /**
  * The operator portal's top bar — one full-width band shared by the admin and
@@ -14,7 +14,7 @@ import { logout } from "@/domains/account/api/auth";
  * page's narrow form column (which is exactly what it used to do).
  *
  * `active` is derived from the path rather than passed per page: the section
- * links use a prefix match so `/admin/coaches/:id` still lights up "Coaches",
+ * links use a prefix match so `/admin/coachTable/:id` still lights up "Coaches",
  * while the two portal homes (`/admin`, `/coach`) match exactly so they don't
  * light up on every child route.
  */

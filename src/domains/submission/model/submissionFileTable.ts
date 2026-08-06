@@ -1,7 +1,7 @@
 /**
  * One row per file, **both directions**.
  *
- * This replaced the single `videoUrl` column on `submissions` when the flow
+ * This replaced the single `videoUrl` column on `submissionTable` when the flow
  * moved to multi-file uploads — a submission may now carry video, stills, and
  * documents together, and the receipt email lists them by name.
  *
@@ -18,16 +18,16 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { submissions } from "./submissionsTable";
+import { submissionTable } from "./submissionTable";
 import { fileKind } from "./fileKindEnum";
 
-export const submissionFiles = pgTable(
-  "submission_files",
+export const submissionFileTable = pgTable(
+  "submission_file",
   {
     id: uuid().defaultRandom().primaryKey(),
     submissionId: uuid()
       .notNull()
-      .references(() => submissions.id, { onDelete: "cascade" }),
+      .references(() => submissionTable.id, { onDelete: "cascade" }),
     filename: text().notNull(),
     contentType: text().notNull(),
     sizeBytes: integer().notNull(),
@@ -37,9 +37,9 @@ export const submissionFiles = pgTable(
     uploadedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    index("submission_files_submission_id_idx").on(table.submissionId),
+    index("submission_file_submission_id_idx").on(table.submissionId),
   ],
 );
 
-export type SubmissionFileRow = typeof submissionFiles.$inferSelect;
-export type NewSubmissionFileRow = typeof submissionFiles.$inferInsert;
+export type SubmissionFileRow = typeof submissionFileTable.$inferSelect;
+export type NewSubmissionFileRow = typeof submissionFileTable.$inferInsert;

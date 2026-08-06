@@ -8,7 +8,7 @@ managing them and assigning work.
 ## 1 · The northstar
 
 A `Coach` is a reviewer's profile (name, specialties, languages, active) **plus a login** —
-the `coaches` row is keyed to a `users` row by `userId`. the admin creates coaches from the admin
+the `coach` row is keyed to an `operator` row by `operatorId`. the admin creates coaches from the admin
 portal (there is no self-signup) and assigns each submission to one.
 
 ```mermaid
@@ -21,18 +21,18 @@ flowchart LR
 ### The invariants
 
 - **A coach is two rows, made together.** `createCoach` calls the account domain's
-  `createOperator` for the login, then inserts the `coaches` profile — one is useless without
+  `createOperator` for the login, then inserts the `coach` profile — one is useless without
   the other.
 - **Both verbs are admin-only**, re-checked with `requireRole("admin")` in the server action,
   never trusted from the UI.
 - **Assignment moves the status to `assigned`** — one call, so the queue state and the
   ownership can't disagree.
-- **The coach portal finds *its* coach by the session's `userId`**, never by a client-supplied
+- **The coach portal finds *its* coach by the session's `operatorId`**, never by a client-supplied
   id.
 
 ### The pieces
 
-- `api/coachApi.ts` — `listCoaches`, `getCoachByUserId`, `createCoach` (the only `coaches`
+- `api/coachApi.ts` — `listCoaches`, `getCoachByUserId`, `createCoach` (the only `coach`
   reader/writer).
 - `api/coachActions.ts` — `createCoachAction`, `assignCoachAction` (server actions).
 - `ui/AddCoachForm.tsx` — the admin's add-coach form.
@@ -42,9 +42,9 @@ flowchart LR
 
 ## 2c · The slice owns its storage — 2026-08-05
 
-`coaches` is declared here now, in `model/coachesTable.ts`, rather than in a
+`coach` is declared here now, in `model/coachTable.ts`, rather than in a
 shared schema file ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
-It imports two declarations from other domains — `usersTable` (the login it's
+It imports two declarations from other domains — `operatorTable` (the login it's
 paired with) and `focusEnum` (the vocabulary `specialties` draws on, owned by
 `submission`, which already owned `FOCUS_OPTIONS`). Both are direct file imports,
 never barrels: a foreign key can't route through one without closing a cycle.

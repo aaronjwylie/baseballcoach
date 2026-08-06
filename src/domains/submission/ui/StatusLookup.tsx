@@ -15,7 +15,7 @@ type Result =
   | { state: "idle" }
   | { state: "codeSent"; email: string }
   | { state: "error"; message: string }
-  | { state: "loaded"; email: string; submissions: PublicSubmission[] };
+  | { state: "loaded"; email: string; submissionTable: PublicSubmission[] };
 
 /**
  * Status lookup by email — **and a code, because typing an address proves
@@ -87,7 +87,7 @@ export function StatusLookup() {
         body: JSON.stringify({ customerEmail: result.email, code }),
       });
       const json = (await res.json().catch(() => ({}))) as {
-        submissions?: PublicSubmission[];
+        submissionTable?: PublicSubmission[];
         error?: string;
       };
       if (!res.ok) {
@@ -100,7 +100,7 @@ export function StatusLookup() {
       setResult({
         state: "loaded",
         email: result.email,
-        submissions: json.submissions ?? [],
+        submissionTable: json.submissionTable ?? [],
       });
     } catch {
       setResult({ state: "error", message: "Network error. Please try again." });
@@ -148,7 +148,7 @@ export function StatusLookup() {
           <div className="rounded-2xl border border-line bg-white p-6">
             <p className="text-ink">
               If <span className="font-medium">{result.email}</span> has
-              submissions with us, a 6-digit code is on its way.
+              submissionTable with us, a 6-digit code is on its way.
             </p>
             <p className="mt-1.5 text-sm text-ink-muted">
               Check your spam folder if it hasn&rsquo;t arrived.
@@ -170,7 +170,7 @@ export function StatusLookup() {
                 onClick={submitCode}
                 className="shrink-0"
               >
-                {checking ? "Checking…" : "See my submissions"}
+                {checking ? "Checking…" : "See my submissionTable"}
               </Button>
             </div>
           </div>
@@ -178,7 +178,7 @@ export function StatusLookup() {
 
         {result.state === "loaded" && (
           <StatusList
-            submissions={result.submissions}
+            submissionTable={result.submissionTable}
             email={result.email}
           />
         )}

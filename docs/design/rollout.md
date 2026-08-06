@@ -92,7 +92,7 @@ names use **`intake_*` / `response_*`** for the same two concepts. **The decisio
 
 It costs a data migration the other direction wouldn't have. It buys a vocabulary
 that survives: *intake* and *response* say **who the files came from**, which is the
-distinction that actually matters, while `submission`-inside-`submissionFiles` says
+distinction that actually matters, while `submission`-inside-`submissionFileTable` says
 almost nothing. The full vocabulary is now [`_NomenclatureLaw.md`](../../_NomenclatureLaw.md).
 
 **Grammar keeps the two axes apart** where the stem is shared — a file kind is a
@@ -157,7 +157,7 @@ so they run in parallel — the constraint is only on the order they *finish*.
 | | Ships | |
 | --- | --- | --- |
 | 1.1 | Status enum: seven values → sixteen | ✅ migration `0008` |
-| 1.2 | `submission_events` table — `submissionId` · `status` · `at` · `actorId` · `note` | ✅ |
+| 1.2 | `submission_event` table — `submissionId` · `status` · `at` · `actorId` · `note` | ✅ |
 | 1.3 | Every existing transition writes an event | ✅ in `updateSubmission`, the one write path |
 | 1.4 | `submissionFiles.kind`: rename `submission`→`intake`, `feedback`→`response`, then extend to four | ✅ now a `file_kind` enum |
 | 1.5 | The paid-ness `Record` answers all sixteen | ✅ — **and three more like it** |
@@ -211,7 +211,7 @@ status. `in_review` in particular changes meaning — from "we emailed the coach
 before, not after.
 
 **Verifiable when:** the seed runs, the admin queue renders every existing
-submission unchanged, and `submission_events` has a row per historical transition
+submission unchanged, and `submission_event` has a row per historical transition
 we can reconstruct (or is deliberately empty before the cutover — decide which).
 
 ---
@@ -288,7 +288,7 @@ bytes, so a notification must never be the reason a download fails. Both swallow
 their own errors for the same reason — a rejected promise from a fire-and-forget
 call is an unhandled one.
 
-**Operator notifications read the `users` table**, not an env var. The people who
+**Operator notifications read the `operator` table**, not an env var. The people who
 should hear about a stalled hand-off are exactly the people who can log in and fix
 it; a config value lets those two drift the moment an operator changes. Empty is
 survivable — the send is skipped rather than crashing a webhook.
@@ -364,7 +364,7 @@ the opposite call from step 1's verification code, and for the opposite reason:
 nobody is *blocked* on a warning.
 
 **The clock needed columns, not just the trail.** `collectedAt` and
-`deletionWarnedAt` duplicate facts `submission_events` already holds — deliberately.
+`deletionWarnedAt` duplicate facts `submission_event` already holds — deliberately.
 The trail is history; these are the working values a nightly scan reads, and a scan
 against a join is one we'd have to justify at every row. Same relationship
 `submissions.status` has to its own events.
@@ -447,7 +447,7 @@ of the four.** Everything the migration had to be careful about evaporates:
 | --- | --- |
 | existing `in_review` rows mislabelled by the semantic change | no rows to mislabel |
 | `kind` rename touching live files | test rows only — rename freely |
-| `submission_events` backfill vs cut over | **start empty.** Nothing worth reconstructing |
+| `submission_event` backfill vs cut over | **start empty.** Nothing worth reconstructing |
 | the paid-ness `Record` misjudging a real paid submission | compiler-checked *and* nothing real at stake |
 
 Phase 1.4 drops back from **M to S** and 1.2 loses its open question entirely.

@@ -8,10 +8,10 @@
  */
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { users } from "../model/usersTable";
+import { operatorTable } from "../model/operatorTable";
 import { signSession, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { setUserPassword } from "./userApi";
+import { setUserPassword } from "./operatorApi";
 import { sendPasswordResetEmail } from "./resetEmail";
 
 const RESET_MAX_AGE_S = 60 * 60; // one hour
@@ -31,9 +31,9 @@ interface ResetPayload {
 export async function requestPasswordReset(email: string): Promise<void> {
   const clean = email.trim().toLowerCase();
   const [row] = await db
-    .select({ id: users.id, passwordHash: users.passwordHash })
-    .from(users)
-    .where(eq(users.email, clean))
+    .select({ id: operatorTable.id, passwordHash: operatorTable.passwordHash })
+    .from(operatorTable)
+    .where(eq(operatorTable.email, clean))
     .limit(1);
   if (!row) return;
 
@@ -58,9 +58,9 @@ export async function resetPasswordWithToken(
   if (!payload || payload.purpose !== PURPOSE) return { ok: false, error: STALE };
 
   const [row] = await db
-    .select({ passwordHash: users.passwordHash })
-    .from(users)
-    .where(eq(users.id, payload.sub))
+    .select({ passwordHash: operatorTable.passwordHash })
+    .from(operatorTable)
+    .where(eq(operatorTable.id, payload.sub))
     .limit(1);
   // A mismatch means the password already changed since the link was issued —
   // the link is single-use and this one is spent.

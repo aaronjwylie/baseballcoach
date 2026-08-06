@@ -9,7 +9,7 @@
  * the trail beside it read local.
  *
  * Marking it client-side is the fix: the browser knows where it is. Hardcoding a
- * zone would only move the problem to whoever isn't in it — and the coaches are
+ * zone would only move the problem to whoever isn't in it — and the coachTable are
  * in Japan.
  *
  * `suppressHydrationWarning` is deliberate and is the documented escape hatch

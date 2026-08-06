@@ -410,7 +410,7 @@ whether the browser can upload straight to storage or must go through us
 - Upload: in production the browser uploads **straight to Blob** with a scoped,
   short-lived token from `/api/upload/blob`, then calls `/api/upload/complete` to
   record it; in dev the bytes go through `/api/upload` onto local disk. Each file
-  gets a row in `submission_files`.
+  gets a row in `submission_file`.
 - Download: the coach's link resolves through `/api/files/[id]`, which checks the
   session and serves (or redirects to) the file — links stay stable and private
   across a driver swap.
@@ -434,10 +434,10 @@ First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose
 
 - Two roles: `admin` (the admin) and `coach`. **Customers never authenticate.**
 - A `jose`-signed HS256 JWT in an httpOnly cookie (`shared/auth`). The DAL in
-  `domains/account` does the secure `requireSession` / `requireRole` checks close
+  `domains/operator` does the secure `requireSession` / `requireRole` checks close
   to the data; `proxy.ts` (Next 16's renamed Middleware) does an optimistic
   pre-filter, never the sole defence.
-- Passwords are bcrypt-hashed and never leave `userApi.ts`. The first admin is
+- Passwords are bcrypt-hashed and never leave `operatorApi.ts`. The first admin is
   **seeded** (`npm run db:seed`); the admin adds coaches from the portal — no
   self-signup.
 
@@ -461,7 +461,7 @@ each message lives in the domain that owns its event.
 **Five of the nine tell the admin something** — a payment landed, a coach picked work
 up, a response is waiting, a customer collected. That's deliberate: a queue that
 doesn't announce its own arrivals has to be *watched* instead of used. They go to
-every `admin` in the `users` table, read at send time, because the people who
+every `admin` in the `operator` table, read at send time, because the people who
 should hear are exactly the people who can act — and an env var would let those
 two drift the moment an operator changes.
 
@@ -532,14 +532,14 @@ Drizzle. **Column names live in exactly one place** — the owning domain's
 a migration is the only way they change. One home per fact.
 
 The tables below are grouped for reading; on disk each sits with its domain
-(`submissions` · `submission_files` · `submission_events` in `domains/submission/model/`,
-`coaches` in `domains/coach/`, `users` in `domains/account/`, `settings` in
+(`submission` · `submission_file` · `submission_event` in `domains/submission/model/`,
+`coach` in `domains/coach/`, `operator` in `domains/operator/`, `settings` in
 `domains/settings/`). **This section is where the cross-cutting rationale lives** —
 why `collectedAt` duplicates the trail, why kinds are nouns and statuses
 participles — because those sentences describe a tension *between* two
 declarations and so belong to neither file ([ADR 015](docs/decisions/015-schema-by-domain.md)).
 
-### `submissions`
+### `submission`
 
 The spine. One row per request; every other domain orbits it. Created at **step 1
 of the flow**, before verification, files, or payment — see
@@ -566,7 +566,7 @@ of the flow**, before verification, files, or payment — see
 | `assignedCoachId` | uuid, FK → `coaches.id`, null | set by the admin on assignment |
 | `coachFileSet` | enum, null | **which language set the coach was sent** (step 8) |
 | `customerFileSet` | enum, null | **which language set the customer was sent** (step 13) |
-| `feedbackUrl` | text, null | legacy single-file locator; the response is now rows in `submission_files` |
+| `feedbackUrl` | text, null | legacy single-file locator; the response is now rows in `submission_file` |
 | `feedbackEmailedAt` | timestamptz, null | idempotency guard on the feedback email |
 | `collectedAt` | timestamptz, null | **the retention clock's anchor** — the customer's first download |
 | `deletionWarnedAt` | timestamptz, null | guard on the one *scheduled* email; stamped even if the send failed |
@@ -579,12 +579,12 @@ of the flow**, before verification, files, or payment — see
 `customerNotes` and `internalNotes` stay separate so an operator can forward a
 customer's words to a coach without hand-cleaning `[system]` lines out of them.
 
-**`collectedAt` and `deletionWarnedAt` duplicate facts `submission_events` also
+**`collectedAt` and `deletionWarnedAt` duplicate facts `submission_event` also
 holds, deliberately.** The trail is history; these are the working values the
 nightly sweep scans on, and a scan against a join is one we'd have to justify at
 every row. Same relationship `status` has to its own events.
 
-### `submission_files`
+### `submission_file`
 
 One row per file, **both directions**. The `kind` column is the four folders.
 
@@ -610,7 +610,7 @@ rather than replacing it.
 The record outliving the bytes is deliberate: the portal can still say what was
 sent. `/api/files/[id]` answers **410 Gone**, not 404.
 
-### `submission_events`
+### `submission_event`
 
 The trail. One row per status transition.
 
@@ -640,7 +640,7 @@ that caused it, so the trail cannot disagree with `submissions.status`.
 eventually, and the forgotten case writes an anonymous event indistinguishable
 from a legitimate one.
 
-### `settings`
+### `setting`
 
 One row, always (`id` is fixed). The operator's knobs, edited at
 `/admin/settings` — **not env vars**, because they belong to the admin rather than to
@@ -723,18 +723,18 @@ so `awaiting_upload` was retired with the flow that needed it. The status lookup
 collapses eleven middle rungs into one calm sentence — a parent has no use for
 `response_translating` — and that collapse lives in one function, not in the page.
 
-### `coaches`
+### `coach`
 
 | Column | Type | Notes |
 | --- | --- | --- |
 | `id` | uuid, primary key | |
-| `userId` | uuid, FK → `users.id` | the coach's login |
+| `operatorId` | uuid, FK → `operator.id` | the coach's login |
 | `name` | text | |
 | `specialties` | enum[] | matches the `focus` options |
 | `languages` | text[] | e.g. English, Japanese |
 | `isActive` | boolean | the admin toggles from the portal |
 
-### `users`
+### `operator`
 
 Operator identity — **operators only, never customers.**
 
@@ -747,7 +747,7 @@ Operator identity — **operators only, never customers.**
 | `createdAt` | timestamptz | |
 
 The first `admin` (the admin) is **seeded**; coaches are created from the admin portal,
-each paired with a `coaches` row.
+each paired with a `coach` row.
 
 ---
 
@@ -874,7 +874,7 @@ doc's table carries no `(not built)` markers for the first time.
 - ✅ **Auth** — jose sessions, `admin`/`coach` roles, `proxy.ts`, `/login`,
   change-password, operator forgot-password, plus the short-lived customer *flow*
   cookie (not an account).
-- ✅ **The ladder + the trail** — sixteen statuses and `submission_events`, with
+- ✅ **The ladder + the trail** — sixteen statuses and `submission_event`, with
   four exhaustive predicates guarding every question about them.
 - ✅ **The four folders** — `intake` · `intake_translation` · `response` ·
   `response_translation`, with translation need **derived** from the assigned
@@ -1106,7 +1106,7 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 - **Client** — the admin, who operates the platform day-to-day
 - **Submission** — One paid request from a customer for coaching feedback, carrying a **pack of files** (video, images, documents) reviewed together — not one video
 - **Workflow** — End-to-end process from payment to feedback delivery
-- **Database** — The Postgres instance holding the `users`, `coaches`, and `submissions` tables
+- **Database** — The Postgres instance holding the `operator`, `coach`, and `submission` tables
 - **The Team** — Ben (frontend), Aaron (backend advisory), Audrey (design + client relations)
 
 ---

@@ -1,5 +1,5 @@
 /**
- * The `account` domain barrel — operator identity: who can log in, and the
+ * The `operator` domain barrel — operator identity: who can log in, and the
  * guards that protect the portal.
  *
  * Server-only members (dal, userApi, auth actions) and the `LoginForm` client
@@ -20,11 +20,11 @@ export {
   changePassword,
   setUserPassword,
   listAdminEmails,
-} from "./api/userApi";
+} from "./api/operatorApi";
 export type {
   Role,
   Operator,
   OperatorSession,
   LoginState,
   ChangePasswordState,
-} from "./model/user";
+} from "./model/operator";

@@ -1,10 +1,10 @@
 "use server";
 /**
- * Admin verbs on coaches: create one, assign one to a submission. Both are
+ * Admin verbs on coachTable: create one, assign one to a submission. Both are
  * admin-only — the guard is re-checked here, not trusted from the UI.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import {
   FILE_SETS,
   FOCUS_OPTIONS,
@@ -80,7 +80,7 @@ export async function createCoachAction(
     console.error("[coach create] photo failed:", err);
   }
 
-  revalidatePath("/admin/coaches");
+  revalidatePath("/admin/coachTable");
   return { ok: true };
 }
 
@@ -139,8 +139,8 @@ export async function updateCoachAction(
     return { error: "Could not update the coach — is that email already in use?" };
   }
 
-  revalidatePath("/admin/coaches");
-  revalidatePath(`/admin/coaches/${id}`);
+  revalidatePath("/admin/coachTable");
+  revalidatePath(`/admin/coachTable/${id}`);
   return { ok: true };
 }
 
@@ -185,7 +185,7 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
 
     A submission whose intake has been translated sits at `intake_translated`,
     not `assigned` — so a guard that only accepted `assigned` made the hand-off
-    **impossible for exactly the submissions that needed translating**. The
+    **impossible for exactly the submissionTable that needed translating**. The
     button appeared, the action returned, and nothing happened. Found by
     simulating the translation path, which no browser test had walked.
   */

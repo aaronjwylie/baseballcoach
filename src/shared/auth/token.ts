@@ -8,8 +8,8 @@
  * Payload-agnostic on purpose. Two different sessions ride on this crypto and
  * neither shape is known here:
  *
- * - the **operator** session (`bs_session`, 7 days) — userId + role, owned by
- *   the account domain;
+ * - the **operator** session (`bs_session`, 7 days) — operatorId + role, owned by
+ *   the operator domain;
  * - the **customer flow** session (`bs_flow`, hours) — a submission id, owned by
  *   the submission domain, proving this browser started that submission.
  *

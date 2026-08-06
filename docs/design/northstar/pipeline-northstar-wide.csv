@@ -1,0 +1,657 @@
+﻿Ref,Step no,Step,Substep — still to do,Actor,Mode,Precondition,Substep — done,Substep is new,Written to the trail when it fails,Shown to someone when it fails,Written to the trail when it works,Shown to someone when it works
+1a,1,Draft,Send Code,System,automated,automated — fires the moment the draft row is created,Code Sent,,"① code → customer failed
+① code → customer bounced — hard
+① code → customer bounced — soft
+① code → customer bounced
+① code → customer complained","Customer [checkout flow] “That email address doesn’t exist. Please check it for a typo and try again.”
+Customer [checkout flow] “That inbox couldn’t accept our email. It may be full, so please try a different address.”
+Customer [checkout flow] “We couldn’t deliver your code to that address. Check it for a typo, or try a different email.”
+Customer [checkout flow] “We couldn’t send your code — please check the address and try again.”
+Customer [checkout flow] “We couldn’t send your code — please try again in a moment.”","① code → customer
+① code → customer delivered","Customer [checkout flow] “Enter the code from your email.”
+Customer [checkout flow] “We’ve sent a new code.” on a resend"
+1b,1,Draft,Prove Email,Customer,manual,manual — types the six digits,Email Proven,,"code rejected — wrong code — 1 of 5 attempts spent
+code rejected — wrong code — 2 of 5 attempts spent
+code rejected — wrong code — 3 of 5 attempts spent
+code rejected — wrong code — 4 of 5 attempts spent
+code rejected — wrong code — 5 of 5 attempts spent
+code rejected — 5 attempts spent
+code rejected — the window had closed
+code rejected — no code outstanding","Customer [checkout flow] “That code doesn’t match. Check the email and try again.”
+Customer [checkout flow] “Too many incorrect attempts. Ask for a new code to try again.”
+Customer [checkout flow] “We haven’t sent a code yet. Ask for a new one below.”
+Customer [checkout flow] “Too many attempts. Please wait a few minutes.”
+Customer [checkout flow] “Too many code requests. Please wait a few minutes.” on the resend","code accepted
+code accepted — on attempt 2
+code accepted — on attempt 3
+code accepted — on attempt 4
+code accepted — on attempt 5","Customer [checkout flow] the upload step opens — no message, the screen simply advances"
+2a,2,Upload,Attach File/s,Customer,manual,manual — picks files from their device,File/s Attached,,"intake rejected — over the size limit  ← not built
+intake rejected — file type not supported  ← not built
+intake rejected — the file was empty  ← not built
+intake rejected — over the file-count limit  ← not built
+intake upload stopped partway  ← not built
+intake upload failed — storage unreachable  ← not built
+intake never uploaded — the flow window after hand-off  ← not built","Customer [checkout flow] “You can attach up to 5 files.”
+Customer [checkout flow] “Files must be under 50 MB.”
+Customer [checkout flow] “That file type isn’t supported.”
+Customer [checkout flow] “That file is empty.”
+Customer [checkout flow] “Your session has expired. Please start again.”
+Customer [checkout flow] “Please attach at least one file first.” on trying to advance","files attached — 1 intake  ← not built
+files attached — 2 intake  ← not built
+files attached — 3 intake  ← not built
+files attached — 4 intake  ← not built
+files attached — 5 intake  ← not built",Customer [checkout flow] each file appears in the list with its size
+2b,2,Upload,Clear Payment,Customer,manual,manual — submits the card,Payment Cleared,,"declined — a row of its own, not just the notice  ← not built
+card declined → customer
+card declined → customer delivered
+card declined → customer failed
+card declined → customer bounced — hard
+card declined → customer bounced — soft
+card declined → customer bounced
+card declined → customer complained","Customer [checkout flow] “That card didn’t go through”
+Customer [checkout flow] “That payment didn’t go through.”
+Customer [checkout flow] “We couldn’t start the payment. Please try again.”
+Customer [checkout flow] “Your payment is still processing. We’ll email you as soon as it clears.”
+Customer [email] the decline email, carrying a way back in
+Customer [checkout flow] “That submission expired, so we’ve started you fresh.”  ← not built","payment cleared — confirmed in the browser  ← not built
+payment cleared — confirmed by webhook  ← not built
+payment cleared — already paid, second caller no-ops  ← not built
+payment cleared — 3-D Secure, returned via /api/payment/return  ← not built",Customer [checkout flow] the confirmation screen
+3a,3,New,Send Receipt,System,automated,automated — fires on payment clearing,Receipt Sent,,"② receipt → customer failed
+② receipt → customer bounced — hard
+② receipt → customer bounced — soft
+② receipt → customer bounced
+② receipt → customer complained",Admin [operator portal] “The receipt to {customer} bounced — they may not know their submission arrived.”  ← not built,"② receipt → customer
+② receipt → customer delivered","Customer [email] ② the receipt, listing every file"
+3b,3,New,Inform Admin,System,automated,automated — fires on payment clearing,Admin Informed,,"② New submission → Admin failed
+② New submission → Admin bounced — hard
+② New submission → Admin bounced — soft
+② New submission → Admin bounced
+② New submission → Admin complained",Admin [operator portal] a banner on the row — “Your new-submission notice bounced. Check the address on your account.”  ← not built,"② New submission → Admin
+② New submission → Admin delivered",Admin [email] ② the new-submission notice
+3c,3,New,Update Client,System,automated,automated — fires on arrival at New,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Welcome — your submission is in and we're finding you a coach.”  ← not built,Customer [status page] “Welcome — your submission is in and we're finding you a coach.”  ← not built
+4a,4,Assign,Assess Coach Fit,System,automated,automated — scores every active coach on focus and language,Coach Fit Assessed,yes,"no active coach covers that focus  ← not built
+no eligible coach shares a language — translation unavoidable  ← not built","Admin [operator portal] “No active coach covers that focus.”  ← not built
+Admin [operator portal] “No coach who covers this focus shares the client’s language — a translation will be needed whoever you pick.”  ← not built","coach fit assessed — {n} eligible on focus  ← not built
+coach fit assessed — {n} of those share a language  ← not built","Admin [operator portal] the assign list shows each eligible coach and whether picking them needs a translation  ← not built
+Admin [operator portal] “{n} coaches cover this focus. {m} of them read the client’s language.”  ← not built"
+4b,4,Assign,Assign Coach,Admin,manual,"manual — picks from the eligible list, cost shown per option",Coach Assigned,,"coach already assigned — reassignment refused  ← not built
+coach assignment failed — the pick is no longer eligible — reassess fit  ← not built","Admin [operator portal] “This has already gone to a coach. Reload to see where it is.”  ← not built
+Admin [operator portal] “The pick is no longer eligible — reassess fit.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","coach assigned — {coachId}  ← not built
+coach unassigned — {coachId}  ← not built","Admin [operator portal] the coach’s name appears on the row  ← not built
+Admin [operator portal] “Two coachs on this one.”  ← not built
+Admin [operator portal] “Reassigned — {name} has it now.”  ← not built"
+4c,4,Assign,Update Client,System,automated,automated — fires once the coach is on the row,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your coach has been assigned.”  ← not built,Customer [status page] “Your coach has been assigned.”  ← not built
+4d,4,Assign,Choose Path,System,automated,automated — reads the assigned coach's language match,Path Chosen,yes,"compatibility check skipped — no coach assigned  ← not built
+compatibility split — {coachId} shares no language with the client  ← not built","Admin [operator portal] “Assign a coach before checking languages.”  ← not built
+Admin [operator portal] “{name} can’t read the client’s files. Translate for all, or reassign.”  ← not built","translation required — no shared language. Proceeding to Step 5  ← not built
+translation not required — shared language. Proceeding to Step 8  ← not built","Admin [operator portal] “No shared language — this needs translating. Moving to Step 5.”  ← not built
+Admin [operator portal] “Shared language — no translation needed. Moving to Step 8.”  ← not built"
+5a,5,Translate,Assign Translator,Admin,manual,manual — picks from the translator list,Translator Assigned,yes,"intake translator already assigned — reassignment refused  ← not built
+intake translator assignment failed — nobody on file covers that language pair  ← not built","Admin [operator portal] “This has already gone to a translator. Reload to see where it is.”  ← not built
+Admin [operator portal] “Nobody on file covers that language pair.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","intake translator assigned — {translatorId}  ← not built
+intake translator unassigned — {translatorId}  ← not built","Admin [operator portal] the translator’s name appears on the row  ← not built
+Admin [operator portal] “Two translators on this one.”  ← not built
+Admin [operator portal] “Reassigned — {name} has it now.”  ← not built
+Admin [operator portal] “The return leg can take a different translator.”  ← not built"
+5b,5,Translate,Inform Translator,System,automated,"automated — fires on assignment; there is one set, so nothing to choose",Translator Informed,,"③ hand-off → translator failed
+③ hand-off → translator bounced — hard
+③ hand-off → translator bounced — soft
+③ hand-off → translator bounced
+③ hand-off → translator complained","Admin [operator portal] “The translator never received this — they don’t know they have work.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","③ hand-off → translator
+③ hand-off → translator delivered","Translator [email] ③ the hand-off, with a download link per file  ← not built
+Admin [operator portal] the row moves to Translating"
+5c,5,Translate,Update Client,System,automated,automated — fires when the hand-off goes out,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your files are with a translator.”  ← not built,Customer [status page] “Your files are with a translator.”  ← not built
+5d,5,Translate,Download Originals,Translator,manual,"manual — collects the pack, off-platform",Originals Downloaded,,"original fetch refused — 410, the folder was swept
+original fetch refused — 401, the session had expired  ← not built
+original fetch refused — 403, a different party asked  ← not built
+original fetch failed — storage unreachable  ← not built
+original fetch stopped partway  ← not built
+original pack build failed — too large to archive  ← not built
+original never collected — 48h after hand-off  ← not built
+original still incomplete — 1 of 2, 48h after hand-off  ← not built
+original still incomplete — 1 of 3, 48h after hand-off  ← not built
+original still incomplete — 1 of 4, 48h after hand-off  ← not built
+original still incomplete — 1 of 5, 48h after hand-off  ← not built
+original still incomplete — 2 of 3, 48h after hand-off  ← not built
+original still incomplete — 2 of 4, 48h after hand-off  ← not built
+original still incomplete — 2 of 5, 48h after hand-off  ← not built
+original still incomplete — 3 of 4, 48h after hand-off  ← not built
+original still incomplete — 3 of 5, 48h after hand-off  ← not built
+original still incomplete — 4 of 5, 48h after hand-off  ← not built","Translator [operator portal] “That file is no longer available.”
+Translator [operator portal] “Your session has expired. Please sign in again.”  ← not built
+Translator [operator portal] “This submission isn’t assigned to you.”  ← not built
+Translator [operator portal] “We couldn’t reach storage. Please try again in a moment.”  ← not built
+Translator [operator portal] “That download didn’t finish — try it again.”  ← not built
+Translator [operator portal] “We couldn’t build the archive. Download the files individually.”  ← not built
+Admin [operator portal] “The translator hasn’t collected anything, 48h after hand-off.”  ← not built
+Admin [operator portal] “The translator has 1 of 2 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 3 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 3 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 3 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 3 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 4 of 5 files.”  ← not built","original collected — 1 of 1  ← not built
+original collected — 1 of 2  ← not built
+original collected — 1 of 3  ← not built
+original collected — 1 of 4  ← not built
+original collected — 1 of 5  ← not built
+original collected — 2 of 2  ← not built
+original collected — 2 of 3  ← not built
+original collected — 2 of 4  ← not built
+original collected — 2 of 5  ← not built
+original collected — 3 of 3  ← not built
+original collected — 3 of 4  ← not built
+original collected — 3 of 5  ← not built
+original collected — 4 of 4  ← not built
+original collected — 4 of 5  ← not built
+original collected — 5 of 5  ← not built
+original collected in one pack  ← not built","Translator [operator portal] the file downloads
+Translator [operator portal] “Your file downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 2 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 3 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 4 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 5 files downloaded — you have the complete set.”  ← not built
+Admin [operator portal] “The translator has started — first file collected.”  ← not built
+Admin [operator portal] “The translator has the complete set.”  ← not built"
+6a,6,Translating,Update Client,System,automated,automated — fires on the translator's first collection,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your files are being translated.”  ← not built,Customer [status page] “Your files are being translated.”  ← not built
+6b,6,Translating,Upload Translations,Translator,manual,manual — uploads each file against its original,Translations Uploaded,,"intake_translation rejected — over the size limit  ← not built
+intake_translation rejected — file type not supported  ← not built
+intake_translation rejected — the file was empty  ← not built
+intake_translation unmatched — no original to pair it with  ← not built
+intake_translation duplicate — that original already has a translation  ← not built
+intake_translation incomplete — 1 of 2 originals translated  ← not built
+intake_translation incomplete — 1 of 3 originals translated  ← not built
+intake_translation incomplete — 1 of 4 originals translated  ← not built
+intake_translation incomplete — 1 of 5 originals translated  ← not built
+intake_translation incomplete — 2 of 3 originals translated  ← not built
+intake_translation incomplete — 2 of 4 originals translated  ← not built
+intake_translation incomplete — 2 of 5 originals translated  ← not built
+intake_translation incomplete — 3 of 4 originals translated  ← not built
+intake_translation incomplete — 3 of 5 originals translated  ← not built
+intake_translation incomplete — 4 of 5 originals translated  ← not built","Translator [operator portal] “That file was rejected — too large, wrong type, or empty.”  ← not built
+Translator [operator portal] “That file doesn’t match any original.”  ← not built
+Translator [operator portal] “That original already has a translation.”  ← not built
+Translator [operator portal] “1 of 2 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 3 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 3 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “3 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “3 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “4 of 5 originals still need a translation.”  ← not built
+Admin [operator portal] “1 of 2 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 3 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 3 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “3 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “3 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “4 of 5 originals have a translation.”  ← not built","files attached — 1 intake_translation  ← not built
+files attached — 2 intake_translation  ← not built
+files attached — 3 intake_translation  ← not built
+files attached — 4 intake_translation  ← not built
+files attached — 5 intake_translation  ← not built
+intake_translation paired to its original — 1 of 1  ← not built
+intake_translation paired to its original — 1 of 2  ← not built
+intake_translation paired to its original — 1 of 3  ← not built
+intake_translation paired to its original — 1 of 4  ← not built
+intake_translation paired to its original — 1 of 5  ← not built
+intake_translation paired to its original — 2 of 2  ← not built
+intake_translation paired to its original — 2 of 3  ← not built
+intake_translation paired to its original — 2 of 4  ← not built
+intake_translation paired to its original — 2 of 5  ← not built
+intake_translation paired to its original — 3 of 3  ← not built
+intake_translation paired to its original — 3 of 4  ← not built
+intake_translation paired to its original — 3 of 5  ← not built
+intake_translation paired to its original — 4 of 4  ← not built
+intake_translation paired to its original — 4 of 5  ← not built
+intake_translation paired to its original — 5 of 5  ← not built","Translator [operator portal] the file appears beside the original it translates  ← not built
+Admin [operator portal] “Every original has a translation.”  ← not built
+Translator [operator portal] “All 1 translated.”  ← not built
+Translator [operator portal] “All 2 translated.”  ← not built
+Translator [operator portal] “All 3 translated.”  ← not built
+Translator [operator portal] “All 4 translated.”  ← not built
+Translator [operator portal] “All 5 translated.”  ← not built"
+7a,7,Translated,Inform Admin,System,automated,automated — fires when the last translation lands,Admin Informed,yes,"④ translated → Admin failed  ← not built
+④ translated → Admin bounced — hard  ← not built
+④ translated → Admin bounced — soft  ← not built
+④ translated → Admin bounced  ← not built
+④ translated → Admin complained  ← not built",Admin [operator portal] a banner on the row — “The translation notice bounced.”  ← not built,"④ translated → Admin  ← not built
+④ translated → Admin delivered  ← not built",Admin [email] ④ the translations are back  ← not built
+7b,7,Translated,Inform Translator,System,automated,automated — fires when the last translation lands,Translator Informed,yes,"④ received → translator failed  ← not built
+④ received → translator bounced — hard  ← not built
+④ received → translator bounced — soft  ← not built
+④ received → translator bounced  ← not built
+④ received → translator complained  ← not built",Admin [operator portal] a banner on the row — “The translator’s receipt bounced. They don’t know the translations arrived.”  ← not built,"④ received → translator  ← not built
+④ received → translator delivered  ← not built",Translator [email] ④ we have your translations  ← not built
+7c,7,Translated,Assess Translations,Admin,manual,"manual — approves or returns, and picks which set the coach gets",Translations Assessed,yes,"④ approved → translator failed  ← not built
+④ approved → translator bounced — hard  ← not built
+④ approved → translator bounced — soft  ← not built
+④ approved → translator bounced  ← not built
+④ approved → translator complained  ← not built
+④ returned → translator failed  ← not built
+④ returned → translator bounced — hard  ← not built
+④ returned → translator bounced — soft  ← not built
+④ returned → translator bounced  ← not built
+④ returned → translator complained  ← not built","Admin [operator portal] “There’s nothing in the translated folder to assess.”  ← not built
+Admin [operator portal] “Say why it’s going back — the translator only gets what you write here.”  ← not built
+Admin [operator portal] “Choose which set the coach receives.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","hand-off set chosen — originals  ← not built
+hand-off set chosen — translations  ← not built
+hand-off set chosen — both  ← not built
+translations approved — every original covered. Proceeding to Step 8  ← not built
+translations rejected — sent back for rework. Returning to Step 6  ← not built
+④ approved → translator  ← not built
+④ approved → translator delivered  ← not built
+④ returned → translator  ← not built
+④ returned → translator delivered  ← not built","Admin [operator portal] “Approved — moving to Step 8.”  ← not built
+Admin [operator portal] “Returned for rework — back to Step 6.”  ← not built
+Translator [email] ④ your translation was approved  ← not built
+Translator [email] ④ your translation was returned, with the reason  ← not built
+Translator [operator portal] “This came back — see the note and re-upload.”  ← not built"
+8a,8,Sent,Update Client,System,automated,automated — fires only when arriving from step 7; untranslated submissions skip it,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your files have been translated.”  ← not built,Customer [status page] “Your files have been translated.”  ← not built
+8b,8,Sent,Inform Coach,System,automated,automated — fires on arrival at Sent; the set was chosen at 7c,Coach Informed,,"③ hand-off → coach failed
+③ hand-off → coach bounced — hard
+③ hand-off → coach bounced — soft
+③ hand-off → coach bounced
+③ hand-off → coach complained",Admin [operator portal] “The coach never received this — they don’t know they have work.”  ← not built,"③ hand-off → coach
+③ hand-off → coach delivered","Coach [email] ③ the hand-off, with a download link per file
+Admin [operator portal] the set that was sent is recorded against the submission  ← not built"
+8c,8,Sent,Coach Downloads,Coach,manual,manual — collects the pack,Coach Downloaded,,"coach fetch refused — 410, the folder was swept
+coach fetch refused — 401, the session had expired  ← not built
+coach fetch refused — 403, a different party asked  ← not built
+coach fetch failed — storage unreachable  ← not built
+coach fetch stopped partway  ← not built
+coach pack build failed — too large to archive  ← not built
+coach never collected — 48h after hand-off  ← not built
+coach still incomplete — 1 of 2, 48h after hand-off  ← not built
+coach still incomplete — 1 of 3, 48h after hand-off  ← not built
+coach still incomplete — 1 of 4, 48h after hand-off  ← not built
+coach still incomplete — 1 of 5, 48h after hand-off  ← not built
+coach still incomplete — 2 of 3, 48h after hand-off  ← not built
+coach still incomplete — 2 of 4, 48h after hand-off  ← not built
+coach still incomplete — 2 of 5, 48h after hand-off  ← not built
+coach still incomplete — 3 of 4, 48h after hand-off  ← not built
+coach still incomplete — 3 of 5, 48h after hand-off  ← not built
+coach still incomplete — 4 of 5, 48h after hand-off  ← not built","Coach [operator portal] “That file is no longer available.”
+Coach [operator portal] “Your session has expired. Please sign in again.”  ← not built
+Coach [operator portal] “This submission isn’t assigned to you.”  ← not built
+Coach [operator portal] “We couldn’t reach storage. Please try again in a moment.”  ← not built
+Coach [operator portal] “That download didn’t finish — try it again.”  ← not built
+Coach [operator portal] “We couldn’t build the archive. Download the files individually.”  ← not built
+Admin [operator portal] “The coach hasn’t collected anything, 48h after hand-off.”  ← not built
+Admin [operator portal] “The coach has 1 of 2 files.”  ← not built
+Admin [operator portal] “The coach has 1 of 3 files.”  ← not built
+Admin [operator portal] “The coach has 1 of 4 files.”  ← not built
+Admin [operator portal] “The coach has 1 of 5 files.”  ← not built
+Admin [operator portal] “The coach has 2 of 3 files.”  ← not built
+Admin [operator portal] “The coach has 2 of 4 files.”  ← not built
+Admin [operator portal] “The coach has 2 of 5 files.”  ← not built
+Admin [operator portal] “The coach has 3 of 4 files.”  ← not built
+Admin [operator portal] “The coach has 3 of 5 files.”  ← not built
+Admin [operator portal] “The coach has 4 of 5 files.”  ← not built","coach collected — 1 of 1  ← not built
+coach collected — 1 of 2  ← not built
+coach collected — 1 of 3  ← not built
+coach collected — 1 of 4  ← not built
+coach collected — 1 of 5  ← not built
+coach collected — 2 of 2  ← not built
+coach collected — 2 of 3  ← not built
+coach collected — 2 of 4  ← not built
+coach collected — 2 of 5  ← not built
+coach collected — 3 of 3  ← not built
+coach collected — 3 of 4  ← not built
+coach collected — 3 of 5  ← not built
+coach collected — 4 of 4  ← not built
+coach collected — 4 of 5  ← not built
+coach collected — 5 of 5  ← not built
+coach collected in one pack  ← not built","Coach [operator portal] the file downloads
+Coach [operator portal] “Your file downloaded — you have the complete set.”  ← not built
+Coach [operator portal] “All 2 files downloaded — you have the complete set.”  ← not built
+Coach [operator portal] “All 3 files downloaded — you have the complete set.”  ← not built
+Coach [operator portal] “All 4 files downloaded — you have the complete set.”  ← not built
+Coach [operator portal] “All 5 files downloaded — you have the complete set.”  ← not built
+Admin [operator portal] “The coach has started — first file collected.”  ← not built
+Admin [operator portal] “The coach has the complete set.”  ← not built
+Admin [email] ⑤ picked up — the coach has it"
+9a,9,Reviewing,Update Client,System,automated,automated — fires on the coach's first collection,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your coach is writing your feedback.”  ← not built,Customer [status page] “Your coach is writing your feedback.”  ← not built
+9b,9,Reviewing,Upload Feedback,Coach,manual,manual — uploads their feedback,Feedback Uploaded,,"feedback rejected — over the size limit  ← not built
+feedback rejected — file type not supported  ← not built
+feedback rejected — the file was empty  ← not built
+feedback rejected — over the file-count limit  ← not built
+feedback upload stopped partway  ← not built
+feedback upload failed — storage unreachable  ← not built
+feedback never uploaded — 7 days after hand-off  ← not built","Coach [operator portal] “That file was rejected — too large, wrong type, or empty.”  ← not built
+Coach [operator portal] “That upload didn’t finish — try it again.”  ← not built
+Coach [operator portal] “We couldn’t reach storage. Please try again in a moment.”  ← not built
+Admin [operator portal] “The coach hasn’t uploaded anything, 7 days after hand-off.”  ← not built","files attached — 1 feedback  ← not built
+files attached — 2 feedback  ← not built
+files attached — 3 feedback  ← not built
+files attached — 4 feedback  ← not built
+files attached — 5 feedback  ← not built","Coach [operator portal] the file appears in their folder
+Admin [operator portal] “The coach has delivered.”  ← not built"
+10a,10,Submitted,Inform Admin,System,automated,automated — fires when the feedback lands,Admin Informed,,"⑥ feedback → Admin failed
+⑥ feedback → Admin bounced — hard
+⑥ feedback → Admin bounced — soft
+⑥ feedback → Admin bounced
+⑥ feedback → Admin complained",Admin [operator portal] a banner on the row — “The feedback notice bounced.”  ← not built,"⑥ feedback → Admin
+⑥ feedback → Admin delivered",Admin [email] ⑥ the coach has delivered
+10b,10,Submitted,Inform Coach,System,automated,automated — fires when the feedback lands,Coach Informed,,"⑥ feedback → coach failed
+⑥ feedback → coach bounced — hard
+⑥ feedback → coach bounced — soft
+⑥ feedback → coach bounced
+⑥ feedback → coach complained",Admin [operator portal] a banner on the row — “The coach’s copy bounced.”  ← not built,"⑥ feedback → coach
+⑥ feedback → coach delivered",Coach [email] ⑥ we have your feedback
+10c,10,Submitted,Approve Feedback,Admin,manual,"manual — approves the coaching, or returns it with a reason",Feedback Approved,yes,"⑥ approved → coach failed  ← not built
+⑥ approved → coach bounced — hard  ← not built
+⑥ approved → coach bounced — soft  ← not built
+⑥ approved → coach bounced  ← not built
+⑥ approved → coach complained  ← not built
+⑥ returned → coach failed  ← not built
+⑥ returned → coach bounced — hard  ← not built
+⑥ returned → coach bounced — soft  ← not built
+⑥ returned → coach bounced  ← not built
+⑥ returned → coach complained  ← not built","Admin [operator portal] “There’s nothing in the feedback folder to assess.”  ← not built
+Admin [operator portal] “Say why it’s going back — the coach only gets what you write here.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","feedback approved — proceeding to the fit assessment  ← not built
+feedback rejected — sent back for rework. Returning to Step 9  ← not built
+⑥ approved → coach  ← not built
+⑥ approved → coach delivered  ← not built
+⑥ returned → coach  ← not built
+⑥ returned → coach delivered  ← not built","Admin [operator portal] “Approved — checking whether the client can read it.”  ← not built
+Admin [operator portal] “Returned for rework — back to Step 9.”  ← not built
+Coach [email] ⑥ your feedback was approved  ← not built
+Coach [email] ⑥ your feedback was returned, with the reason  ← not built
+Coach [operator portal] “This came back — see the note and re-upload.”  ← not built"
+10d,10,Submitted,Assess Feedback Fit,System,automated,automated — reads the language the feedback was written in,Feedback Fit Assessed,yes,no coach who answered shares the client's language — translation unavoidable  ← not built,Admin [operator portal] “The feedback came back in a language the client doesn’t read — a translation will be needed.”  ← not built,"feedback fit assessed — written in {language}  ← not built
+feedback fit assessed — the client reads it  ← not built","Admin [operator portal] “The client reads this. No translation needed.”  ← not built
+Admin [operator portal] “The client can’t read this. Translation needed.”  ← not built"
+10e,10,Submitted,Choose Path,System,automated,automated — reads what the fit assessment found,Path Chosen,yes,"compatibility split — the feedback spans two languages  ← not built
+compatibility split — {coachId} answered in a language the client can’t read  ← not built","Admin [operator portal] “{name} answered in a language the client can’t read. Translate the set, or send one.”  ← not built","translation required — no shared language. Proceeding to Step 11  ← not built
+translation not required — shared language. Proceeding to Step 14  ← not built","Admin [operator portal] “No shared language — this needs translating. Moving to Step 11.”  ← not built
+Admin [operator portal] “Shared language — no translation needed. Moving to Step 14.”  ← not built"
+11a,11,Translate,Assign Translator,Admin,manual,manual — picks from the translator list,Translator Assigned,yes,"feedback translator already assigned — reassignment refused  ← not built
+feedback translator assignment failed — nobody on file covers that language pair  ← not built","Admin [operator portal] “This has already gone to a translator. Reload to see where it is.”  ← not built
+Admin [operator portal] “Nobody on file covers that language pair.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","feedback translator assigned — {translatorId}  ← not built
+feedback translator unassigned — {translatorId}  ← not built","Admin [operator portal] the translator’s name appears on the row  ← not built
+Admin [operator portal] “Two translators on this one.”  ← not built
+Admin [operator portal] “Reassigned — {name} has it now.”  ← not built
+Admin [operator portal] “The intake leg can take a different translator.”  ← not built"
+11b,11,Translate,Inform Translator,System,automated,"automated — fires on assignment; there is one set, so nothing to choose",Translator Informed,yes,"⑦ feedback → translator failed  ← not built
+⑦ feedback → translator bounced — hard  ← not built
+⑦ feedback → translator bounced — soft  ← not built
+⑦ feedback → translator bounced  ← not built
+⑦ feedback → translator complained  ← not built","Admin [operator portal] “The translator never received this.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","⑦ feedback → translator  ← not built
+⑦ feedback → translator delivered  ← not built",Translator [email] ⑦ a feedback to translate  ← not built
+11c,11,Translate,Download Feedback,Translator,manual,"manual — collects the feedback, off-platform",Feedback Downloaded,,"feedback fetch refused — 410, the folder was swept
+feedback fetch refused — 401, the session had expired  ← not built
+feedback fetch refused — 403, a different party asked  ← not built
+feedback fetch failed — storage unreachable  ← not built
+feedback fetch stopped partway  ← not built
+feedback pack build failed — too large to archive  ← not built
+feedback never collected — 48h after hand-off  ← not built
+feedback still incomplete — 1 of 2, 48h after hand-off  ← not built
+feedback still incomplete — 1 of 3, 48h after hand-off  ← not built
+feedback still incomplete — 1 of 4, 48h after hand-off  ← not built
+feedback still incomplete — 1 of 5, 48h after hand-off  ← not built
+feedback still incomplete — 2 of 3, 48h after hand-off  ← not built
+feedback still incomplete — 2 of 4, 48h after hand-off  ← not built
+feedback still incomplete — 2 of 5, 48h after hand-off  ← not built
+feedback still incomplete — 3 of 4, 48h after hand-off  ← not built
+feedback still incomplete — 3 of 5, 48h after hand-off  ← not built
+feedback still incomplete — 4 of 5, 48h after hand-off  ← not built","Translator [operator portal] “That file is no longer available.”
+Translator [operator portal] “Your session has expired. Please sign in again.”  ← not built
+Translator [operator portal] “This submission isn’t assigned to you.”  ← not built
+Translator [operator portal] “We couldn’t reach storage. Please try again in a moment.”  ← not built
+Translator [operator portal] “That download didn’t finish — try it again.”  ← not built
+Translator [operator portal] “We couldn’t build the archive. Download the files individually.”  ← not built
+Admin [operator portal] “The translator hasn’t collected anything, 48h after hand-off.”  ← not built
+Admin [operator portal] “The translator has 1 of 2 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 3 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 1 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 3 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 2 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 3 of 4 files.”  ← not built
+Admin [operator portal] “The translator has 3 of 5 files.”  ← not built
+Admin [operator portal] “The translator has 4 of 5 files.”  ← not built","feedback collected — 1 of 1  ← not built
+feedback collected — 1 of 2  ← not built
+feedback collected — 1 of 3  ← not built
+feedback collected — 1 of 4  ← not built
+feedback collected — 1 of 5  ← not built
+feedback collected — 2 of 2  ← not built
+feedback collected — 2 of 3  ← not built
+feedback collected — 2 of 4  ← not built
+feedback collected — 2 of 5  ← not built
+feedback collected — 3 of 3  ← not built
+feedback collected — 3 of 4  ← not built
+feedback collected — 3 of 5  ← not built
+feedback collected — 4 of 4  ← not built
+feedback collected — 4 of 5  ← not built
+feedback collected — 5 of 5  ← not built
+feedback collected in one pack  ← not built","Translator [operator portal] the file downloads
+Translator [operator portal] “Your file downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 2 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 3 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 4 files downloaded — you have the complete set.”  ← not built
+Translator [operator portal] “All 5 files downloaded — you have the complete set.”  ← not built
+Admin [operator portal] “The translator has started — first file collected.”  ← not built
+Admin [operator portal] “The translator has the complete set.”  ← not built"
+12a,12,Translating,Update Client,System,automated,automated — fires on the translator's first collection,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your feedback is being translated.”  ← not built,Customer [status page] “Your feedback is being translated.”  ← not built
+12b,12,Translating,Upload Translation,Translator,manual,manual — uploads each file against its original,Translation Uploaded,,"feedback_translation rejected — over the size limit  ← not built
+feedback_translation rejected — file type not supported  ← not built
+feedback_translation rejected — the file was empty  ← not built
+feedback_translation unmatched — no original to pair it with  ← not built
+feedback_translation duplicate — that original already has a translation  ← not built
+feedback_translation incomplete — 1 of 2 originals translated  ← not built
+feedback_translation incomplete — 1 of 3 originals translated  ← not built
+feedback_translation incomplete — 1 of 4 originals translated  ← not built
+feedback_translation incomplete — 1 of 5 originals translated  ← not built
+feedback_translation incomplete — 2 of 3 originals translated  ← not built
+feedback_translation incomplete — 2 of 4 originals translated  ← not built
+feedback_translation incomplete — 2 of 5 originals translated  ← not built
+feedback_translation incomplete — 3 of 4 originals translated  ← not built
+feedback_translation incomplete — 3 of 5 originals translated  ← not built
+feedback_translation incomplete — 4 of 5 originals translated  ← not built","Translator [operator portal] “That file was rejected — too large, wrong type, or empty.”  ← not built
+Translator [operator portal] “That file doesn’t match any original.”  ← not built
+Translator [operator portal] “That original already has a translation.”  ← not built
+Translator [operator portal] “1 of 2 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 3 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “1 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 3 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “2 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “3 of 4 originals still need a translation.”  ← not built
+Translator [operator portal] “3 of 5 originals still need a translation.”  ← not built
+Translator [operator portal] “4 of 5 originals still need a translation.”  ← not built
+Admin [operator portal] “1 of 2 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 3 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “1 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 3 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “2 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “3 of 4 originals have a translation.”  ← not built
+Admin [operator portal] “3 of 5 originals have a translation.”  ← not built
+Admin [operator portal] “4 of 5 originals have a translation.”  ← not built","files attached — 1 feedback_translation  ← not built
+files attached — 2 feedback_translation  ← not built
+files attached — 3 feedback_translation  ← not built
+files attached — 4 feedback_translation  ← not built
+files attached — 5 feedback_translation  ← not built
+feedback_translation paired to its original — 1 of 1  ← not built
+feedback_translation paired to its original — 1 of 2  ← not built
+feedback_translation paired to its original — 1 of 3  ← not built
+feedback_translation paired to its original — 1 of 4  ← not built
+feedback_translation paired to its original — 1 of 5  ← not built
+feedback_translation paired to its original — 2 of 2  ← not built
+feedback_translation paired to its original — 2 of 3  ← not built
+feedback_translation paired to its original — 2 of 4  ← not built
+feedback_translation paired to its original — 2 of 5  ← not built
+feedback_translation paired to its original — 3 of 3  ← not built
+feedback_translation paired to its original — 3 of 4  ← not built
+feedback_translation paired to its original — 3 of 5  ← not built
+feedback_translation paired to its original — 4 of 4  ← not built
+feedback_translation paired to its original — 4 of 5  ← not built
+feedback_translation paired to its original — 5 of 5  ← not built","Translator [operator portal] the file appears beside the original it translates  ← not built
+Admin [operator portal] “Every original has a translation.”  ← not built
+Translator [operator portal] “All 1 translated.”  ← not built
+Translator [operator portal] “All 2 translated.”  ← not built
+Translator [operator portal] “All 3 translated.”  ← not built
+Translator [operator portal] “All 4 translated.”  ← not built
+Translator [operator portal] “All 5 translated.”  ← not built"
+13a,13,Translated,Inform Admin,System,automated,automated — fires when the last translation lands,Admin Informed,yes,"⑦ translated → Admin failed  ← not built
+⑦ translated → Admin bounced  ← not built",Admin [operator portal] a banner on the row — “The translation notice bounced.”  ← not built,"⑦ translated → Admin  ← not built
+⑦ translated → Admin delivered  ← not built",Admin [email] ⑦ the translation is back  ← not built
+13b,13,Translated,Inform Translator,System,automated,automated — fires when the last translation lands,Translator Informed,yes,"⑦ received → translator failed  ← not built
+⑦ received → translator bounced — hard  ← not built
+⑦ received → translator bounced — soft  ← not built
+⑦ received → translator bounced  ← not built
+⑦ received → translator complained  ← not built",Admin [operator portal] a banner on the row — “The translator’s receipt bounced. They don’t know the translation arrived.”  ← not built,"⑦ received → translator  ← not built
+⑦ received → translator delivered  ← not built",Translator [email] ⑦ we have your translation  ← not built
+13c,13,Translated,Assess Translation,Admin,manual,"manual — approves the translation, or returns it with a reason",Translation Assessed,yes,"⑦ approved → translator failed  ← not built
+⑦ approved → translator bounced — hard  ← not built
+⑦ approved → translator bounced — soft  ← not built
+⑦ approved → translator bounced  ← not built
+⑦ approved → translator complained  ← not built
+⑦ returned → translator failed  ← not built
+⑦ returned → translator bounced — hard  ← not built
+⑦ returned → translator bounced — soft  ← not built
+⑦ returned → translator bounced  ← not built
+⑦ returned → translator complained  ← not built","Admin [operator portal] “There’s nothing in the translated folder to assess.”  ← not built
+Admin [operator portal] “Say why it’s going back — the translator only gets what you write here.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","translation approved — every original covered. Proceeding to Step 14  ← not built
+translation rejected — sent back for rework. Returning to Step 12  ← not built
+⑦ approved → translator  ← not built
+⑦ approved → translator delivered  ← not built
+⑦ returned → translator  ← not built
+⑦ returned → translator delivered  ← not built","Admin [operator portal] “Approved — moving to Step 14.”  ← not built
+Admin [operator portal] “Returned for rework — back to Step 12.”  ← not built
+Translator [email] ⑦ your translation was approved  ← not built
+Translator [email] ⑦ your translation was returned, with the reason  ← not built
+Translator [operator portal] “This came back — see the note and re-upload.”  ← not built"
+14a,14,Deliver,Update Client,System,automated,automated — fires only when arriving from step 13; untranslated feedback skips it,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your feedback has been translated.”  ← not built,Customer [status page] “Your feedback has been translated.”  ← not built
+14b,14,Deliver,Release Feedback,Admin,manual,manual — chooses the set and releases it,Feedback Released,,"release refused — nothing in the feedback folder  ← not built
+release refused — no set chosen  ← not built
+release refused — already delivered  ← not built
+release failed — the delivery stamp didn’t land  ← not built","Admin [operator portal] “There is no feedback file to send yet.”  ← not built
+Admin [operator portal] “Choose which set the client receives.”  ← not built
+Admin [operator portal] “This has already been sent. Reload to see where it is.”  ← not built
+Admin [operator portal] “That didn’t go through — try again.”  ← not built","approved — original set released  ← not built
+approved — translated set released  ← not built
+approved — both sets released  ← not built
+delivered — the client may now collect. Proceeding to 14c  ← not built
+retention backstop started — 90 days from delivery  ← not built","Admin [operator portal] the row moves to Delivered
+Admin [operator portal] “Released — the client is being emailed.”  ← not built
+Admin [operator portal] “Kept until {date} unless they collect sooner.”  ← not built"
+14c,14,Deliver,Send Feedback,System,automated,automated — fires on release,Feedback Sent,,"⑧ feedback ready → customer failed
+⑧ feedback ready → customer bounced — hard
+⑧ feedback ready → customer bounced — soft
+⑧ feedback ready → customer bounced
+⑧ feedback ready → customer complained",Admin [operator portal] a banner on the row — “{customer} never received this. They don’t know it’s ready.”  ← not built,"⑧ feedback ready → customer
+⑧ feedback ready → customer delivered","Customer [email] ⑧ feedback ready, stating the retention window"
+14d,14,Deliver,Update Client,System,automated,automated — fires on release,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your feedback is ready to collect.”  ← not built,Customer [status page] “Your feedback is ready to collect.”  ← not built
+14e,14,Deliver,Customer Downloads,Customer,manual,manual — collects from the status page,Customer Downloaded,,"customer fetch refused — 410, the folder was swept
+customer fetch refused — 401, the session had expired  ← not built
+customer fetch refused — 403, a different party asked  ← not built
+customer fetch failed — storage unreachable  ← not built
+customer fetch stopped partway  ← not built
+customer pack build failed — too large to archive  ← not built
+customer never collected — 48h after hand-off  ← not built
+customer still incomplete — 1 of 2, 48h after hand-off  ← not built
+customer still incomplete — 1 of 3, 48h after hand-off  ← not built
+customer still incomplete — 1 of 4, 48h after hand-off  ← not built
+customer still incomplete — 1 of 5, 48h after hand-off  ← not built
+customer still incomplete — 2 of 3, 48h after hand-off  ← not built
+customer still incomplete — 2 of 4, 48h after hand-off  ← not built
+customer still incomplete — 2 of 5, 48h after hand-off  ← not built
+customer still incomplete — 3 of 4, 48h after hand-off  ← not built
+customer still incomplete — 3 of 5, 48h after hand-off  ← not built
+customer still incomplete — 4 of 5, 48h after hand-off  ← not built","Customer [status page] “That file is no longer available.”
+Customer [status page] “Your session has expired. Please sign in again.”  ← not built
+Customer [status page] “This submission isn’t assigned to you.”  ← not built
+Customer [status page] “We couldn’t reach storage. Please try again in a moment.”  ← not built
+Customer [status page] “That download didn’t finish — try it again.”  ← not built
+Customer [status page] “We couldn’t build the archive. Download the files individually.”  ← not built
+Admin [operator portal] “The customer hasn’t collected anything, 48h after hand-off.”  ← not built
+Admin [operator portal] “The customer has 1 of 2 files.”  ← not built
+Admin [operator portal] “The customer has 1 of 3 files.”  ← not built
+Admin [operator portal] “The customer has 1 of 4 files.”  ← not built
+Admin [operator portal] “The customer has 1 of 5 files.”  ← not built
+Admin [operator portal] “The customer has 2 of 3 files.”  ← not built
+Admin [operator portal] “The customer has 2 of 4 files.”  ← not built
+Admin [operator portal] “The customer has 2 of 5 files.”  ← not built
+Admin [operator portal] “The customer has 3 of 4 files.”  ← not built
+Admin [operator portal] “The customer has 3 of 5 files.”  ← not built
+Admin [operator portal] “The customer has 4 of 5 files.”  ← not built","customer collected — 1 of 1  ← not built
+customer collected — 1 of 2  ← not built
+customer collected — 1 of 3  ← not built
+customer collected — 1 of 4  ← not built
+customer collected — 1 of 5  ← not built
+customer collected — 2 of 2  ← not built
+customer collected — 2 of 3  ← not built
+customer collected — 2 of 4  ← not built
+customer collected — 2 of 5  ← not built
+customer collected — 3 of 3  ← not built
+customer collected — 3 of 4  ← not built
+customer collected — 3 of 5  ← not built
+customer collected — 4 of 4  ← not built
+customer collected — 4 of 5  ← not built
+customer collected — 5 of 5  ← not built
+customer collected in one pack  ← not built","Customer [status page] the file downloads
+Customer [status page] “Your file downloaded — you have the complete set.”  ← not built
+Customer [status page] “All 2 files downloaded — you have the complete set.”  ← not built
+Customer [status page] “All 3 files downloaded — you have the complete set.”  ← not built
+Customer [status page] “All 4 files downloaded — you have the complete set.”  ← not built
+Customer [status page] “All 5 files downloaded — you have the complete set.”  ← not built
+Admin [operator portal] “The customer has started — first file collected.”  ← not built
+Admin [operator portal] “The customer has the complete set.”  ← not built"
+15a,15,Collected,Inform Admin,System,automated,automated — fires on the customer's first collection,Admin Informed,,"⑨ collected → Admin failed
+⑨ collected → Admin bounced — hard
+⑨ collected → Admin bounced — soft
+⑨ collected → Admin bounced
+⑨ collected → Admin complained",Admin [operator portal] a banner on the row — “The collection notice bounced.”  ← not built,"⑨ collected → Admin
+⑨ collected → Admin delivered",Admin [email] ⑨ collected — the customer has it
+15b,15,Collected,Update Client,System,automated,automated — fires on the customer's first collection,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Thanks — you've collected your feedback.”  ← not built,Customer [status page] “Thanks — you've collected your feedback.”  ← not built
+15c,15,Collected,Mark Resolved,Admin,manual,manual — closes the job,Marked Resolved,,,Admin [operator portal] “That didn’t go through — try again.”  ← not built,"resolved by an admin  ← not built
+resolved — retention clock set to {date}  ← not built",Admin [operator portal] the row moves to Resolved
+16a,16,Resolved,Send Thank-You,System,automated,automated — fires on resolve,Thank-You Sent,,"⑩ thank you → customer failed
+⑩ thank you → customer bounced — hard
+⑩ thank you → customer bounced — soft
+⑩ thank you → customer bounced
+⑩ thank you → customer complained",Admin [operator portal] a banner on the row — “The thank-you bounced.”  ← not built,"⑩ thank you → customer
+⑩ thank you → customer delivered","Customer [email] ⑩ thank you, carrying the deletion date"
+16b,16,Resolved,Update Client,System,automated,automated — fires on resolve,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Resolved. Your files are kept until {date}.”  ← not built,Customer [status page] “Resolved. Your files are kept until {date}.”  ← not built
+16c,16,Resolved,Reach Warning Date,System,automated,"automated — the nightly sweep, on the later of the two clocks",Warning Date Reached,,,"Admin [operator portal] “The nightly sweep has not run since {date}.”  ← not built
+Admin [operator portal] “CRON_SECRET is unset — the sweep refuses to run rather than run unguarded.”  ← not built","warning due — 30 days from collection  ← not built
+warning due — 90 days from delivery  ← not built",Admin [operator portal] the row moves to Deleting
+17a,17,Deleting,Send Warning,System,automated,automated — the nightly sweep,Warning Sent,,"⑪ deletion warning → customer failed
+⑪ deletion warning → customer bounced — hard
+⑪ deletion warning → customer bounced — soft
+⑪ deletion warning → customer bounced
+⑪ deletion warning → customer complained","Admin [operator portal] “The deletion warning to {customer} did not send. They have no notice, and it will not retry.”  ← not built","⑪ deletion warning → customer
+⑪ deletion warning → customer delivered","Customer [email] ⑪ the deletion warning, a week out"
+17b,17,Deleting,Update Client,System,automated,automated — fires on the warning,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your files will be deleted on {date}.”  ← not built,Customer [status page] “Your files will be deleted on {date}.”  ← not built
+17c,17,Deleting,Delete Files,System,automated,"automated — the nightly sweep, a week after the warning",Files Deleted,,,"Admin [operator portal] “Storage refused the delete — {n} files are still there.”  ← not built
+Admin [operator portal] the locator stays and the sweep retries tomorrow  ← not built","swept — every folder, together  ← not built
+swept by the nightly cron  ← not built
+purged early by an admin override  ← not built","Customer [status page] any link they kept now answers 410
+Admin [operator portal] the filenames show struck through in the folders"
+18a,18,Purged,Remove Bytes,System,automated,automated — the nightly sweep,Bytes Removed,,,,"bytes removed — {n} files, {size} freed  ← not built",Admin [operator portal] the filenames show struck through in the folders
+18b,18,Purged,Clear Locators,System,automated,automated — the nightly sweep,Locators Cleared,,,,locators cleared — the rows survive  ← not built,"Customer [status page] an old link answers 410 — gone, not missing"
+18c,18,Purged,Update Client,System,automated,automated — fires on the purge,Client Updated,yes,client status update failed — the page still shows the previous line  ← not built,Admin [operator portal] “The client’s status page didn’t update — it still shows the previous step.”  ← not built,client status — “Your files have been deleted. The record of your submission is kept.”  ← not built,Customer [status page] “Your files have been deleted. The record of your submission is kept.”  ← not built
+18d,18,Purged,Keep Record,System,automated,automated — nothing further is written,Record Kept,,,,record kept — nothing further is written  ← not built,"Admin [operator portal] the row still says what was sent, forever"

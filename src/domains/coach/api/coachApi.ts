@@ -1,19 +1,19 @@
 /**
  * Coach queries + creation.
  *
- * Creating a coach makes two rows: a `users` login (via the account domain) and
- * a `coaches` profile keyed to it. The only place the app touches the `coaches`
+ * Creating a coach makes two rows: an `operatorTable` login (via the operator domain) and
+ * a `coachTable` profile keyed to it. The only place the app touches the `coachTable`
  * table.
  */
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { users } from "@/domains/account/model/usersTable";
-import { coaches } from "../model/coachesTable";
+import { operatorTable } from "@/domains/operator/model/operatorTable";
+import { coachTable } from "../model/coachTable";
 import {
   createOperator,
   listAdminEmails,
   setUserPassword,
-} from "@/domains/account";
+} from "@/domains/operator";
 import {
   getSubmission,
   markCoachCollected,
@@ -24,12 +24,12 @@ import { env } from "@/shared/config/env";
 import type { Coach, NewCoach } from "../model/coach";
 import { sendCoachCollectedEmail } from "./coachEmail";
 
-// The email is the coach's login, so it lives on the joined `users` row, not
-// on `coaches` — one home per fact.
-function toCoach(row: typeof coaches.$inferSelect, email: string): Coach {
+// The email is the coach's login, so it lives on the joined `operatorTable` row, not
+// on `coachTable` — one home per fact.
+function toCoach(row: typeof coachTable.$inferSelect, email: string): Coach {
   return {
     id: row.id,
-    userId: row.userId,
+    operatorId: row.operatorId,
     email,
     name: row.name,
     specialties: row.specialties,
@@ -43,28 +43,28 @@ function toCoach(row: typeof coaches.$inferSelect, email: string): Coach {
 export async function listCoaches(): Promise<Coach[]> {
   const rows = await db
     .select()
-    .from(coaches)
-    .innerJoin(users, eq(coaches.userId, users.id))
-    .orderBy(asc(coaches.name));
-  return rows.map((r) => toCoach(r.coaches, r.users.email));
+    .from(coachTable)
+    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
+    .orderBy(asc(coachTable.name));
+  return rows.map((r) => toCoach(r.coach, r.operator.email));
 }
 
-export async function getCoachByUserId(userId: string): Promise<Coach | null> {
+export async function getCoachByOperatorId(operatorId: string): Promise<Coach | null> {
   const [row] = await db
     .select()
-    .from(coaches)
-    .innerJoin(users, eq(coaches.userId, users.id))
-    .where(eq(coaches.userId, userId))
+    .from(coachTable)
+    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
+    .where(eq(coachTable.operatorId, operatorId))
     .limit(1);
-  return row ? toCoach(row.coaches, row.users.email) : null;
+  return row ? toCoach(row.coach, row.operator.email) : null;
 }
 
 export async function createCoach(input: NewCoach): Promise<Coach> {
   const operator = await createOperator(input.email, input.password, "coach");
   const [row] = await db
-    .insert(coaches)
+    .insert(coachTable)
     .values({
-      userId: operator.id,
+      operatorId: operator.id,
       name: input.name,
       specialties: input.specialties,
       languages: input.languages,
@@ -77,18 +77,18 @@ export async function createCoach(input: NewCoach): Promise<Coach> {
 export async function getCoach(id: string): Promise<Coach | null> {
   const [row] = await db
     .select()
-    .from(coaches)
-    .innerJoin(users, eq(coaches.userId, users.id))
-    .where(eq(coaches.id, id))
+    .from(coachTable)
+    .innerJoin(operatorTable, eq(coachTable.operatorId, operatorTable.id))
+    .where(eq(coachTable.id, id))
     .limit(1);
-  return row ? toCoach(row.coaches, row.users.email) : null;
+  return row ? toCoach(row.coach, row.operator.email) : null;
 }
 
 export interface CoachPatch {
   name?: string;
-  /** The login email, updated on the `users` row. */
+  /** The login email, updated on the `operatorTable` row. */
   email?: string;
-  /** A new login password, set on the `users` row. Omit to leave it unchanged. */
+  /** A new login password, set on the `operatorTable` row. Omit to leave it unchanged. */
   password?: string;
   /** Storage locator for the coach's photo. */
   imageUrl?: string;
@@ -102,32 +102,32 @@ export interface CoachPatch {
 export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach> {
   const { email, password, ...profile } = patch;
 
-  // The profile fields live on `coaches`; only touch it if any were given.
+  // The profile fields live on `coachTable`; only touch it if any were given.
   const [row] = Object.keys(profile).length
-    ? await db.update(coaches).set(profile).where(eq(coaches.id, id)).returning()
-    : await db.select().from(coaches).where(eq(coaches.id, id)).limit(1);
+    ? await db.update(coachTable).set(profile).where(eq(coachTable.id, id)).returning()
+    : await db.select().from(coachTable).where(eq(coachTable.id, id)).limit(1);
 
-  // The email is the login — update it on the `users` row (a unique-constraint
+  // The email is the login — update it on the `operatorTable` row (a unique-constraint
   // violation surfaces to the action as a caught error).
   let currentEmail: string;
   if (email !== undefined) {
     const [u] = await db
-      .update(users)
+      .update(operatorTable)
       .set({ email: email.trim().toLowerCase() })
-      .where(eq(users.id, row.userId))
-      .returning({ email: users.email });
+      .where(eq(operatorTable.id, row.operatorId))
+      .returning({ email: operatorTable.email });
     currentEmail = u.email;
   } else {
     const [u] = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, row.userId))
+      .select({ email: operatorTable.email })
+      .from(operatorTable)
+      .where(eq(operatorTable.id, row.operatorId))
       .limit(1);
     currentEmail = u.email;
   }
 
   // An admin reset — no current-password check; the admin's authority is the guard.
-  if (password) await setUserPassword(row.userId, password);
+  if (password) await setUserPassword(row.operatorId, password);
 
   return toCoach(row, currentEmail);
 }
@@ -148,13 +148,13 @@ export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach>
  */
 export async function noteCoachCollected(
   submissionId: string,
-  userId: string,
+  operatorId: string,
 ): Promise<void> {
   try {
     const submission = await getSubmission(submissionId);
     if (!submission?.assignedCoachId) return;
 
-    const coach = await getCoachByUserId(userId);
+    const coach = await getCoachByOperatorId(operatorId);
     if (!coach || coach.id !== submission.assignedCoachId) return;
 
     const collected = await markCoachCollected(submissionId);

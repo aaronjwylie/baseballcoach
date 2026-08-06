@@ -269,7 +269,7 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
       from: "rung 5",
       why: "optional — a coach who shares a language skips it",
       act: "sendForTranslation",
-      // Never blocks: most submissions skip translation entirely, so treating
+      // Never blocks: most submissionTable skip translation entirely, so treating
       // this as a gate would leave every shared-language row looking unfinished.
       passive: true,
       toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.intake_translation > 0,

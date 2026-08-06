@@ -44,7 +44,7 @@ named `schema.ts` are indistinguishable in Cmd+P, in the tab bar, and in a diff.
 **plural marks the storage plane, singular marks the domain plane**.
 
 **Declaration files form their own plane.** They import other declaration files directly and
-across domains — `coachesTable` imports `usersTable`, not `@/domains/account` — and they may
+across domains — `coachesTable` imports `usersTable`, not `@/domains/operator` — and they may
 **never** import a barrel. A foreign key is a compile-time reference no barrel can carry
 without closing a cycle through itself; close it and one module initialises half-formed, so a
 table arrives `undefined` from inside Drizzle with a stack trace naming neither file.

@@ -14,7 +14,7 @@ a PDF from a previous coach. Up to `maxFilesPerSubmission`, each up to `maxFileS
 set by the operator. One payment buys one *review of the pack*, and the coach answers it with
 a single response.
 
-That plural is the shape of the data, not a detail: it's why `submissionFiles` is a table and
+That plural is the shape of the data, not a detail: it's why `submissionFileTable` is a table and
 not a column, and why anything phrased as "the video" is a bug in the making. The single
 `videoUrl` field this replaced could only ever hold one locator.
 
@@ -394,7 +394,7 @@ directly. Anything
 rendering this as a linear track will be wrong for most submissions.
 
 **Every rung has a timestamp, and the trail carries more than rungs.**
-`submission_events` records status moves *and* sends — `kind` is `status` or
+`submission_event` records status moves *and* sends — `kind` is `status` or
 `email`, and an email event carries which message, Resend's id, and what became
 of it. Chosen over sixteen nullable `*At` columns because a column remembers one
 moment and a submission can reach the same rung twice once an operator can reset
@@ -424,7 +424,7 @@ You've described the admin UI as four folders — **client · client translated 
 coach · coach translated** — which settles the shape. What it costs:
 `submissionFolder()` returns one path per submission, and the coach's response is
 written *into that same folder*. So this needs sub-folders (or a naming scheme)
-**plus a `kind` on `submissionFiles`**, which today implicitly means "customer
+**plus a `kind` on `submissionFileTable`**, which today implicitly means "customer
 upload".
 
 **The curation radios answer two of the five questions I had.** "Does the coach
@@ -788,7 +788,7 @@ one sentence explains most of the rest:
   onward — **including `awaiting_approval`**, which is why it's a
   `Record<SubmissionStatus, boolean>` and not a hand-kept list;
 - anything before step 4 is binned by `discardUnpaidSubmission` on a refresh,
-  once the idle window lapses, or on "Start over" — `submissionFiles` rows and
+  once the idle window lapses, or on "Start over" — `submissionFileTable` rows and
   bytes together;
 - **`listSubmissions` no longer excludes the pre-payment states** (2026-08-02).
   It did, on the reasoning that an unfinished attempt isn't work — true, and not
@@ -888,7 +888,7 @@ rollout plan and resolved in its Phase 6:
 | **Translation** | should the system know in advance that one is needed? | **Yes — derive it** from the coach's languages and the customer's. Steps 5 and 11 become prompts, not memory |
 | **Failure** | when a step dies partway, is the earlier work undone? | **Case by case, and the case is decidable.** See *the point of no return* — an operation survives if its effect already exists outside our database |
 | **Status names** | are the sixteen right? | **Yes, approved** — `intake_*` for what the customer sent, `response_*` for what the coach wrote |
-| **Timestamps** | sixteen columns, or an events table? | **`submission_events`.** One row per transition — *more* history than columns can hold, not less |
+| **Timestamps** | sixteen columns, or an events table? | **`submission_event`.** One row per transition — *more* history than columns can hold, not less |
 | **Customer language** | does step 1 ask for it? | **Yes — reversed 2026-08-02.** Both sides declare, and translation need is the *intersection*. Presuming English got a Japanese parent with a Japanese coach wrong |
 | **Ordering** | assign before translating, or after? | **Assign first.** Translation need is derived from the coach, so the coach must be known — and the language radio moves to step 8 with it |
 
@@ -906,13 +906,13 @@ rollout plan and resolved in its Phase 6:
 
 The spine's three tables and six of the seven enums moved out of `shared/db/schema.ts`
 and into `model/` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)):
-`submissionsTable.ts` · `submissionFilesTable.ts` · `submissionEventsTable.ts` ·
+`submissionTable.ts` · `submissionFileTable.ts` · `submissionEventTable.ts` ·
 `submissionStatusEnum.ts` · `fileKindEnum.ts` · `fileSetEnum.ts` ·
 `submissionEventKindEnum.ts` · `emailOutcomeEnum.ts` · `focusEnum.ts`.
 
 `focus` landed here rather than on the shared floor because `FOCUS_OPTIONS` and
 `type Focus` were already declared in `model/submission.ts` and `coach` has always
-read them from this slice. `coachesTable.ts` imports the enum across, which is
+read them from this slice. `coachTable.ts` imports the enum across, which is
 how declaration files reach each other.
 
 **The duplication this exposed, now closed.** `submissionStatusEnum.ts` and
@@ -1541,7 +1541,7 @@ folders' foundation. What that means in this slice:
 - ✅ **Sixteen statuses**, in ladder order, enforced by the `submission_status`
   enum (migration `0008`). The enum's own ordering matches the ladder's, so
   `ORDER BY status` means "how far along" without a lookup table.
-- ✅ **`submission_events`** — one row per transition, written inside the same
+- ✅ **`submission_event`** — one row per transition, written inside the same
   transaction as the update that caused it. `listSubmissionEvents` reads a
   submission's history oldest-first, with the operator who caused each move.
 - ✅ **`updateSubmission` is the one place a transition is stamped.** It reads the
@@ -1583,8 +1583,8 @@ nothing to notice. `isReleased` is the fix, and the general rule it carries:
   the window. It stops a script in a loop, which is the realistic threat here; it does not
   stop a distributed one. Shared state (Upstash Redis) is the honest fix and is a scope
   decision for Ben, since it's a new third-party service. See `shared/lib/rateLimit.ts`.
-- ✅ **`assignedCoachId` is a real FK** to `coaches` — set from the admin portal.
-- ✅ **`submissionFiles`** — one row per uploaded file, replacing the single `videoUrl`.
+- ✅ **`assignedCoachId` is a real FK** to `coach` — set from the admin portal.
+- ✅ **`submissionFileTable`** — one row per uploaded file, replacing the single `videoUrl`.
   `listFilesForSubmissions` fetches a whole portal page in one query rather than one per row.
 - ✅ **The flow cookie** (`api/flowSession.ts`) — a signed, httpOnly capability naming the
   one submission a browser started. It is what the upload gate checks now that payment no

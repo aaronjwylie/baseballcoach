@@ -7,7 +7,7 @@
 import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { settings, type SettingsRow } from "../model/settingsTable";
+import { settingTable, type SettingRow } from "../model/settingTable";
 import {
   DEFAULT_SETTINGS,
   type PlatformSettings,
@@ -15,7 +15,7 @@ import {
 
 const SETTINGS_ID = "default";
 
-function fromRow(row: SettingsRow): PlatformSettings {
+function fromRow(row: SettingRow): PlatformSettings {
   return {
     priceCents: row.priceCents,
     maxFileSizeMb: row.maxFileSizeMb,
@@ -37,8 +37,8 @@ function fromRow(row: SettingsRow): PlatformSettings {
 export const getSettings = cache(async function getSettings(): Promise<PlatformSettings> {
   const [row] = await db
     .select()
-    .from(settings)
-    .where(eq(settings.id, SETTINGS_ID))
+    .from(settingTable)
+    .where(eq(settingTable.id, SETTINGS_ID))
     .limit(1);
 
   if (row) return fromRow(row);
@@ -47,7 +47,7 @@ export const getSettings = cache(async function getSettings(): Promise<PlatformS
   // them, so the admin form has something to edit. `onConflictDoNothing` covers
   // two requests racing to be first.
   const [created] = await db
-    .insert(settings)
+    .insert(settingTable)
     .values({ id: SETTINGS_ID, ...DEFAULT_SETTINGS })
     .onConflictDoNothing()
     .returning();
@@ -59,10 +59,10 @@ export async function updateSettings(
   next: PlatformSettings,
 ): Promise<PlatformSettings> {
   const [row] = await db
-    .insert(settings)
+    .insert(settingTable)
     .values({ id: SETTINGS_ID, ...next, updatedAt: new Date() })
     .onConflictDoUpdate({
-      target: settings.id,
+      target: settingTable.id,
       set: { ...next, updatedAt: new Date() },
     })
     .returning();

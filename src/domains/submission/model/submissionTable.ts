@@ -13,13 +13,13 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { coaches } from "@/domains/coach/model/coachesTable";
+import { coachTable } from "@/domains/coach/model/coachTable";
 import { focus } from "./focusEnum";
 import { submissionStatus } from "./submissionStatusEnum";
 import { fileSet } from "./fileSetEnum";
 
-export const submissions = pgTable(
-  "submissions",
+export const submissionTable = pgTable(
+  "submission",
   {
     id: uuid().defaultRandom().primaryKey(),
     customerEmail: text().notNull(),
@@ -56,7 +56,7 @@ export const submissions = pgTable(
     stripeAmount: integer(), // cents
     paidAt: timestamp({ withTimezone: true }),
 
-    assignedCoachId: uuid().references(() => coaches.id, {
+    assignedCoachId: uuid().references(() => coachTable.id, {
       onDelete: "set null",
     }),
     feedbackUrl: text(),
@@ -88,7 +88,7 @@ export const submissions = pgTable(
     deletionWarnedAt: timestamp({ withTimezone: true }),
 
     // When the retention sweep removed the submission's files. The rows in
-    // `submissionFiles` stay, so the portal still shows what was sent; only the
+    // `submissionFileTable` stay, so the portal still shows what was sent; only the
     // bytes are gone.
     filesPurgedAt: timestamp({ withTimezone: true }),
 
@@ -101,10 +101,10 @@ export const submissions = pgTable(
   },
   (table) => [
     // The status lookup reads by email; the sweep reads by status + timestamp.
-    index("submissions_customer_email_idx").on(table.customerEmail),
-    index("submissions_status_idx").on(table.status),
+    index("submission_customer_email_idx").on(table.customerEmail),
+    index("submission_status_idx").on(table.status),
   ],
 );
 
-export type SubmissionRow = typeof submissions.$inferSelect;
-export type NewSubmissionRow = typeof submissions.$inferInsert;
+export type SubmissionRow = typeof submissionTable.$inferSelect;
+export type NewSubmissionRow = typeof submissionTable.$inferInsert;

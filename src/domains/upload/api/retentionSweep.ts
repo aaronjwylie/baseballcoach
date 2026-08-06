@@ -21,7 +21,7 @@
  *
  * The cron cadence is a separate question from the rules. The job only *notices*
  * an elapsed window when it runs, so a daily job makes "24 hours after
- * completion" mean 24–48 in practice. Abandoned submissions don't wait for it —
+ * completion" mean 24–48 in practice. Abandoned submissionTable don't wait for it —
  * `sweepAbandoned` is also called when a customer starts a new submission, so
  * the flow cleans up after itself under any real traffic.
  */
@@ -40,9 +40,9 @@ import { storage } from "@/shared/storage";
 import { discardUnpaidSubmission } from "./discardSubmission";
 
 export interface SweepReport {
-  /** Completed submissions whose files were removed; the records remain. */
+  /** Completed submissionTable whose files were removed; the records remain. */
   resolvedPurged: number;
-  /** Unpaid submissions deleted outright. */
+  /** Unpaid submissionTable deleted outright. */
   abandonedDiscarded: number;
   /** Customers told their files are about to go. */
   warningsSent: number;
@@ -166,7 +166,7 @@ export async function runRetentionSweep(): Promise<SweepReport> {
 }
 
 /**
- * Discard unpaid submissions that have gone quiet.
+ * Discard unpaid submissionTable that have gone quiet.
  *
  * Split out because it has **two callers**: this sweep, and
  * `startSubmissionAction` — so the flow tidies up after itself the moment
@@ -201,7 +201,7 @@ export async function sweepAbandoned(
   const remaining = due.length === limit;
   if (remaining) {
     console.log(
-      `[sweep] discarded ${discarded} abandoned submissions and hit the limit of ${limit} — more remain`,
+      `[sweep] discarded ${discarded} abandoned submissionTable and hit the limit of ${limit} — more remain`,
     );
   }
 

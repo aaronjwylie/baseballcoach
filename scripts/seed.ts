@@ -1,8 +1,8 @@
 /**
- * Seed the operators and some sample data for local dev.
+ * Seed the operatorTable and some sample data for local dev.
  *
  * The portal has no public signup — the initial admin (Yuta) is created here,
- * plus one coach and a few submissions so the admin queue isn't empty on a
+ * plus one coach and a few submissionTable so the admin queue isn't empty on a
  * fresh checkout. Idempotent: re-running is a no-op once things exist.
  *
  * Admin/coach credentials come from env with dev defaults.
@@ -11,7 +11,7 @@ import "./loadEnv";
 import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { users, coaches, submissions } from "@/db/schema";
+import { operatorTable, coachTable, submissionTable } from "@/db/schema";
 import { createSubmission } from "@/domains/submission";
 import { storeUploadedFile } from "@/domains/upload";
 
@@ -21,17 +21,17 @@ async function ensureUser(
   role: "admin" | "coach",
 ): Promise<{ id: string; created: boolean }> {
   const existing = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
+    .select({ id: operatorTable.id })
+    .from(operatorTable)
+    .where(eq(operatorTable.email, email))
     .limit(1);
   if (existing[0]) return { id: existing[0].id, created: false };
 
   const passwordHash = await bcrypt.hash(password, 10);
   const [row] = await db
-    .insert(users)
+    .insert(operatorTable)
     .values({ email, passwordHash, role })
-    .returning({ id: users.id });
+    .returning({ id: operatorTable.id });
   return { id: row.id, created: true };
 }
 
@@ -41,7 +41,7 @@ async function main() {
   const admin = await ensureUser(adminEmail, adminPassword, "admin");
   console.log(`[seed] admin ${adminEmail} ${admin.created ? "created" : "exists"}`);
 
-  // The admin is always seeded. The sample coach + submissions are dev-only
+  // The admin is always seeded. The sample coach + submissionTable are dev-only
   // fixtures — never pollute a production database with them.
   if (process.env.SEED_SAMPLES !== "1") {
     console.log("[seed] SEED_SAMPLES != 1 — admin only, skipping sample data");
@@ -63,7 +63,7 @@ async function main() {
 
     The bilingual case is the one worth seeding deliberately. A rule written as
     "do the sets match?" rather than "do they overlap?" passes both single-
-    language coaches and fails only here.
+    language coachTable and fails only here.
   */
   const sampleCoaches = [
     { email: "coach@example.com", name: "Coach Tanaka", languages: ["English", "Japanese"], specialties: ["Hitting", "Pitching"] },
@@ -74,8 +74,8 @@ async function main() {
   for (const c of sampleCoaches) {
     const user = await ensureUser(c.email, "changeme123", "coach");
     if (user.created) {
-      await db.insert(coaches).values({
-        userId: user.id,
+      await db.insert(coachTable).values({
+        operatorId: user.id,
         name: c.name,
         specialties: [...c.specialties],
         languages: [...c.languages],
@@ -86,7 +86,7 @@ async function main() {
     );
   }
 
-  const [{ n }] = await db.select({ n: count() }).from(submissions);
+  const [{ n }] = await db.select({ n: count() }).from(submissionTable);
   if (n === 0) {
     // Mid-flow: verified and uploaded, but not paid. Shows what the retention
     // sweep's "abandoned" rule is there to clean up.
@@ -133,9 +133,9 @@ async function main() {
       stripeAmount: 8000,
     });
 
-    console.log("[seed] created 3 sample submissions");
+    console.log("[seed] created 3 sample submissionTable");
   } else {
-    console.log(`[seed] ${n} submissions already present — skipping samples`);
+    console.log(`[seed] ${n} submissionTable already present — skipping samples`);
   }
 
   if (admin.created && !process.env.SEED_ADMIN_PASSWORD) {

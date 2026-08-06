@@ -1,14 +1,14 @@
 /**
  * The coach — the person who reviews a submission. Distinct from the operator
- * `users` row that logs them in: a Coach *has a* user (`userId`), plus the
+ * `operatorTable` row that logs them in: a Coach *has a* user (`operatorId`), plus the
  * profile the admin manages (name, specialties, languages, active).
  */
 import type { Focus, LanguageChoice } from "@/domains/submission/model/submission";
 
 export interface Coach {
   id: string;
-  userId: string;
-  /** The coach's login, from the joined `users` row. */
+  operatorId: string;
+  /** The coach's login, from the joined `operatorTable` row. */
   email: string;
   name: string;
   specialties: Focus[];
@@ -42,7 +42,7 @@ export interface NewCoach {
  */
 
 /**
- * Japanese, because the coaches are in Japan — the one thing about the choice
+ * Japanese, because the coachTable are in Japan — the one thing about the choice
  * that is a coach fact rather than a language fact. The vocabulary itself lives
  * in `domains/submission`, beside the rule that consumes it.
  */

@@ -1,5 +1,5 @@
 /**
- * The operator (the admin + coaches) — the account domain's noun.
+ * The operator (the admin + coachTable) — the operator domain's noun.
  *
  * Operators are the only people who authenticate; customers never get a user
  * row. The password hash never appears here — it stays in the DB row and is
@@ -10,7 +10,7 @@
  * The two operator roles — the vocabulary `userRoleEnum.ts` derives from.
  *
  * A list rather than a bare union so there is one home for the fact. Customers
- * are not a third role and never will be: they don't get a `users` row at all.
+ * are not a third role and never will be: they don't get a `operatorTable` row at all.
  */
 export const ROLES = ["admin", "coach"] as const;
 
@@ -18,7 +18,7 @@ export type Role = (typeof ROLES)[number];
 
 /** The session cookie payload — minimal, no PII (CLAUDE.md authentication). */
 export interface OperatorSession {
-  userId: string;
+  operatorId: string;
   role: Role;
 }
 

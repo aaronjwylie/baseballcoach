@@ -8,7 +8,7 @@
  */
 import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
 
-export const settings = pgTable("settings", {
+export const settingTable = pgTable("setting", {
   id: text().primaryKey().default("default"),
   /** What the customer pays per review, in cents. Operator-tunable. */
   priceCents: integer().notNull().default(8000),
@@ -23,4 +23,4 @@ export const settings = pgTable("settings", {
   updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 });
 
-export type SettingsRow = typeof settings.$inferSelect;
+export type SettingRow = typeof settingTable.$inferSelect;

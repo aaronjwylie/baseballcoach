@@ -8,6 +8,20 @@
       "when": 1785909077580,
       "tag": "0000_secret_dorian_gray",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1785979688710,
+      "tag": "0001_rename_users_to_operators",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785981223085,
+      "tag": "0002_singular_table_names",
+      "breakpoints": true
     }
   ]
 }

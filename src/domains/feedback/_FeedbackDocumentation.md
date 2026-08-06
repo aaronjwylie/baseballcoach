@@ -57,7 +57,7 @@ flowchart LR
 >   [`shared/email/_EmailDocumentation.md`](../../shared/email/_EmailDocumentation.md).
 >
 > **Updated 2026-08-01 · feedback is multi-file now.** A coach can attach **several** files
-> and hand the set to the admin. Each file is a row in `submission_files` with `kind = "feedback"`
+> and hand the set to the admin. Each file is a row in `submission_file` with `kind = "feedback"`
 > (the old single `feedbackUrl` column is unused), uploaded through the customer's own
 > transport with operator-gated endpoints — direct-to-Blob in prod (`/api/feedback/blob` +
 > `/api/feedback/complete`), proxied to disk in dev (`/api/feedback/upload`). Attaching a file

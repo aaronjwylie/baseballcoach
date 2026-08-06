@@ -9,7 +9,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
-import type { OperatorSession, Role } from "../model/user";
+import type { OperatorSession, Role } from "../model/operator";
 
 /** The verified session, or null if unauthenticated. */
 export const getSession = cache(
@@ -25,7 +25,7 @@ export async function requireSession(): Promise<OperatorSession> {
 }
 
 /**
- * Require one of the given roles. Wrong-role operators are sent to their own
+ * Require one of the given roles. Wrong-role operatorTable are sent to their own
  * portal rather than /login, since they *are* signed in.
  */
 export async function requireRole(...allowed: Role[]): Promise<OperatorSession> {

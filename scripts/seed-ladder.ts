@@ -21,10 +21,10 @@ import "./loadEnv";
 import { eq, like } from "drizzle-orm";
 import { db } from "@/shared/db";
 import {
-  submissions as submissionsTable,
-  submissionFiles,
-  submissionEvents,
-  coaches as coachesTable,
+  submissionTable,
+  submissionFileTable,
+  submissionEventTable,
+  coachTable,
 } from "@/db/schema";
 import { SUBMISSION_STATUSES, type SubmissionStatus } from "@/domains/submission";
 import type { FileKind } from "@/domains/submission";
@@ -84,23 +84,23 @@ const FOCUS = ["Hitting", "Pitching", "Fielding", "Catching", "Other"] as const;
 async function main() {
   // Clear anything a previous run made, so iterating doesn't silt up the queue.
   const old = await db
-    .select({ id: submissionsTable.id })
-    .from(submissionsTable)
-    .where(like(submissionsTable.customerEmail, `${MARK}%`));
+    .select({ id: submissionTable.id })
+    .from(submissionTable)
+    .where(like(submissionTable.customerEmail, `${MARK}%`));
   for (const row of old) {
-    await db.delete(submissionsTable).where(eq(submissionsTable.id, row.id));
+    await db.delete(submissionTable).where(eq(submissionTable.id, row.id));
   }
   if (old.length) console.log(`[ladder] cleared ${old.length} from a previous run`);
 
-  const coaches = await db.select().from(coachesTable);
-  if (coaches.length === 0) {
+  const coachRows = await db.select().from(coachTable);
+  if (coachRows.length === 0) {
     console.error("[ladder] no coaches — run `npm run db:seed` first");
     process.exit(1);
   }
   // A coach who reads English and one who doesn't, so the derived translation
   // prompt has something to derive from.
-  const enCoach = coaches.find((c) => c.languages.some((l) => /english/i.test(l))) ?? coaches[0];
-  const jaCoach = coaches.find((c) => !c.languages.some((l) => /english/i.test(l))) ?? coaches[0];
+  const enCoach = coachRows.find((c) => c.languages.some((l) => /english/i.test(l))) ?? coachRows[0];
+  const jaCoach = coachRows.find((c) => !c.languages.some((l) => /english/i.test(l))) ?? coachRows[0];
 
   let made = 0;
   for (const [i, status] of SUBMISSION_STATUSES.entries()) {
@@ -112,7 +112,7 @@ async function main() {
     const reached = new Set(path);
 
     const [row] = await db
-      .insert(submissionsTable)
+      .insert(submissionTable)
       .values({
         customerEmail: `${MARK}${i + 1}@example.com`,
         playerName: NAMES[i],
@@ -146,7 +146,7 @@ async function main() {
     const purged = reached.has("purged");
     for (const kind of filesAt(status)) {
       for (let n = 0; n < (kind === "intake" ? 2 : 1); n += 1) {
-        await db.insert(submissionFiles).values({
+        await db.insert(submissionFileTable).values({
           submissionId: row.id,
           kind,
           filename: `${kind}-${n + 1}.mp4`,
@@ -160,7 +160,7 @@ async function main() {
 
     // The trail: every rung it passed through, then every message that went.
     for (const [n, rung] of path.entries()) {
-      await db.insert(submissionEvents).values({
+      await db.insert(submissionEventTable).values({
         submissionId: row.id,
         kind: "status",
         status: rung,
@@ -172,7 +172,7 @@ async function main() {
       // One deliberate failure, so the trail's unhappy path is visible in the
       // queue rather than only in theory.
       const ok = !(i === 6 && label.startsWith("③"));
-      await db.insert(submissionEvents).values({
+      await db.insert(submissionEventTable).values({
         submissionId: row.id,
         kind: "email",
         status: null,
@@ -188,7 +188,7 @@ async function main() {
     console.log(`  ${String(i + 1).padStart(2)} ${status.padEnd(21)} ${NAMES[i]}`);
   }
 
-  console.log(`\n[ladder] seeded ${made} submissions, one per rung.`);
+  console.log(`\n[ladder] seeded ${made} submissionTable, one per rung.`);
   console.log(`[ladder] one has a failed ③ hand-off, so the trail's error state is visible.`);
   process.exit(0);
 }

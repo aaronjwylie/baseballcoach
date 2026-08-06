@@ -1,7 +1,7 @@
 /**
  * Issuing and checking the 6-digit code.
  *
- * The only place the app touches the verification columns on `submissions`.
+ * The only place the app touches the verification columns on `submissionTable`.
  * **The code itself is never stored** — only a bcrypt hash of it, the same
  * treatment an operator password gets. A leaked database snapshot therefore
  * doesn't hand over live codes.
@@ -10,7 +10,7 @@ import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { submissions } from "@/domains/submission/model/submissionsTable";
+import { submissionTable } from "@/domains/submission/model/submissionTable";
 import { noteVerification, recordSubmissionEvent } from "@/domains/submission";
 import {
   CODE_LENGTH,
@@ -43,15 +43,15 @@ export async function issueCode(submissionId: string): Promise<string | null> {
   const expiresAt = new Date(Date.now() + CODE_TTL_MINUTES * 60 * 1000);
 
   const [row] = await db
-    .update(submissions)
+    .update(submissionTable)
     .set({
       verificationCodeHash: hash,
       verificationExpiresAt: expiresAt,
       verificationAttempts: 0,
       updatedAt: new Date(),
     })
-    .where(eq(submissions.id, submissionId))
-    .returning({ id: submissions.id });
+    .where(eq(submissionTable.id, submissionId))
+    .returning({ id: submissionTable.id });
 
   return row ? code : null;
 }
@@ -70,14 +70,14 @@ export async function verifyCode(
 ): Promise<VerificationResult> {
   const [row] = await db
     .select({
-      hash: submissions.verificationCodeHash,
-      expiresAt: submissions.verificationExpiresAt,
-      attempts: submissions.verificationAttempts,
-      verifiedAt: submissions.emailVerifiedAt,
-      status: submissions.status,
+      hash: submissionTable.verificationCodeHash,
+      expiresAt: submissionTable.verificationExpiresAt,
+      attempts: submissionTable.verificationAttempts,
+      verifiedAt: submissionTable.emailVerifiedAt,
+      status: submissionTable.status,
     })
-    .from(submissions)
-    .where(eq(submissions.id, submissionId))
+    .from(submissionTable)
+    .where(eq(submissionTable.id, submissionId))
     .limit(1);
 
   // No row means no submission: there is nothing to leave a breadcrumb on.
@@ -104,9 +104,9 @@ export async function verifyCode(
   }
 
   await db
-    .update(submissions)
+    .update(submissionTable)
     .set({ verificationAttempts: row.attempts + 1 })
-    .where(eq(submissions.id, submissionId));
+    .where(eq(submissionTable.id, submissionId));
 
   const matches = await bcrypt.compare(code, row.hash);
   if (!matches) {
@@ -133,7 +133,7 @@ export async function verifyCode(
   // update actually moved the status.
   await db.transaction(async (tx) => {
     const updated = await tx
-      .update(submissions)
+      .update(submissionTable)
       .set({
         emailVerifiedAt: new Date(),
         // Clearing the hash makes the code single-use.
@@ -142,8 +142,8 @@ export async function verifyCode(
         status: nextStatus,
         updatedAt: new Date(),
       })
-      .where(and(eq(submissions.id, submissionId), eq(submissions.status, row.status)))
-      .returning({ id: submissions.id });
+      .where(and(eq(submissionTable.id, submissionId), eq(submissionTable.status, row.status)))
+      .returning({ id: submissionTable.id });
 
     if (updated.length > 0) {
       // Inside the transaction, so the breadcrumb and the rung cannot disagree
@@ -167,9 +167,9 @@ export async function verifyCode(
 /** Whether this submission's email has been proven. The upload gate's question. */
 export async function isEmailVerified(submissionId: string): Promise<boolean> {
   const [row] = await db
-    .select({ verifiedAt: submissions.emailVerifiedAt })
-    .from(submissions)
-    .where(eq(submissions.id, submissionId))
+    .select({ verifiedAt: submissionTable.emailVerifiedAt })
+    .from(submissionTable)
+    .where(eq(submissionTable.id, submissionId))
     .limit(1);
   return !!row?.verifiedAt;
 }

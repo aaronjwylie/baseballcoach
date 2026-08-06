@@ -74,12 +74,12 @@ export const coach = {
   // Wireframe reads "HEAD SENSE".
   eyebrow: "Head sensei",
   title: "Meet your coach name and his expert team",
-  bio: "Short bio Japanese professional baseball league, but he has a few coaches under him who help with drills etc with number years of experience with these achievements.",
+  bio: "Short bio Japanese professional baseball league, but he has a few coachTable under him who help with drills etc with number years of experience with these achievements.",
   quote: "Anyone can say ‘swing earlier.’ I show you what earlier feels like.",
   /** The rotated card overlapping the coach photo. */
   card: ["Name", "Position", "Team"],
   stats: [
-    { value: "NPB", label: "Pro coaches" },
+    { value: "NPB", label: "Pro coachTable" },
     { value: "12 yrs", label: "Coaching youth" },
     { value: "EN / JP", label: "Languages" },
     { value: "Hit · Pitch", label: "Speciality" },
@@ -154,9 +154,9 @@ export const faqs = [
       "MP4 or MOV, straight off the phone. Keep it under five minutes so your coach sees the reps, not the warm-up.",
   },
   {
-    q: "Who are the coaches?",
+    q: "Who are the coachTable?",
     answer:
-      "Professional coaches and former players from the Japanese system. Every review is done by a real coach — nothing is automated.",
+      "Professional coachTable and former players from the Japanese system. Every review is done by a real coach — nothing is automated.",
   },
   {
     q: "Can I send more than one file?",

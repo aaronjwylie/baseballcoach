@@ -1,6 +1,6 @@
 "use server";
 /**
- * Login / logout — the account domain's verbs.
+ * Login / logout — the operator domain's verbs.
  *
  * Server Actions, so credentials are handled only on the server. Login verifies
  * against Postgres, sets the session cookie, and redirects to the role's portal.
@@ -8,13 +8,13 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { setSessionCookie, clearSessionCookie } from "@/shared/auth";
-import { verifyCredentials, changePassword } from "./userApi";
+import { verifyCredentials, changePassword } from "./operatorApi";
 import { requireSession } from "./dal";
 import type {
   ChangePasswordState,
   LoginState,
   OperatorSession,
-} from "../model/user";
+} from "../model/operator";
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -38,7 +38,7 @@ export async function login(
   if (!operator) return { error: "Invalid email or password." };
 
   await setSessionCookie({
-    userId: operator.id,
+    operatorId: operator.id,
     role: operator.role,
   } satisfies OperatorSession);
 
@@ -67,7 +67,7 @@ export async function changePasswordAction(
     return { error: "The new passwords don't match." };
   }
 
-  const ok = await changePassword(session.userId, current, next);
+  const ok = await changePassword(session.operatorId, current, next);
   if (!ok) return { error: "Your current password is incorrect." };
 
   return { ok: true };

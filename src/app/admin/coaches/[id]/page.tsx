@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import { getCoach, EditCoachForm } from "@/domains/coach";
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default async function EditCoachPage(props: {
   return (
     <Container className="max-w-2xl">
       <div>
-        <Link href="/admin/coaches" className="text-sm text-ink-muted hover:text-ink">
+        <Link href="/admin/coachTable" className="text-sm text-ink-muted hover:text-ink">
           ← Coaches
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">
