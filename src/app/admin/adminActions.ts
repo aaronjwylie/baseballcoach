@@ -6,7 +6,7 @@
  * including account/auth). Admin-only — the guard is re-checked here.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import {
   FILE_KINDS,
   FILE_SETS,

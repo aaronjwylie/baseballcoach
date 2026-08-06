@@ -134,6 +134,7 @@ through file kinds, statuses, folders, and conversation alike.
 | ~~awaiting_upload~~ | — | retired with the flow that needed it; files arrive before payment |
 | ~~funnel~~ | **the flow** | one word for the customer's path |
 | ~~passthrough~~ | — | the Mux trick. A submission's own uuid is the link |
+| ~~user~~ / ~~account~~ (the entity) | **operator** | settled above since the portal existed, but the code said `account` (folder), `user` (files, table) and `Operator` (types) — three words, and the settled one used only by the types. Worse than untidy: **customers use this product constantly and never get a row**, so a table called `users` named the wrong population. Renamed 2026-08-05, migration `0001` ([ADR 016](docs/decisions/016-operator-not-account.md)) |
 
 ---
 

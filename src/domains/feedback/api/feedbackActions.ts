@@ -6,7 +6,7 @@
  * a public endpoint, not a trusted call from the page that rendered it.
  */
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/domains/account";
+import { getSession } from "@/domains/operator";
 import { getCoachByUserId } from "@/domains/coach";
 import { getSubmission } from "@/domains/submission";
 import { sendFeedbackForApproval } from "./feedbackApi";
@@ -21,7 +21,7 @@ export async function sendFeedbackForApprovalAction(
   if (!submission) return { ok: false, error: "That submission doesn't exist." };
 
   if (session.role !== "admin") {
-    const coach = await getCoachByUserId(session.userId);
+    const coach = await getCoachByUserId(session.operatorId);
     if (!coach || submission.assignedCoachId !== coach.id) {
       return { ok: false, error: "That isn't your submission." };
     }

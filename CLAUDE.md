@@ -434,10 +434,10 @@ First-party credentials auth, **not Auth.js** ([ADR 008](docs/decisions/008-jose
 
 - Two roles: `admin` (the admin) and `coach`. **Customers never authenticate.**
 - A `jose`-signed HS256 JWT in an httpOnly cookie (`shared/auth`). The DAL in
-  `domains/account` does the secure `requireSession` / `requireRole` checks close
+  `domains/operator` does the secure `requireSession` / `requireRole` checks close
   to the data; `proxy.ts` (Next 16's renamed Middleware) does an optimistic
   pre-filter, never the sole defence.
-- Passwords are bcrypt-hashed and never leave `userApi.ts`. The first admin is
+- Passwords are bcrypt-hashed and never leave `operatorApi.ts`. The first admin is
   **seeded** (`npm run db:seed`); the admin adds coaches from the portal — no
   self-signup.
 
@@ -533,7 +533,7 @@ a migration is the only way they change. One home per fact.
 
 The tables below are grouped for reading; on disk each sits with its domain
 (`submissions` · `submission_files` · `submission_events` in `domains/submission/model/`,
-`coaches` in `domains/coach/`, `users` in `domains/account/`, `settings` in
+`coaches` in `domains/coach/`, `users` in `domains/operator/`, `settings` in
 `domains/settings/`). **This section is where the cross-cutting rationale lives** —
 why `collectedAt` duplicates the trail, why kinds are nouns and statuses
 participles — because those sentences describe a tension *between* two

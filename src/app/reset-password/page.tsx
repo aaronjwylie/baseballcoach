@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container, ButtonLink } from "@/shared/ui";
-import { ResetPasswordForm } from "@/domains/account";
+import { ResetPasswordForm } from "@/domains/operator";
 
 export const metadata: Metadata = {
   title: "Set a new password",

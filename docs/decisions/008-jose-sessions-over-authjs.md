@@ -30,7 +30,7 @@ Shape:
 - `shared/auth/token.ts` — sign/verify the JWT (no `next/headers`, so `proxy.ts`
   can use it).
 - `shared/auth/cookie.ts` — set/read/clear the cookie via async `cookies()`.
-- `domains/account/` — the operator noun (`userApi` credential check with
+- `domains/operator/` — the operator noun (`operatorApi` credential check with
   bcrypt), the DAL guards, the `login`/`logout` server actions, `LoginForm`.
 - `proxy.ts` — optimistic cookie check + coarse role routing.
 
@@ -47,7 +47,7 @@ Shape:
 ## Consequences
 
 - Adds `jose` and `bcryptjs`; `AUTH_SECRET` env var. No auth SaaS vendor.
-- Passwords are bcrypt-hashed; the hash never leaves `userApi.ts`.
+- Passwords are bcrypt-hashed; the hash never leaves `operatorApi.ts`.
 - Session payload is minimal (`{ userId, role }`) — no PII in the token.
 - **Auth.js remains the documented exit.** If we later need OAuth, magic links,
   or device management, the small seam swaps out for it. Updates the §4 "Auth"

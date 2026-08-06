@@ -6,7 +6,7 @@ import { Button, Container } from "@/shared/ui";
 // Import the server action from its "use server" module directly, NOT the
 // domain barrel — the barrel also re-exports the DAL and Postgres client, which
 // a client component would drag into the browser bundle (CLAUDE.md §12).
-import { logout } from "@/domains/account/api/auth";
+import { logout } from "@/domains/operator/api/auth";
 
 /**
  * The operator portal's top bar — one full-width band shared by the admin and

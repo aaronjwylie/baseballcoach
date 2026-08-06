@@ -30,7 +30,7 @@ import {
   AssignCoachSelect,
   type Coach,
 } from "@/domains/coach";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import { RowActionForm } from "./RowActionForm";
 import { SendWithFileSet } from "./SendWithFileSet";
 import { FileFolders } from "./FileFolders";

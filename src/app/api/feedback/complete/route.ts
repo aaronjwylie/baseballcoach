@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/domains/account";
+import { getSession } from "@/domains/operator";
 import { getCoachByUserId } from "@/domains/coach";
 import { getSubmission } from "@/domains/submission";
 import { recordFeedbackFile } from "@/domains/feedback";
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   if (session.role !== "admin") {
-    const coach = await getCoachByUserId(session.userId);
+    const coach = await getCoachByUserId(session.operatorId);
     if (!coach || submission.assignedCoachId !== coach.id) {
       return NextResponse.json({ error: "Not your submission." }, { status: 403 });
     }

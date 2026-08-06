@@ -9,7 +9,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
-import type { OperatorSession, Role } from "../model/user";
+import type { OperatorSession, Role } from "../model/operator";
 
 /** The verified session, or null if unauthenticated. */
 export const getSession = cache(

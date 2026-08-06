@@ -25,7 +25,7 @@ import { db } from "@/shared/db";
 import {
   submissions as submissionsTable,
   coaches as coachesTable,
-  users as usersTable,
+  operators as usersTable,
 } from "@/db/schema";
 import {
   addSubmissionFile,
@@ -311,7 +311,7 @@ async function ensureCoach(name: string, languages: string[]) {
     .returning();
   const [created] = await db
     .insert(coachesTable)
-    .values({ userId: user.id, name, languages, specialties: ["Hitting"] })
+    .values({ operatorId: user.id, name, languages, specialties: ["Hitting"] })
     .returning();
   return created;
 }

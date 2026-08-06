@@ -6,7 +6,7 @@
  */
 import { useActionState } from "react";
 import { login } from "../api/auth";
-import type { LoginState } from "../model/user";
+import type { LoginState } from "../model/operator";
 import { Button, Field, inputClass } from "@/shared/ui";
 
 export function LoginForm() {

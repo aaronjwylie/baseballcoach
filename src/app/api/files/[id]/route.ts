@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/domains/account";
+import { getSession } from "@/domains/operator";
 import { getSubmissionFile, isIntake } from "@/domains/submission";
 import { noteCoachCollected } from "@/domains/coach";
 import { storage } from "@/shared/storage";
@@ -54,7 +54,7 @@ export async function GET(
     fails, and the customer of this route is a coach waiting on bytes.
   */
   if (session.role === "coach" && isIntake(file)) {
-    void noteCoachCollected(file.submissionId, session.userId);
+    void noteCoachCollected(file.submissionId, session.operatorId);
   }
 
   const opened = await storage.open(file.fileUrl);

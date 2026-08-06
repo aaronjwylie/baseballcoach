@@ -11,7 +11,7 @@ import "./loadEnv";
 import bcrypt from "bcryptjs";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { users, coaches, submissions } from "@/db/schema";
+import { operators, coaches, submissions } from "@/db/schema";
 import { createSubmission } from "@/domains/submission";
 import { storeUploadedFile } from "@/domains/upload";
 
@@ -21,17 +21,17 @@ async function ensureUser(
   role: "admin" | "coach",
 ): Promise<{ id: string; created: boolean }> {
   const existing = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
+    .select({ id: operators.id })
+    .from(operators)
+    .where(eq(operators.email, email))
     .limit(1);
   if (existing[0]) return { id: existing[0].id, created: false };
 
   const passwordHash = await bcrypt.hash(password, 10);
   const [row] = await db
-    .insert(users)
+    .insert(operators)
     .values({ email, passwordHash, role })
-    .returning({ id: users.id });
+    .returning({ id: operators.id });
   return { id: row.id, created: true };
 }
 
@@ -75,7 +75,7 @@ async function main() {
     const user = await ensureUser(c.email, "changeme123", "coach");
     if (user.created) {
       await db.insert(coaches).values({
-        userId: user.id,
+        operatorId: user.id,
         name: c.name,
         specialties: [...c.specialties],
         languages: [...c.languages],

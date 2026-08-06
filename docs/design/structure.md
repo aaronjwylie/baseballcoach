@@ -38,7 +38,7 @@ domains/
   upload/       getting their files to us (storage)
   payment/      paying for one (Stripe) — the LAST step
   feedback/     the coach's response coming back
-  account/      operator identity — who logs into the portal
+  operator/     operator identity — who logs into the portal
   coach/        the reviewers, and assigning work to them
   settings/     the limits the admin tunes without a deploy
   landing/      the sales pitch
@@ -171,7 +171,7 @@ declarations (`*Table.ts`, `*Enum.ts`), since 2026-08-05
 
 6. **A declaration never imports a barrel** — not `@/db/schema`, not `@/shared/db`, not a
    slice's `index.ts`, nor anything that transitively reaches one. It imports other files
-   **directly, across domains**: `coachesTable` imports `@/domains/account/model/usersTable`,
+   **directly, across domains**: `coachesTable` imports `@/domains/operator/model/operatorsTable`,
    and `submissionStatusEnum` imports the vocabulary it derives from in `model/submission.ts`.
    A foreign key is a compile-time reference no barrel can carry without closing a cycle through
    itself, and the failure mode is a table arriving `undefined` inside Drizzle with a stack trace

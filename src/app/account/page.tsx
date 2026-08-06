@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { requireSession, getOperatorById, ChangePasswordForm } from "@/domains/account";
+import { requireSession, getOperatorById, ChangePasswordForm } from "@/domains/operator";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function AccountPage() {
   const session = await requireSession();
-  const operator = await getOperatorById(session.userId);
+  const operator = await getOperatorById(session.operatorId);
   const home = session.role === "admin" ? "/admin" : "/coach";
 
   return (

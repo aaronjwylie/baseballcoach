@@ -28,7 +28,7 @@ import {
   type SubmissionFile,
 } from "@/domains/submission";
 import { getCoach } from "@/domains/coach";
-import { listAdminEmails } from "@/domains/account";
+import { listAdminEmails } from "@/domains/operator";
 import { getSettings } from "@/domains/settings";
 import { env } from "@/shared/config/env";
 import {

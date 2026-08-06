@@ -63,8 +63,8 @@ export interface SubmissionEvent {
  */
 async function currentActorId(): Promise<string | null> {
   try {
-    const session = await readSession<{ userId?: string }>();
-    return session?.userId ?? null;
+    const session = await readSession<{ operatorId?: string }>();
+    return session?.operatorId ?? null;
   } catch {
     return null;
   }

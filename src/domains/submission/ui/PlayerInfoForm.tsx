@@ -19,7 +19,7 @@ import {
  *
  * Validates with the **same schema the server re-validates with**, so the two
  * can't drift into disagreeing about what's acceptable. The server still
- * re-checks: this is a courtesy to honest users, not a security boundary.
+ * re-checks: this is a courtesy to honest operators, not a security boundary.
  *
  * It doesn't submit anything itself. The parent owns what "continue" means,
  * which is what lets one form serve both the first visit and the customer

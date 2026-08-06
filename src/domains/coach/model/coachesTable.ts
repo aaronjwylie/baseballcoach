@@ -1,19 +1,19 @@
 /**
  * The people who review — one row per coach.
  *
- * Paired with a `users` row, which is the login; this table is who they are.
+ * Paired with an `operators` row, which is the login; this table is who they are.
  * `languages` is half of the translation rule: intersected with the customer's,
  * no overlap means the submission needs translating.
  */
 import { pgTable, uuid, text, boolean, timestamp } from "drizzle-orm/pg-core";
 import { focus } from "@/domains/submission/model/focusEnum";
-import { users } from "@/domains/account/model/usersTable";
+import { operators } from "@/domains/operator/model/operatorsTable";
 
 export const coaches = pgTable("coaches", {
   id: uuid().defaultRandom().primaryKey(),
-  userId: uuid()
+  operatorId: uuid()
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => operators.id, { onDelete: "cascade" }),
   name: text().notNull(),
   specialties: focus().array().notNull().default([]),
   languages: text().array().notNull().default([]),

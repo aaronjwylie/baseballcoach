@@ -1,14 +1,14 @@
 /**
  * The coach — the person who reviews a submission. Distinct from the operator
- * `users` row that logs them in: a Coach *has a* user (`userId`), plus the
+ * `operators` row that logs them in: a Coach *has a* user (`operatorId`), plus the
  * profile the admin manages (name, specialties, languages, active).
  */
 import type { Focus, LanguageChoice } from "@/domains/submission/model/submission";
 
 export interface Coach {
   id: string;
-  userId: string;
-  /** The coach's login, from the joined `users` row. */
+  operatorId: string;
+  /** The coach's login, from the joined `operators` row. */
   email: string;
   name: string;
   specialties: Focus[];

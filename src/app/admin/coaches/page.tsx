@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import { listCoaches, AddCoachForm } from "@/domains/coach";
 
 export const metadata: Metadata = {

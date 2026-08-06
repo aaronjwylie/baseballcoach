@@ -1,21 +1,21 @@
 /**
  * Operator queries + credential checks against Postgres.
  *
- * The only place the app reads the `users` table. Callers get a clean
+ * The only place the app reads the `operators` table. Callers get a clean
  * `Operator` (no password hash), never a raw row.
  */
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { users } from "../model/usersTable";
-import type { Operator, Role } from "../model/user";
+import { operators } from "../model/operatorsTable";
+import type { Operator, Role } from "../model/operator";
 
 /** Raw row lookup — internal; keeps the password hash contained to this file. */
 async function findRowByEmail(email: string) {
   const rows = await db
     .select()
-    .from(users)
-    .where(eq(users.email, email.trim().toLowerCase()))
+    .from(operators)
+    .where(eq(operators.email, email.trim().toLowerCase()))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -23,7 +23,7 @@ async function findRowByEmail(email: string) {
 /**
  * Where operator notifications go.
  *
- * Read from the `users` table rather than an env var, deliberately: the people
+ * Read from the `operators` table rather than an env var, deliberately: the people
  * who should hear about a payment or a stalled hand-off are exactly the people
  * who can log in and act on it, and a config value would let those two drift the
  * moment an operator changes. Distinct from `site.email` (the public address)
@@ -35,9 +35,9 @@ async function findRowByEmail(email: string) {
  */
 export async function listAdminEmails(): Promise<string[]> {
   const rows = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.role, "admin"));
+    .select({ email: operators.email })
+    .from(operators)
+    .where(eq(operators.role, "admin"));
   return rows.map((row) => row.email);
 }
 
@@ -54,9 +54,9 @@ export async function verifyCredentials(
 
 export async function getOperatorById(id: string): Promise<Operator | null> {
   const rows = await db
-    .select({ id: users.id, email: users.email, role: users.role })
-    .from(users)
-    .where(eq(users.id, id))
+    .select({ id: operators.id, email: operators.email, role: operators.role })
+    .from(operators)
+    .where(eq(operators.id, id))
     .limit(1);
   return rows[0] ?? null;
 }
@@ -72,9 +72,9 @@ export async function createOperator(
 ): Promise<Operator> {
   const passwordHash = await bcrypt.hash(password, 10);
   const rows = await db
-    .insert(users)
+    .insert(operators)
     .values({ email: email.trim().toLowerCase(), passwordHash, role })
-    .returning({ id: users.id, email: users.email, role: users.role });
+    .returning({ id: operators.id, email: operators.email, role: operators.role });
   return rows[0];
 }
 
@@ -83,14 +83,14 @@ export async function createOperator(
  * if it's wrong (or the user is gone), true on success.
  */
 export async function changePassword(
-  userId: string,
+  operatorId: string,
   currentPassword: string,
   newPassword: string,
 ): Promise<boolean> {
   const [row] = await db
-    .select({ passwordHash: users.passwordHash })
-    .from(users)
-    .where(eq(users.id, userId))
+    .select({ passwordHash: operators.passwordHash })
+    .from(operators)
+    .where(eq(operators.id, operatorId))
     .limit(1);
   if (!row) return false;
 
@@ -98,7 +98,7 @@ export async function changePassword(
   if (!ok) return false;
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  await db.update(operators).set({ passwordHash }).where(eq(operators.id, operatorId));
   return true;
 }
 
@@ -109,9 +109,9 @@ export async function changePassword(
  * Hashing stays in this file, the one home for it.
  */
 export async function setUserPassword(
-  userId: string,
+  operatorId: string,
   newPassword: string,
 ): Promise<void> {
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+  await db.update(operators).set({ passwordHash }).where(eq(operators.id, operatorId));
 }

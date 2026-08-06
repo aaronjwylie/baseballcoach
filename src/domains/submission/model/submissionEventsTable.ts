@@ -19,7 +19,7 @@ import {
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
-import { users } from "@/domains/account/model/usersTable";
+import { operators } from "@/domains/operator/model/operatorsTable";
 import { submissions } from "./submissionsTable";
 import { submissionStatus } from "./submissionStatusEnum";
 import { submissionEventKind } from "./submissionEventKindEnum";
@@ -68,7 +68,7 @@ export const submissionEvents = pgTable(
     ok: boolean(),
     at: timestamp({ withTimezone: true }).defaultNow().notNull(),
     // Null for the customer and the scheduled sweep — neither has a login.
-    actorId: uuid().references(() => users.id, { onDelete: "set null" }),
+    actorId: uuid().references(() => operators.id, { onDelete: "set null" }),
     // Why, for the operator overrides that need a reason.
     note: text(),
   },

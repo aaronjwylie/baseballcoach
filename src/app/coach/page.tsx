@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
 import { storage } from "@/shared/storage";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import { getCoachByUserId } from "@/domains/coach";
 import {
   findByCoach,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 export default async function CoachHomePage() {
   const session = await requireRole("coach");
-  const coach = await getCoachByUserId(session.userId);
+  const coach = await getCoachByUserId(session.operatorId);
   const submissions = coach ? await findByCoach(coach.id) : [];
   // One query for the page rather than one per card.
   const filesBySubmission = await listFilesForSubmissions(

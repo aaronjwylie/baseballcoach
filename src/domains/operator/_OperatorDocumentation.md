@@ -1,13 +1,13 @@
-# account — operator identity
+# operator — who logs in
 
 ## The northstar
 
-`account` is who can log into the operator portal and what they're allowed to
-touch. Two roles: **admin** (the admin) and **coach**. **Customers are never accounts** —
+`operator` is who can log into the operator portal and what they're allowed to
+touch. Two roles: **admin** (the admin) and **coach**. **Customers never get an operator row** —
 they're identified by the email on their submission, not a login.
 
 The noun is an `Operator` (`{ id, email, role }`) — the password hash never
-leaves `api/userApi.ts`. The verbs are `login` / `logout` (server actions) and
+leaves `api/operatorApi.ts`. The verbs are `login` / `logout` (server actions) and
 the guards `requireSession` / `requireRole` (the DAL). The session is a stateless
 HS256 JWT in an httpOnly cookie; the crypto seam lives in `shared/auth`, this
 domain owns the payload shape (`OperatorSession = { userId, role }`).
@@ -22,7 +22,7 @@ Invariants:
 
 ## The slice owns its storage — 2026-08-05
 
-`users` and `userRole` are declared here now — `model/usersTable.ts` and
+`users` and `userRole` are declared here now — `model/operatorsTable.ts` and
 `model/userRoleEnum.ts` ([ADR 015](../../../docs/decisions/015-schema-by-domain.md)).
 The enum **derives** from `ROLES` in `model/user.ts`, which is also where
 `type Role` comes from: one list, two consumers. `Role` used to be a bare union

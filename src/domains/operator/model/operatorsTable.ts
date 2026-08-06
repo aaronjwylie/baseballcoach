@@ -6,14 +6,14 @@
  * There is no self-signup and no customer-facing auth at all.
  */
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
-import { userRole } from "./userRoleEnum";
+import { operatorRole } from "./operatorRoleEnum";
 
-export const users = pgTable("users", {
+export const operators = pgTable("operators", {
   id: uuid().defaultRandom().primaryKey(),
   email: text().notNull().unique(),
   passwordHash: text().notNull(),
-  role: userRole().notNull(),
+  role: operatorRole().notNull(),
   createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 });
 
-export type UserRow = typeof users.$inferSelect;
+export type OperatorRow = typeof operators.$inferSelect;

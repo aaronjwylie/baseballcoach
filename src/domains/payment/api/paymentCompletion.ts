@@ -22,7 +22,7 @@ import {
 } from "@/domains/submission";
 import { site } from "@/shared/config/site";
 import type { PaidResult } from "../model/fulfillment";
-import { listAdminEmails } from "@/domains/account";
+import { listAdminEmails } from "@/domains/operator";
 import {
   sendPaymentFailed,
   sendPaymentReceivedEmail,

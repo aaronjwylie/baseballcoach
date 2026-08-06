@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { RequestResetForm } from "@/domains/account";
+import { RequestResetForm } from "@/domains/operator";
 
 export const metadata: Metadata = {
   title: "Reset your password",

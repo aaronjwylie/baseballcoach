@@ -24,7 +24,7 @@
  * drizzle-kit maps them to snake_case columns, so the app reads camelCase and
  * the database stays idiomatic SQL.
  *
- * Six tables: `users` (operator logins), `coaches` (the people who review),
+ * Six tables: `operators` (operator logins), `coaches` (the people who review),
  * `submissions` (the spine — one row per request), `submissionFiles` (the files,
  * both directions, discriminated by `kind`), `submissionEvents` (one row per
  * status transition — the trail), and `settings` (the operator's knobs).
@@ -35,7 +35,7 @@
  */
 
 // Enums.
-export * from "@/domains/account/model/userRoleEnum";
+export * from "@/domains/operator/model/operatorRoleEnum";
 export * from "@/domains/submission/model/focusEnum";
 export * from "@/domains/submission/model/submissionStatusEnum";
 export * from "@/domains/submission/model/fileKindEnum";
@@ -44,7 +44,7 @@ export * from "@/domains/submission/model/submissionEventKindEnum";
 export * from "@/domains/submission/model/emailOutcomeEnum";
 
 // Tables, each with its inferred row types.
-export * from "@/domains/account/model/usersTable";
+export * from "@/domains/operator/model/operatorsTable";
 export * from "@/domains/coach/model/coachesTable";
 export * from "@/domains/submission/model/submissionsTable";
 export * from "@/domains/submission/model/submissionFilesTable";

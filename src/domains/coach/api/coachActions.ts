@@ -4,7 +4,7 @@
  * admin-only — the guard is re-checked here, not trusted from the UI.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import {
   FILE_SETS,
   FOCUS_OPTIONS,

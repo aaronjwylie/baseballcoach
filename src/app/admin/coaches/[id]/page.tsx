@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
-import { requireRole } from "@/domains/account";
+import { requireRole } from "@/domains/operator";
 import { getCoach, EditCoachForm } from "@/domains/coach";
 
 export const metadata: Metadata = {
