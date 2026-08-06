@@ -39,6 +39,8 @@ export type {
 */
 export {
   listCoaches,
+  listTranslators,
+  getAssignee,
   getCoachByOperatorId,
   getCoach,
   createCoach,
@@ -49,10 +51,12 @@ export {
   createCoachAction,
   updateCoachAction,
   assignCoachAction,
+  assignTranslatorAction,
   notifyCoachAction,
   type CoachFormState,
 } from "./api/coachActions";
 export { AddCoachForm } from "./ui/AddCoachForm";
 export { EditCoachForm } from "./ui/EditCoachForm";
 export { AssignCoachSelect } from "./ui/AssignCoachSelect";
+export { AssignTranslatorSelect } from "./ui/AssignTranslatorSelect";
 export type { Coach, NewCoach } from "./model/coach";

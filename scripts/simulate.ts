@@ -41,6 +41,8 @@ import {
   listSubmissionEvents,
   markCoachCollected,
   markTranslatorCollected,
+  assignSubmissionTranslator,
+  assigneeFor,
   TRANSLATION_RUNGS,
   SUBMISSION_STATUSES,
   markCustomerCollected,
@@ -209,8 +211,21 @@ async function walk(label: string, translating: boolean) {
   // languages decided whether this path translates at all.
   await assignSubmissionCoach(s.id, coach.id);
 
+  // Held across both legs: the return leg asserts the outbound assignment is
+  // still there, which is the point of assignment being a join.
+  let intakeTranslator: { id: string; name: string } | null = null;
+
   // ── rungs 5–6: translation, only when the coach needs it ─────────────
   if (translating) {
+    // Picking is its own act and its own rung, exactly as it is for a coach.
+    intakeTranslator = await ensureTranslator(`${label} Translator`);
+    await assignSubmissionTranslator(s.id, intakeTranslator.id, "intake_translation");
+    await rung(s.id, "intake_translator_assigned", "translator");
+    check(
+      (await assigneeFor(s.id, "intake_translation")) === intakeTranslator.id,
+      "   the intake translator is on the join, not just the rung",
+    );
+
     await updateSubmission(s.id, { status: "sent_to_intake_translator" });
     await rung(s.id, "sent_to_intake_translator", "translator");
     // The rung is earned by the translator opening the files, exactly as
@@ -257,6 +272,20 @@ async function walk(label: string, translating: boolean) {
 
   // ── rungs 10–11: the response's translation ──────────────────────────
   if (translating) {
+    // The return leg may be a different person — that is the whole reason
+    // assignment is a join and not a column.
+    const backTranslator = await ensureTranslator(`${label} Back Translator`);
+    await assignSubmissionTranslator(s.id, backTranslator.id, "feedback_translation");
+    await rung(s.id, "feedback_translator_assigned", "translator");
+    check(
+      (await assigneeFor(s.id, "feedback_translation")) === backTranslator.id,
+      "   the return leg has its own translator",
+    );
+    check(
+      (await assigneeFor(s.id, "intake_translation")) === intakeTranslator?.id,
+      "   and the outbound one is untouched — two legs, two rows",
+    );
+
     await updateSubmission(s.id, { status: "sent_to_feedback_translator" });
     await rung(s.id, "sent_to_feedback_translator", "translator");
     check(
@@ -368,6 +397,31 @@ async function ensureCoach(name: string, languages: string[]) {
     .insert(operatorProfileTable)
     .values({ operatorId: operator.id, languages, specialties: ["Hitting"] });
   return { id: operator.id, name: operator.name, languages };
+}
+
+/**
+ * A translator, which is the same two rows with a different role.
+ *
+ * Separate from `ensureCoach` only because the role differs — and that
+ * difference is exactly what `listCoaches()` failed to filter on before ADR 018
+ * Q3, when "has a profile" and "is a coach" stopped being the same set.
+ */
+async function ensureTranslator(name: string) {
+  const email = `${name.toLowerCase().replace(/[^a-z]+/g, "-")}@sim.local`;
+  const [existing] = await db
+    .select()
+    .from(operatorTable)
+    .where(eq(operatorTable.email, email));
+  if (existing) return { id: existing.id, name: existing.name };
+
+  const [operator] = await db
+    .insert(operatorTable)
+    .values({ email, passwordHash: "x", role: "translator", name })
+    .returning();
+  await db
+    .insert(operatorProfileTable)
+    .values({ operatorId: operator.id, languages: ["English", "Japanese"], specialties: [] });
+  return { id: operator.id, name: operator.name };
 }
 
 /**

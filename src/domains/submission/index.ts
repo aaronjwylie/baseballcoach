@@ -90,6 +90,7 @@ export {
   lookupPublicSubmissions,
   markCoachCollected,
   markTranslatorCollected,
+  assignSubmissionTranslator,
   markCustomerCollected,
   markSubmissionSentToCoach,
   unarchiveSubmission,

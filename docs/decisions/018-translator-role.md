@@ -223,7 +223,17 @@ place a submission stalls on a *person* rather than on the system, and that the 
 that without opening the row. That applies verbatim to a translator; they simply hadn't been given
 it. One concept spelled two ways across two roles is `_NomenclatureLaw.md` §2 one level up.
 
-So: `sent_to_intake_translator` and `sent_to_feedback_translator`, both legs, sixteen rungs → **eighteen**.
+So: `sent_to_intake_translator` and `sent_to_feedback_translator`, both legs — and then, once the
+asymmetry was named out loud, the *picking* rung too: `intake_translator_assigned` and
+`feedback_translator_assigned` (`0011`). Sixteen rungs → **twenty**.
+
+**Picking earned its rung on the same argument, and it took a second pass to see it.** The first
+version of this decision left it out, reasoning that the coach's `assigned` rung was structural —
+somewhere for a submission to sit between paid and sent — rather than a reward for being chosen.
+That was wrong in a specific way: for a coach, picking and sending are *two admin actions* with a
+real gap between them, and the rung is what makes the gap visible. For a translator they were one
+action only because the second had never been built. Sending is now reachable only from
+`*_translator_assigned`, so there is no path that emails a hand-off to nobody.
 
 Three things worth recording about how it landed:
 
@@ -234,10 +244,12 @@ Three things worth recording about how it landed:
   half, fired by the translator's own download in `/api/files/[id]`. Which leg is **derived from
   where the submission already sits**, never passed in — a caller that has to name the leg is a
   caller that can name the wrong one.
-- **`assigned` is not duplicated for translators.** Picking a translator is already recorded, as an
-  `assignment` trail row with actor and timestamp (`0009`), and surfaced through `ProgressFacts`.
-  The coach's `assigned` rung exists because the ladder needs *somewhere* to be between paid and
-  sent — it is structural, not a reward for being chosen.
+- **A latent bug fell out of it.** `listCoaches()` was an inner join on `operator_profile` with no
+  role filter, on the reasoning that "an admin has no profile, so having one *is* being a coach".
+  True with two roles; false the moment a translator exists, since they carry languages too — every
+  translator would have appeared in the coach dropdown. A shape that happens to filter correctly is
+  not a filter, it is a coincidence with a shelf life. The role is asked for explicitly now, and
+  `listTranslators()` is its counterpart.
 
 Cost was smaller than the deferral assumed: the customer never sees these rungs (their lookup
 collapses the middle into one sentence), the download-observing machinery already existed, and every

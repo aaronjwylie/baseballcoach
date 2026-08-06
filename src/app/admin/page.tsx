@@ -26,8 +26,10 @@ import {
 } from "@/domains/submission";
 import {
   listCoaches,
+  listTranslators,
   notifyCoachAction,
   AssignCoachSelect,
+  AssignTranslatorSelect,
   type Coach,
 } from "@/domains/operator";
 import { requireRole } from "@/domains/operator";
@@ -108,6 +110,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     // hasn't been handed anything yet.
     match: (s) =>
       (s.status === "assigned" ||
+        s.status === "intake_translator_assigned" ||
         s.status === "sent_to_intake_translator" ||
         s.status === "intake_translating" ||
         s.status === "intake_translated") &&
@@ -128,6 +131,7 @@ const TABS: { key: string; label: string; match: (s: Submission) => boolean }[] 
     // the admin and none of it has reached the customer.
     match: (s) =>
       (s.status === "awaiting_approval" ||
+        s.status === "feedback_translator_assigned" ||
         s.status === "sent_to_feedback_translator" ||
         s.status === "feedback_translating" ||
         s.status === "feedback_translated") &&
@@ -149,7 +153,11 @@ export default async function AdminHomePage({
 }) {
   await requireRole("admin");
   const { status } = await searchParams;
-  const [all, coaches] = await Promise.all([listSubmissions(), listCoaches()]);
+  const [all, coaches, translators] = await Promise.all([
+    listSubmissions(),
+    listCoaches(),
+    listTranslators(),
+  ]);
 
   const activeKey = TABS.some((t) => t.key === status) ? status! : "all";
   const rows = all.filter(TABS.find((t) => t.key === activeKey)!.match);
@@ -241,6 +249,7 @@ export default async function AdminHomePage({
                 <SubmissionRow
                   key={s.id}
                   submission={s}
+                  translators={translators}
                   files={filesBySubmission.get(s.id) ?? []}
                   feedbackFiles={feedbackBySubmission.get(s.id) ?? []}
                   folders={foldersBySubmission.get(s.id)}
@@ -271,6 +280,7 @@ function SubmissionRow({
   progress,
   events,
   coaches,
+  translators,
 }: {
   submission: Submission;
   files: SubmissionFile[];
@@ -283,6 +293,7 @@ function SubmissionRow({
   };
   events: SubmissionEvent[];
   coaches: Coach[];
+  translators: Coach[];
 }) {
   const assignedCoachId = progress?.assignees.feedback;
   const assignedCoach = coaches.find((c) => c.id === assignedCoachId);
@@ -399,6 +410,28 @@ function SubmissionRow({
         label="Archive"
         className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink-muted hover:text-ink"
       />
+    </div>
+  ) : act === "pickIntakeTranslator" || act === "pickFeedbackTranslator" ? (
+    <div className="flex flex-col items-start gap-2">
+      <AssignTranslatorSelect
+        key={
+          (act === "pickIntakeTranslator"
+            ? progress?.assignees.intake_translation
+            : progress?.assignees.feedback_translation) ?? "unassigned"
+        }
+        submissionId={submission.id}
+        leg={act === "pickIntakeTranslator" ? "intake_translation" : "feedback_translation"}
+        assignedOperatorId={
+          act === "pickIntakeTranslator"
+            ? progress?.assignees.intake_translation
+            : progress?.assignees.feedback_translation
+        }
+        translators={translators}
+      />
+      <p className="text-[11px] text-ink-muted">
+        Only needed when the languages don&apos;t overlap — picking is what makes
+        the hand-off sendable.
+      </p>
     </div>
   ) : act === "sendForTranslation" ? (
     <RowActionForm

@@ -198,6 +198,34 @@ export async function markCoachCollected(
 }
 
 /**
+ * Give a leg of the translation to a translator — the mirror of
+ * `assignSubmissionCoach`.
+ *
+ * **Picking is its own rung**, because for a translator as for a coach it is a
+ * separate act from sending: the admin chooses who, and sends when they are
+ * ready. Collapsing the two would have made "chosen but not sent" invisible on
+ * exactly one of the two roles, which is the asymmetry ADR 018 Q3 set out to
+ * remove.
+ *
+ * The leg is named by the caller here, unlike `markTranslatorCollected` which
+ * derives it — because at this point the submission is sitting on a rung that
+ * precedes *both* legs' work, so where it is cannot say which one is meant.
+ */
+export async function assignSubmissionTranslator(
+  submissionId: string,
+  operatorId: string,
+  leg: "intake_translation" | "feedback_translation",
+): Promise<Submission> {
+  await assignOperator(submissionId, operatorId, leg);
+  return updateSubmission(submissionId, {
+    status:
+      leg === "intake_translation"
+        ? "intake_translator_assigned"
+        : "feedback_translator_assigned",
+  });
+}
+
+/**
  * A translator has collected their side — `sent_to_*_translator` → `*_translating`.
  *
  * The translator's half of `markCoachCollected`, and it exists for the same

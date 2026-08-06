@@ -262,7 +262,7 @@ What each column holds:
 
 ### What simulating the ladder found — 2026-08-02
 
-`npm run simulate` walks all eighteen rungs twice, once with translation and once
+`npm run simulate` walks all twenty rungs twice, once with translation and once
 without, through the **real domain functions** rather than the database, so the
 guards, the trail and the sends all run. 116 checks. It found three bugs on its
 first run, and all three were the same shape: **a guard written when the ladder
@@ -388,7 +388,7 @@ without explanation is worse than one that didn't move. ⚠️ Neither is built.
 
 ### The ladder is a path with branches, not a progress bar
 
-Six of the eighteen are only touched when a submission needs translating, so a
+Eight of the twenty are only touched when a submission needs translating, so a
 coach who shares a language with the customer takes **4 → 7** and **9 → 12**
 directly. Anything
 rendering this as a linear track will be wrong for most submissions.
@@ -523,7 +523,7 @@ are paid, since the ladder only branches after step 4.
 language, and sixteen states makes that collapse more important, not less — the
 mapping belongs in one function, not in the page.
 
-**And the ladder is not a progress bar.** Six of the eighteen are optional; a
+**And the ladder is not a progress bar.** Eight of the twenty are optional; a
 submission needing no translation skips them entirely. Anything that renders the
 ladder as a linear track will be wrong for most submissions.
 
@@ -1280,7 +1280,7 @@ length** — and it's what closes the trail. "Payment cleared" against "Clear
 payment". A full sentence beside a column of clipped ones reads as a different
 kind of entry altogether.
 
-**35 lines across the eighteen rungs, 33 distinct** — and no rung ends on the
+**37 lines across the twenty rungs, 35 distinct** — and no rung ends on the
 line the next one opens with.
 
 It was 43 and 36. Every rung used to restate the condition that got it there,
@@ -1344,7 +1344,7 @@ anyone for something the system can't see.
 **The other three vocabularies** a breadcrumb can be drawn from, all past-voice
 because all three are observations rather than intentions:
 
-- **The eighteen rung labels** (`RUNG_LABEL`) — a status move.
+- **The twenty rung labels** (`RUNG_LABEL`) — a status move.
 - **Eleven email labels**, ①–⑨ plus the decline notice and the status access
   code. ② is two labels for one numbered event, because a payment tells the
   customer *and* the admin; they're separate sends with separate outcomes.
@@ -1396,7 +1396,7 @@ The trail spelled the raw enum. Defensible while it was the only place a rung
 appeared; not once the pill sat directly above it. It renders the label now, and
 the enum is still what's stored.
 
-Exhaustive over the eighteen, so a new rung is a compile error here too.
+Exhaustive over the twenty, so a new rung is a compile error here too.
 
 ### The trail records the customer's code attempts
 
@@ -1470,7 +1470,7 @@ queue names.
 `npm run simulate` asserts the rule on both walks, against a coach fixture it
 creates itself rather than whichever coach the seed happens to hold.
 
-**The queue shows progress at the resolution of the path doc** — an eighteen-dot
+**The queue shows progress at the resolution of the path doc** — a twenty-dot
 rail per row with the current rung named above it, and the stage's chain as a
 checklist that greys out as each line is met.
 
@@ -1523,7 +1523,7 @@ code behind it, and the `(not built)` markers in the table are being cleared as
 each is verified. What remains is Phase 0 — live Stripe keys, clearing the Basic
 Auth gate, and real coach content — which is operations rather than code.
 
-Verified end to end in probes rather than by inspection: all eighteen rungs walk,
+Verified end to end in probes rather than by inspection: all twenty rungs walk,
 both collection stamps refuse to fire early and refuse to fire twice, and the
 retention sweep purges collected-and-old and never-collected-but-past-the-backstop
 while leaving collected-recently (warned) and just-delivered alone.

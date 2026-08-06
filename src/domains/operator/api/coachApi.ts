@@ -8,7 +8,7 @@
  *
  * This file is the only place those two rows are turned into a `Coach`.
  */
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
@@ -22,6 +22,7 @@ import {
 } from "@/domains/submission";
 import { env } from "@/shared/config/env";
 import type { Coach, NewCoach } from "../model/coach";
+import type { Role } from "../model/operator";
 import { sendCoachCollectedEmail } from "./coachEmail";
 
 function toCoach(
@@ -41,28 +42,73 @@ function toCoach(
 }
 
 /**
- * An inner join, deliberately: **a profile row is what makes someone a coach.**
- * An admin has none, so they cannot appear here by accident — the shape of the
- * query is the filter, rather than a role check someone has to remember.
+ * An inner join **and** a role filter.
+ *
+ * The join alone was the filter once: an admin has no profile row, so with two
+ * roles "has a profile" and "is a coach" were the same set. **A translator
+ * broke that** — they carry languages and specialties too, so they have a
+ * profile, and `listCoaches()` would have offered them in the coach dropdown.
+ *
+ * A shape that happens to filter correctly is not a filter; it is a
+ * coincidence with a shelf life. The role is asked for explicitly now.
  */
-function coachQuery() {
+function profileQuery(role: Role) {
   return db
     .select()
     .from(operatorTable)
     .innerJoin(
       operatorProfileTable,
       eq(operatorProfileTable.operatorId, operatorTable.id),
-    );
+    )
+    .where(eq(operatorTable.role, role));
 }
 
 export async function listCoaches(): Promise<Coach[]> {
-  const rows = await coachQuery().orderBy(asc(operatorTable.name));
+  const rows = await profileQuery("coach").orderBy(asc(operatorTable.name));
+  return rows.map((r) => toCoach(r.operator, r.operator_profile));
+}
+
+/**
+ * The people who can be given a leg of the translation.
+ *
+ * Same row shape as a coach — a `Coach` is really "an operator with a profile",
+ * and the two differ by role, not by fields. Sharing the type is deliberate:
+ * the day they diverge is the day to split it, and not before.
+ */
+export async function listTranslators(): Promise<Coach[]> {
+  const rows = await profileQuery("translator").orderBy(asc(operatorTable.name));
   return rows.map((r) => toCoach(r.operator, r.operator_profile));
 }
 
 export async function getCoach(id: string): Promise<Coach | null> {
-  const [row] = await coachQuery().where(eq(operatorTable.id, id)).limit(1);
+  const [row] = await profileRow(id, "coach");
   return row ? toCoach(row.operator, row.operator_profile) : null;
+}
+
+/** One person with a profile, whatever their role — the assignee lookup. */
+export async function getAssignee(id: string): Promise<Coach | null> {
+  const [row] = await db
+    .select()
+    .from(operatorTable)
+    .innerJoin(
+      operatorProfileTable,
+      eq(operatorProfileTable.operatorId, operatorTable.id),
+    )
+    .where(eq(operatorTable.id, id))
+    .limit(1);
+  return row ? toCoach(row.operator, row.operator_profile) : null;
+}
+
+function profileRow(id: string, role: Role) {
+  return db
+    .select()
+    .from(operatorTable)
+    .innerJoin(
+      operatorProfileTable,
+      eq(operatorProfileTable.operatorId, operatorTable.id),
+    )
+    .where(and(eq(operatorTable.id, id), eq(operatorTable.role, role)))
+    .limit(1);
 }
 
 /**

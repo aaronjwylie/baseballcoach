@@ -74,7 +74,7 @@ const STATUS_META: Record<
   // but the map is exhaustive so a new status can't be added without deciding
   // what a customer should be told about it.
   //
-  // **Eighteen operator states collapse into five customer ones.** A parent has
+  // **Twenty operator states collapse into five customer ones.** A parent has
   // no use for `feedback_translating`; they want to know whether it has arrived,
   // whether it's being worked on, and whether they can still download it. Every
   // middle rung is therefore the same sentence, deliberately — the collapse is
@@ -98,12 +98,14 @@ const STATUS_META: Record<
   // Translation and the admin's approval check are internal steps; surfacing them
   // would invite questions the parent can't act on.
   assigned: WITH_YOUR_COACH,
+  intake_translator_assigned: WITH_YOUR_COACH,
   sent_to_intake_translator: WITH_YOUR_COACH,
   intake_translating: WITH_YOUR_COACH,
   intake_translated: WITH_YOUR_COACH,
   sent_to_coach: WITH_YOUR_COACH,
   in_review: WITH_YOUR_COACH,
   awaiting_approval: WITH_YOUR_COACH,
+  feedback_translator_assigned: WITH_YOUR_COACH,
   sent_to_feedback_translator: WITH_YOUR_COACH,
   feedback_translating: WITH_YOUR_COACH,
   feedback_translated: WITH_YOUR_COACH,

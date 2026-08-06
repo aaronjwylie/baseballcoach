@@ -104,7 +104,7 @@ Three gaps this list carried are now shut, all by ADR 018:
   per promise to produce a file, and the single `assignedCoachId` column is
   dropped (`0006`, `0008`). More than one person per submission is now the
   ordinary case rather than the one the schema couldn't express.
-- ~~**Eighteen steps against sixteen statuses.**~~ **Eighteen against eighteen.**
+- ~~**Eighteen steps against sixteen statuses.**~~ **Twenty statuses now.**
   Steps 5 and 11 have their own rungs — `sent_to_intake_translator` and
   `sent_to_feedback_translator` — so "emailed to a translator" and "the
   translator has it" are different places, the way `sent_to_coach` and

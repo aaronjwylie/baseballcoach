@@ -128,10 +128,12 @@ export async function uploadTranslationAction(
   */
   const wasIntake =
     submission.status === "assigned" ||
+    submission.status === "intake_translator_assigned" ||
     submission.status === "sent_to_intake_translator" ||
     submission.status === "intake_translating";
   const wasResponse =
     submission.status === "awaiting_approval" ||
+    submission.status === "feedback_translator_assigned" ||
     submission.status === "sent_to_feedback_translator" ||
     submission.status === "feedback_translating";
 
@@ -309,15 +311,20 @@ export async function sendForTranslationAction(
   /*
     Each side can only be sent from the rung that precedes it.
 
-    Sending stops at `sent_to_*_translator`, not at `*_translating`. The
-    translator's own download is what earns the second — the same split
+    Sending is only reachable **once a translator has been picked** — from
+    `*_translator_assigned`, never straight from `assigned`. Picking and sending
+    are two acts for a translator exactly as they are for a coach, so there is
+    no path that emails a hand-off to nobody.
+
+    And sending stops at `sent_to_*_translator`, not at `*_translating`: the
+    translator's own download earns the second, the same split
     `sent_to_coach` → `in_review` makes on the coach side, and for the same
-    reason: it is the only place a submission stalls on a person.
+    reason — it is the only place a submission stalls on a person.
   */
   const next =
-    submission.status === "assigned"
+    submission.status === "intake_translator_assigned"
       ? "sent_to_intake_translator"
-      : submission.status === "awaiting_approval"
+      : submission.status === "feedback_translator_assigned"
         ? "sent_to_feedback_translator"
         : null;
   if (!next) return;

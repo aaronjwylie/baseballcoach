@@ -62,6 +62,11 @@ export type ChainAction =
   // Waiting on a named translator, not on the admin doing it themselves. The
   // distinction only became expressible when a translator could log in.
   | "waitTranslator"
+  // Picking is its own act, and its own rung, for a translator as for a coach.
+  // The leg is in the name because the two are staffed at different points and
+  // may be different people.
+  | "pickIntakeTranslator"
+  | "pickFeedbackTranslator"
   | "waitCron";
 
 export interface ChainLine {
@@ -276,16 +281,25 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   ],
   assigned: [
     {
-      what: "Sent out for translation, if this coach needs it", next: "Send for translation, if needed",
+      what: "Translator chosen, if this coach needs one", next: "Pick a translator, if needed",
       from: "rung 5",
       why: "optional — a coach who shares a language skips it",
-      act: "sendForTranslation",
+      act: "pickIntakeTranslator",
       // Never blocks: most submissions skip translation entirely, so treating
       // this as a gate would leave every shared-language row looking unfinished.
       passive: true,
       toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.intake_translation > 0,
     },
     { what: "Handed to the coach", next: "Hand to the coach", from: "③", act: "handoff", records: [...sendRecords("③ hand-off → coach")], failures: [...sendFailures("③ hand-off → coach")], toldOnFail: ["Admin/portal: “This has already gone to a coach. Reload to see where it is.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Sent"], met: sent("③ hand-off → coach") },
+  ],
+  intake_translator_assigned: [
+    {
+      what: "Sent to the translator", next: "Send to the translator",
+      from: "rung 6", act: "sendForTranslation",
+      toldOnFail: ["Admin/portal: “Pick a translator first.” *(not built)*"],
+      toldOnSuccess: ["Admin/portal: the row moves to Sent", "Translator/email: the hand-off, with a download link per file"],
+      met: reached("sent_to_intake_translator"),
+    },
   ],
   sent_to_intake_translator: [
     {
@@ -320,14 +334,23 @@ export const STAGE_CHAIN: Record<SubmissionStatus, ChainLine[]> = {
   awaiting_approval: [
     { what: "Admin and the coach told", next: "Tell Admin and the coach", from: "⑤", passive: true, records: [...sendRecords("⑤ response submitted → Admin + coach")], failures: [...sendFailures("⑤ response submitted → Admin + coach")], toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/email: ⑤ response submitted", "Coach/email: ⑤ the same notice"], met: sent("⑤ response submitted → Admin + coach") },
     {
-      what: "Sent out for translation, if the customer needs it", next: "Send for translation, if needed",
+      what: "Translator chosen, if the customer needs one", next: "Pick a translator, if needed",
       from: "rung 10",
       why: "optional — skipped when the response is already readable",
-      act: "sendForTranslation",
+      act: "pickFeedbackTranslator",
       passive: true,
       toldOnFail: ["Admin/portal: “That did not go through — try again.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Translating"], met: (_s, f) => f.files.feedback_translation > 0,
     },
     { what: "Approved and sent", next: "Approve and send", from: "feedbackEmailedAt", act: "approve", records: [...sendRecords("⑥ feedback ready → customer")], failures: [...sendFailures("⑥ feedback ready → customer"), "Refused — there is no response file to send"], toldOnFail: ["Admin/portal: “There is no response file to send yet.” *(not built)*"], toldOnSuccess: ["Admin/portal: the row moves to Delivered"], met: (s) => !!s.feedbackEmailedAt },
+  ],
+  feedback_translator_assigned: [
+    {
+      what: "Sent to the translator", next: "Send to the translator",
+      from: "rung 12", act: "sendForTranslation",
+      toldOnFail: ["Admin/portal: “Pick a translator first.” *(not built)*"],
+      toldOnSuccess: ["Admin/portal: the row moves to Sent", "Translator/email: the hand-off, with a download link per file"],
+      met: reached("sent_to_feedback_translator"),
+    },
   ],
   sent_to_feedback_translator: [
     {
