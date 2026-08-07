@@ -2,6 +2,7 @@
 
 import { useCallback, useSyncExternalStore, type ReactNode } from "react";
 import { LocalTime } from "@/shared/ui";
+import { Disclosure } from "./Disclosure";
 import { StatusRail } from "@/domains/submission/ui/StatusRail";
 import { StageChain } from "@/domains/submission/ui/StageChain";
 import { RUNG_LABEL } from "@/domains/submission/model/submission";
@@ -127,12 +128,21 @@ export function QueueRow({
 
           <div className="mt-4 grid grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-6 border-t border-line pt-3 max-[860px]:grid-cols-1">
             <div>
-              <Label>This submission</Label>
-              {details}
+              <Disclosure label="This submission">{details}</Disclosure>
             </div>
             <div>
-              <Label>Trail</Label>
-              <Trail events={events} pending={pending?.next} />
+              {/*
+                Closed by default, like the override. An expanded row was
+                showing four sections at once, and the two that are *reference*
+                — the field dump and the full history — are the ones you open
+                when something looks wrong, not the ones you read every time.
+              */}
+              <Disclosure
+                label="Trail"
+                hint={`${events.length} ${events.length === 1 ? "entry" : "entries"}`}
+              >
+                <Trail events={events} pending={pending?.next} />
+              </Disclosure>
             </div>
           </div>
 
