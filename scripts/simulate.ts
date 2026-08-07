@@ -202,6 +202,18 @@ async function walk(label: string, translating: boolean) {
     afterSwap[1]?.label === `coach unassigned — ${coach.id}`,
     "   the first coach's turn survives being replaced",
   );
+  /*
+    Two rows written in one transaction must be *orderable*.
+
+    `at` defaulted to now() — the transaction's start time — so these two shared
+    a timestamp and their order was whatever the planner felt like. This check
+    is the reason 0012 exists; without it the bug reproduced once in five runs
+    and looked like a fluke.
+  */
+  check(
+    new Date(afterSwap[1]!.at!).getTime() > new Date(afterSwap[0]!.at!).getTime(),
+    "   and the trail can order two events from one transaction",
+  );
   check(
     (await at(s.id)).status === "assigned",
     "   and reassigning doesn't re-record the rung",

@@ -1,0 +1,18 @@
+-- The trail's timestamp stops being the transaction's timestamp.
+--
+-- `now()` in Postgres is `transaction_timestamp()`: every statement inside one
+-- transaction reads the identical value. The trail writes more than one row per
+-- transaction — a reassignment writes `unassigned` and `assigned` together — so
+-- both rows were stamped the same and `ORDER BY at` between them was arbitrary.
+--
+-- The whole job of this table is *what happened, in what order*. "Who had this
+-- before" is unreadable if the take-back and the hand-off cannot be told apart.
+--
+-- It surfaced as a `simulate` failure that reproduced once in five runs, which
+-- is the worst way for a defect to announce itself: green enough to look like a
+-- fluke, wrong often enough to have been wrong in production all along.
+--
+-- Existing rows keep their values. A default change rewrites nothing, so the
+-- ambiguity stays in rows already written — this fixes the future, and the past
+-- is readable by kind rather than by order.
+ALTER TABLE "submission_event" ALTER COLUMN "at" SET DEFAULT clock_timestamp();

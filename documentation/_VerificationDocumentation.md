@@ -85,6 +85,15 @@ failure has been deleted is folklore.
 - **2026-08-05 — the sixty-six strings.** A word-boundary substitution could not tell an identifier
   from prose, and the words worth renaming are exactly the words that appear in sentences. Bought gate
   1, plus [`_NomenclatureLaw §2b`](../laws/_NomenclatureLaw.md) on how to rename at all.
+- **2026-08-06 — the flake that was a real bug.** `simulate` failed its
+  assignment-trail ordering check **once in five runs**, then passed five
+  straight. The temptation to call it flaky and move on was the whole danger:
+  `submission_event.at` defaulted to `now()`, which in Postgres is the
+  *transaction* start time, so two rows written in one transaction shared a
+  timestamp and `ORDER BY at` between them was arbitrary. Migration `0012`
+  switched it to `clock_timestamp()`, and the ordering is now asserted outright
+  rather than depended upon. **An intermittent failure in a behavioural gate is
+  a finding, not noise** — the gate was right and the schema was wrong.
 - **2026-08-06 — the test that tested nothing.** After the ladder grew, `simulate` still jumped past
   the new rungs and asserted a hardcoded `16 expected`. It passed. Bought the rule that a count in a
   test is derived from the thing it counts, never written down.

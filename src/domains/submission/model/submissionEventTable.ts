@@ -11,6 +11,7 @@
  *
  * `actorId` is null when nobody was logged in: the customer, or the cron.
  */
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   uuid,
@@ -66,7 +67,26 @@ export const submissionEventTable = pgTable(
      * about exactly the thing most likely to have gone wrong.
      */
     ok: boolean(),
-    at: timestamp({ withTimezone: true }).defaultNow().notNull(),
+    /**
+     * When — and **`clock_timestamp()`, not `now()`**.
+     *
+     * Postgres's `now()` is the *transaction* start time: every statement in one
+     * transaction sees the identical value. The trail writes more than one row
+     * per transaction — a reassignment writes an `unassigned` and an `assigned`
+     * together — so under `now()` those two rows were stamped identically and
+     * `ORDER BY at` between them was arbitrary.
+     *
+     * That is not cosmetic. **The whole job of this table is what happened, in
+     * what order**, and "who had this before" is unreadable if the hand-off and
+     * the take-back cannot be told apart. It surfaced as a `simulate` failure
+     * that reproduced once in five runs, which is the worst way for a defect to
+     * announce itself.
+     *
+     * `clock_timestamp()` reads the actual wall clock per statement.
+     */
+    at: timestamp({ withTimezone: true })
+      .default(sql`clock_timestamp()`)
+      .notNull(),
     // Null for the customer and the scheduled sweep — neither has a login.
     actorId: uuid().references(() => operatorTable.id, { onDelete: "set null" }),
     // Why, for the operator overrides that need a reason.
