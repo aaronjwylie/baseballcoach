@@ -1,4 +1,4 @@
-import { requireRole } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 import { Container } from "@/shared/ui";
 
 export const metadata = { title: "Translator" };

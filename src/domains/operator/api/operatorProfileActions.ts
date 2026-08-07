@@ -16,7 +16,7 @@
  * because a Server Action is a public endpoint with a nice-looking call site.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "./dal";
+import { requireRole } from "@/domains/account";
 import { storage, coachImageKey } from "@/shared/storage";
 import { FOCUS_OPTIONS, type Focus } from "@/domains/submission";
 import {
@@ -29,7 +29,7 @@ import {
   updateProfiledOperator,
   getByRole,
 } from "./operatorProfileApi";
-import type { Role } from "../model/operator";
+import type { Role } from "@/domains/account";
 
 export type OperatorProfileFormState = { error: string } | { ok: true } | undefined;
 

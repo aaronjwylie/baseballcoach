@@ -8,15 +8,15 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { setSessionCookie, clearSessionCookie } from "@/shared/auth";
-import { changePassword } from "@/domains/account";
-import { verifyCredentials } from "./operatorCredentialApi";
+import { changePassword } from "./credentialApi";
+import { verifyCredentials } from "./loginApi";
 import { requireSession } from "./dal";
 import {
   HOME_FOR_ROLE,
   type ChangePasswordState,
   type LoginState,
   type OperatorSession,
-} from "../model/operator";
+} from "../model/role";
 
 const LoginSchema = z.object({
   email: z.string().email(),

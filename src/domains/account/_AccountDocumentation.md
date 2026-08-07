@@ -19,6 +19,40 @@ Invariants:
 - **`operator` imports `account`. `account` imports nothing from `operator`.**
   That direction is the whole design — see below.
 
+## Everything about signing in moved here — 2026-08-06
+
+The first version of this domain kept only the credential table and its
+primitives, and left login, the DAL and the forgot-password flow in `operator`
+on the reasoning that they "start from an email".
+
+**That was a kind-3 placement dressed as a kind-1 constraint**
+([`_StructureLaw` §3c](../../../laws/_StructureLaw.md)). Nothing broke either
+way; the hash was already contained. The honest question was only *where would
+someone look for the login flow* — and the answer is "account".
+
+So the whole surface is here:
+
+```
+model/role.ts                  ROLES · HOME_FOR_ROLE · CAN_BE_ASSIGNED · OperatorSession
+model/operatorRoleEnum.ts      the DB enum, beside the vocabulary it derives from
+model/operatorCredentialTable  the secret
+api/dal.ts                     requireSession · requireRole — the secure check
+api/auth.ts                    login · logout · changePassword
+api/loginApi.ts                the two acts needing a person *and* a secret
+api/passwordReset*.ts          the forgot-password flow
+ui/                            all four password/login forms
+```
+
+**`Role` came too, and that is the part worth arguing.** A role is stored on the
+operator row, so it looks like an operator fact. But what a role *decides* is
+access: which portal you land in, whether you can be assigned work, what a guard
+lets through. `Operator` — the record an admin edits — stayed. **What you are
+allowed to do is here; who you are is there.**
+
+The DB enum sits beside `role.ts` so it can derive from `ROLES` without crossing
+a domain boundary. `operatorTable` imports it at the declaration plane, which is
+how tables reach each other uniformly.
+
 ## Why the direction is one-way — 2026-08-06
 
 Two acts need a fact from both sides: **signing in** (an email → a person, then
@@ -29,12 +63,17 @@ each other.
 So they compose in **`operator`**, in `api/operatorCredentialApi.ts`, which is
 allowed to import this. What arrives here is always an id and a secret.
 
-The cost is that this slice has **no `ui/` segment**, and that is the split
-working rather than a gap: every password *form* needs something this domain
-refuses to know — the change form needs a session, the reset request needs an
-email — so their actions live in `operator`, and a form belongs with its action.
+**`account` reads `operatorTable` at the declaration plane** to answer "which
+operator has this email". That is the sanctioned route (`_StructureLaw` §5.7) and
+it is what keeps the graph one-way: going through `operator`'s barrel instead
+would close a cycle, since `operator` depends on this for `requireRole` and for
+the password it sets when an admin adds a coach.
 
-**What left `operator` is the thing that mattered: the hash, and bcrypt.**
+**`check:structure` caught exactly that cycle mid-refactor** — `loginApi` had
+imported `Operator` to describe its return value. It has its own `Authenticated`
+shape now, which is the same three fields and a genuinely different question:
+`Operator` is the record an admin edits, `Authenticated` is the answer to *did
+this secret belong to somebody*.
 
 ## What this cost, and why it was worth it
 

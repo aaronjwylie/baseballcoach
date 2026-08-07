@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/domains/operator";
+import { getSession } from "@/domains/account";
 import { getSubmissionFile, isIntake } from "@/domains/submission";
 import { noteCoachCollected } from "@/domains/operator";
 import { markTranslatorCollected } from "@/domains/submission";

@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { Button, Field, inputClass } from "@/shared/ui";
 import { changePasswordAction } from "../api/auth";
-import type { ChangePasswordState } from "../model/operator";
+import type { ChangePasswordState } from "../model/role";
 
 export function ChangePasswordForm() {
   const [state, action, pending] = useActionState<ChangePasswordState, FormData>(

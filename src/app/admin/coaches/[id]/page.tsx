@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
-import {
-  requireRole,
-  getCoach,
-  updateCoachAction,
-  OperatorProfileForm,
-} from "@/domains/operator";
+import { getCoach, updateCoachAction, OperatorProfileForm } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 
 export const metadata: Metadata = {
   title: "Admin — Edit coach",

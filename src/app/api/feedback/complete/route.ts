@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getSession } from "@/domains/operator";
+import { getSession } from "@/domains/account";
 import { getSubmission, isAssignedTo } from "@/domains/submission";
 import { recordFeedbackFile } from "@/domains/feedback";
 

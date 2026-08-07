@@ -9,7 +9,7 @@
  * needs the filename to tell them which one they are looking at.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "./dal";
+import { requireRole } from "@/domains/account";
 import { getSubmission, assignSubmissionTranslator } from "@/domains/submission";
 import {
   createProfiledOperatorAction,

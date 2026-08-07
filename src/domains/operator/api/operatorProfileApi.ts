@@ -23,10 +23,10 @@ import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
 import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
-import type { Role } from "../model/operator";
+import type { Role } from "@/domains/account";
 import type { Focus } from "@/domains/submission";
 import { setOperatorPassword } from "@/domains/account";
-import { createOperator } from "./operatorCredentialApi";
+import { createOperator } from "@/domains/account";
 
 /** The one place two rows become one `OperatorProfile`. */
 export function toProfile(

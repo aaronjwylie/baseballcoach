@@ -146,6 +146,34 @@ The test, in one question: *if a third kind arrived tomorrow, where would the sh
 the honest answer is "we'd extract it then", extract it now — the extraction is cheapest before there
 are two callers, and it is the second caller that makes it look optional.
 
+### 3c · Three kinds of placement decision — know which one you are having
+
+Most arguments about where a file goes are really arguments about *which kind of question it is*.
+Sorting that first ends most of them.
+
+| | The decision | How you know | Whose call |
+|---|---|---|---|
+| **1** | **It has to go there** | move it and something breaks, or the code cannot be written at all — a join needs both tables, a cycle closes, a bundle pulls in a database client | nobody's. There is no opinion in it |
+| **2** | **It should go there, and you can prove it** | the placement makes something **checkable** that wasn't. One grep now answers a question that used to need a reviewer | the rule's. Write the check |
+| **3** | **It could go anywhere** | nothing breaks, nothing becomes verifiable, no property changes | **the reader's** |
+
+**Kind 3 is not a failure of the law — it is what the law is for.** Rules exist to *shrink* the set of
+decisions that are taste, never to eliminate it. What is left over after kinds 1 and 2 is genuinely
+free, and treating it as though a rule must exist is how a folder discussion runs for an hour and
+produces a justification instead of an answer.
+
+**For kind 3, "where would I look for this?" is the correct tiebreaker**, and it beats any rule,
+because the only thing at stake is a person finding the file. *"One place to look for the whole flow"*
+is a sufficient reason, and so is *"I'd expect it under this noun"*. Record which one you used and
+move on.
+
+**The failure mode is mistaking a 3 for a 1.** A justification built after the fact reads exactly like
+a constraint, and the giveaway is that nobody can say what would break. Ask that question out loud
+before writing the reasoning down: *what breaks if this moves?* If the answer is "nothing, it would
+just be odd", you are in kind 3 and you have your answer already.
+
+---
+
 ---
 
 ## 4 · The HTTP surface — where routes live, and what may be in them

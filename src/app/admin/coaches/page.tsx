@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
-import {
-  requireRole,
-  listCoaches,
-  createCoachAction,
-  OperatorProfileDirectory,
-} from "@/domains/operator";
+import { listCoaches, createCoachAction, OperatorProfileDirectory } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 
 export const metadata: Metadata = {
   title: "Admin — Coaches",

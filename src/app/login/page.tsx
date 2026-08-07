@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
-import { LoginForm } from "@/domains/operator";
+import { LoginForm } from "@/domains/account";
 
 export const metadata: Metadata = {
   title: "Operator sign in",

@@ -1,18 +1,29 @@
 /**
- * The forgot-password flow's engine.
+ * The forgot-password flow — **account logic, not operator logic.**
  *
  * The reset link carries a signed token bound to the current password hash, so
- * it's **single-use without a schema change**: setting a new password changes
+ * it is **single-use without a schema change**: setting a new password changes
  * the hash, and the spent token's binding no longer matches. Short-lived (one
- * hour), and signed with AUTH_SECRET like the session, so it can't be forged.
+ * hour), and signed with AUTH_SECRET like the session, so it cannot be forged.
+ *
+ * ## Why it lives here now — 2026-08-06
+ *
+ * It sat in `operator` because `requestPasswordReset` starts from an email, and
+ * emails are an operator fact. That was a **kind-3 placement** by
+ * `_StructureLaw.md` §3c — nothing broke either way, the hash was already
+ * contained, and the honest question was only *where would someone look for
+ * this*. Under "account", which is what this is.
+ *
+ * The email lookup reads `operatorTable` at the declaration plane rather than
+ * through `operator`'s barrel; see the comment at the call site for why that is
+ * the sanctioned route rather than a shortcut.
  */
 import { signSession, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { findOperatorByEmail } from "./operatorApi";
-import {
-  passwordFingerprint,
-  setOperatorPassword,
-} from "@/domains/account";
+import { eq } from "drizzle-orm";
+import { db } from "@/shared/db";
+import { operatorTable } from "@/domains/operator/model/operatorTable";
+import { passwordFingerprint, setOperatorPassword } from "./credentialApi";
 import { sendPasswordResetEmail } from "./resetEmail";
 
 const RESET_MAX_AGE_S = 60 * 60; // one hour
@@ -31,7 +42,23 @@ interface ResetPayload {
  */
 export async function requestPasswordReset(email: string): Promise<void> {
   const clean = email.trim().toLowerCase();
-  const operator = await findOperatorByEmail(clean);
+  /*
+    Read straight off the declaration rather than through `operator`'s barrel.
+
+    That is what keeps this whole flow here: an api-level call would make
+    `account` import `operator`, and `operator` already imports `account` — the
+    cycle `check:structure` forbids. A table is reached at the declaration plane
+    uniformly, whoever is asking (`_StructureLaw` §5.7), so this is the
+    sanctioned way for a lower domain to answer "which operator is this?".
+
+    It reads one column set and nothing else, which is all authentication has
+    ever needed to know about a person.
+  */
+  const [operator] = await db
+    .select({ id: operatorTable.id })
+    .from(operatorTable)
+    .where(eq(operatorTable.email, clean))
+    .limit(1);
   if (!operator) return;
 
   const fingerprint = await passwordFingerprint(operator.id);

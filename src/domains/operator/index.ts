@@ -7,12 +7,6 @@
  * components must import `LoginForm` — and only `LoginForm` — so they don't pull
  * the server-only db/bcrypt code; it imports the `login` action directly.
  */
-export { LoginForm } from "./ui/LoginForm";
-export { ChangePasswordForm } from "./ui/ChangePasswordForm";
-export { ResetPasswordForm } from "./ui/ResetPasswordForm";
-export { RequestResetForm } from "./ui/RequestResetForm";
-export { login, logout, changePasswordAction } from "./api/auth";
-export { getSession, requireSession, requireRole } from "./api/dal";
 export { getOperatorById, listAdminEmails } from "./api/operatorApi";
 /*
   `operatorCredentialApi` is deliberately absent.
@@ -23,13 +17,7 @@ export { getOperatorById, listAdminEmails } from "./api/operatorApi";
   password-setting function to the whole app on the strength of nobody having
   called it yet.
 */
-export type {
-  Role,
-  Operator,
-  OperatorSession,
-  LoginState,
-  ChangePasswordState,
-} from "./model/operator";
+export type { Operator } from "./model/operator";
 
 /*
   The coach surface, absorbed when `domains/coach` dissolved (ADR 018 §5). A

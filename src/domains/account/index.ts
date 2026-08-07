@@ -16,8 +16,33 @@ export {
   setOperatorPassword,
   passwordFingerprint,
 } from "./api/credentialApi";
+export {
+  ROLES,
+  HOME_FOR_ROLE,
+  CAN_BE_ASSIGNED,
+  type Role,
+  type OperatorSession,
+  type LoginState,
+  type ChangePasswordState,
+} from "./model/role";
+export { getSession, requireSession, requireRole } from "./api/dal";
+export { login, logout, changePasswordAction } from "./api/auth";
+export { verifyCredentials, createOperator } from "./api/loginApi";
+export { LoginForm } from "./ui/LoginForm";
+export { ChangePasswordForm } from "./ui/ChangePasswordForm";
+export {
+  requestPasswordReset,
+  resetPasswordWithToken,
+  type ResetOutcome,
+} from "./api/passwordResetApi";
+export { requestResetAction, resetPasswordAction } from "./api/passwordResetActions";
+export { RequestResetForm } from "./ui/RequestResetForm";
+export { ResetPasswordForm } from "./ui/ResetPasswordForm";
+
 /*
-  No `ui/` segment, and that is the split working rather than a gap.
+  The forms that remain in `operator` are the ones that need a session or a
+  role — the change-password form, and login. Those are operator facts. What
+  moved here is the flow that only ever needed an email and a secret.
 
   Every password *form* needs something this domain refuses to know: the change
   form needs a session, the reset request needs an email. Their actions

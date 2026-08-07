@@ -4,7 +4,7 @@
  * from the UI — the same rule every mutating action in the portal follows.
  */
 import { revalidatePath } from "next/cache";
-import { requireRole } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 import { settingsSchema } from "../model/settings";
 import { updateSettings } from "./settingsApi";
 

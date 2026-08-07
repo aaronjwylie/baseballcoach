@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
-import {
-  requireRole,
-  getTranslator,
-  updateTranslatorAction,
-  OperatorProfileForm,
-} from "@/domains/operator";
+import { getTranslator, updateTranslatorAction, OperatorProfileForm } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 
 export const metadata: Metadata = {
   title: "Admin — Edit translator",

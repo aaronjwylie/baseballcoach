@@ -36,7 +36,7 @@
  */
 
 // Enums.
-export * from "@/domains/operator/model/operatorRoleEnum";
+export * from "@/domains/account/model/operatorRoleEnum";
 export * from "@/domains/submission/model/focusEnum";
 export * from "@/domains/submission/model/submissionStatusEnum";
 export * from "@/domains/submission/model/fileKindEnum";

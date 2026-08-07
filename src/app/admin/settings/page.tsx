@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/shared/ui";
-import { requireRole } from "@/domains/operator";
+import { requireRole } from "@/domains/account";
 import { getSettings, SettingsForm } from "@/domains/settings";
 
 export const metadata: Metadata = {

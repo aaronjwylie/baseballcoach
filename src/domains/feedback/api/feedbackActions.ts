@@ -6,7 +6,7 @@
  * a public endpoint, not a trusted call from the page that rendered it.
  */
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/domains/operator";
+import { getSession } from "@/domains/account";
 import { getSubmission, isAssignedTo } from "@/domains/submission";
 import { sendFeedbackForApproval } from "./feedbackApi";
 
