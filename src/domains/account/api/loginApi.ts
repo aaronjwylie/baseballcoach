@@ -16,7 +16,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "@/domains/operator/model/operatorTable";
 
-import type { Role } from "../model/role";
+import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 
 /**
  * Who just authenticated — **this domain's own shape, not `operator`'s.**

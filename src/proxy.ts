@@ -16,8 +16,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { HOME_FOR_ROLE, type Role } from "@/domains/account/model/role";
-import type { OperatorSession } from "@/domains/account/model/role";
+import { HOME_FOR_ROLE } from "@/domains/account/model/session";
+import type { Role } from "@/domains/operator/model/operatorRoleEnum";
+import type { OperatorSession } from "@/domains/account/model/session";
 
 /** HTTP Basic Auth over the whole site. Returns a 401 challenge, or null to pass. */
 function siteGate(req: NextRequest): NextResponse | null {

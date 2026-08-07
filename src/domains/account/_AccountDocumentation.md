@@ -46,15 +46,23 @@ api/passwordReset*.ts          the forgot-password flow
 ui/                            all four password/login forms
 ```
 
-**`Role` came too, and that is the part worth arguing.** A role is stored on the
-operator row, so it looks like an operator fact. But what a role *decides* is
-access: which portal you land in, whether you can be assigned work, what a guard
-lets through. `Operator` — the record an admin edits — stayed. **What you are
-allowed to do is here; who you are is there.**
+**`Role` came here first, and went back.** The argument for keeping it was that
+what a role *decides* is access — which portal you land in, what a guard lets
+through. The better argument won: **a role is not a permission, it is a kind of
+operator**, and adding one adds a kind of person to the business. It belongs
+beside the table whose column it types.
 
-The DB enum sits beside `role.ts` so it can derive from `ROLES` without crossing
-a domain boundary. `operatorTable` imports it at the declaration plane, which is
-how tables reach each other uniformly.
+What stayed is genuinely this domain's: **what a session carries**
+(`OperatorSession`) and **where signing in sends you** (`HOME_FOR_ROLE`).
+`CAN_BE_ASSIGNED` went to `operator`, because being given work is not access.
+
+**The vocabulary lives in `operatorRoleEnum.ts` — the declaration — on purpose.**
+This domain needs `Role` for the session payload, and `operator` imports this one
+for its guards and credentials; an ordinary model import would have closed a
+cycle. A declaration is reachable from anywhere (§5.7), so putting the list there
+gives this domain a legal door to the one word it needs while the vocabulary
+stays where a reader would look for it. Still one list, two consumers — it simply
+sits on the plane both planes can see.
 
 ## Why the direction is one-way — 2026-08-06
 

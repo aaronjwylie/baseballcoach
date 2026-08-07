@@ -16,7 +16,7 @@ import {
   type ChangePasswordState,
   type LoginState,
   type OperatorSession,
-} from "../model/role";
+} from "../model/session";
 
 const LoginSchema = z.object({
   email: z.string().email(),

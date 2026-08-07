@@ -17,14 +17,11 @@ export {
   passwordFingerprint,
 } from "./api/credentialApi";
 export {
-  ROLES,
   HOME_FOR_ROLE,
-  CAN_BE_ASSIGNED,
-  type Role,
   type OperatorSession,
   type LoginState,
   type ChangePasswordState,
-} from "./model/role";
+} from "./model/session";
 export { getSession, requireSession, requireRole } from "./api/dal";
 export { login, logout, changePasswordAction } from "./api/auth";
 export { verifyCredentials, createOperator } from "./api/loginApi";

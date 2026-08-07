@@ -16,7 +16,7 @@
  * (`npm run db:seed`), and every other operator is created from the admin portal.
  */
 import { pgTable, uuid, text, boolean, timestamp } from "drizzle-orm/pg-core";
-import { operatorRole } from "@/domains/account/model/operatorRoleEnum";
+import { operatorRole } from "./operatorRoleEnum";
 
 export const operatorTable = pgTable("operator", {
   id: uuid().defaultRandom().primaryKey(),

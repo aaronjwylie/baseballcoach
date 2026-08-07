@@ -29,7 +29,7 @@ import {
   updateProfiledOperator,
   getByRole,
 } from "./operatorProfileApi";
-import type { Role } from "@/domains/account";
+import type { Role } from "../model/operatorRoleEnum";
 
 export type OperatorProfileFormState = { error: string } | { ok: true } | undefined;
 

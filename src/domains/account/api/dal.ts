@@ -9,8 +9,9 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
-import { HOME_FOR_ROLE } from "../model/role";
-import type { OperatorSession, Role } from "../model/role";
+import { HOME_FOR_ROLE } from "../model/session";
+import type { OperatorSession } from "../model/session";
+import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 
 /** The verified session, or null if unauthenticated. */
 export const getSession = cache(

@@ -18,6 +18,8 @@ export { getOperatorById, listAdminEmails } from "./api/operatorApi";
   called it yet.
 */
 export type { Operator } from "./model/operator";
+export { CAN_BE_ASSIGNED } from "./model/operator";
+export { ROLES, type Role } from "./model/operatorRoleEnum";
 
 /*
   The coach surface, absorbed when `domains/coach` dissolved (ADR 018 §5). A
