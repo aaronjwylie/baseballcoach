@@ -11,6 +11,11 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "./dal";
 import { getSubmission, assignSubmissionTranslator } from "@/domains/submission";
+import {
+  createProfiledOperatorAction,
+  updateProfiledOperatorAction,
+  type OperatorProfileFormState,
+} from "./operatorProfileActions";
 
 /**
  * Pick who translates one leg. Admin-only.
@@ -44,4 +49,23 @@ export async function assignTranslatorAction(formData: FormData): Promise<void> 
 
   await assignSubmissionTranslator(submissionId, operatorId, leg);
   revalidatePath("/admin");
+}
+
+/**
+ * The two form verbs, deferring to the shared pair — the mirror of
+ * `coachActions`. Both files are thin for the same reason: creating a coach and
+ * creating a translator are one act with a different `role`.
+ */
+export async function createTranslatorAction(
+  prev: OperatorProfileFormState,
+  formData: FormData,
+): Promise<OperatorProfileFormState> {
+  return createProfiledOperatorAction("translator", prev, formData);
+}
+
+export async function updateTranslatorAction(
+  prev: OperatorProfileFormState,
+  formData: FormData,
+): Promise<OperatorProfileFormState> {
+  return updateProfiledOperatorAction("translator", prev, formData);
 }

@@ -46,7 +46,11 @@ export {
   noteCoachCollected,
 } from "./api/coachApi";
 export { listTranslators, getTranslator } from "./api/translatorApi";
-export { assignTranslatorAction } from "./api/translatorActions";
+export {
+  assignTranslatorAction,
+  createTranslatorAction,
+  updateTranslatorAction,
+} from "./api/translatorActions";
 export {
   createProfiledOperatorAction,
   updateProfiledOperatorAction,
@@ -59,8 +63,8 @@ export {
   assignCoachAction,
   notifyCoachAction,
 } from "./api/coachActions";
-export { AddCoachForm } from "./ui/AddCoachForm";
-export { EditCoachForm } from "./ui/EditCoachForm";
+export { OperatorProfileForm } from "./ui/OperatorProfileForm";
+export { OperatorProfileDirectory } from "./ui/OperatorProfileDirectory";
 export { AssignCoachSelect } from "./ui/AssignCoachSelect";
 export { AssignTranslatorSelect } from "./ui/AssignTranslatorSelect";
 export type { OperatorProfile, NewOperatorProfile } from "./model/operatorProfile";

@@ -4,17 +4,17 @@ import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
 import {
   requireRole,
-  getCoach,
-  updateCoachAction,
+  getTranslator,
+  updateTranslatorAction,
   OperatorProfileForm,
 } from "@/domains/operator";
 
 export const metadata: Metadata = {
-  title: "Admin — Edit coach",
+  title: "Admin — Edit translator",
   robots: { index: false },
 };
 
-export default async function EditCoachPage(props: {
+export default async function EditTranslatorPage(props: {
   params: Promise<{ id: string }>;
 }) {
   await requireRole("admin");
@@ -23,21 +23,21 @@ export default async function EditCoachPage(props: {
     Looked up **by role**, so a coach's id opened under /admin/translators is a
     404 rather than a translator's edit form pointed at the wrong person.
   */
-  const person = await getCoach(id);
+  const person = await getTranslator(id);
   if (!person) notFound();
 
   return (
     <Container className="max-w-2xl">
       <div>
-        <Link href="/admin/coaches" className="text-sm text-ink-muted hover:text-ink">
-          ← Coaches
+        <Link href="/admin/translators" className="text-sm text-ink-muted hover:text-ink">
+          ← Translators
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">
           Edit {person.name}
         </h1>
       </div>
       <div className="mt-6 rounded-2xl border border-line bg-white p-6">
-        <OperatorProfileForm role="coach" action={updateCoachAction} existing={person} />
+        <OperatorProfileForm role="translator" action={updateTranslatorAction} existing={person} />
       </div>
     </Container>
   );
