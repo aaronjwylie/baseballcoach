@@ -16,7 +16,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { HOME_FOR_ROLE } from "@/domains/account/model/session";
+import { HOME_FOR_ROLE, portalsFor } from "@/domains/account/model/session";
 import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 import type { OperatorSession } from "@/domains/account/model/session";
 
@@ -68,18 +68,25 @@ export async function proxy(req: NextRequest) {
   }
 
   if (session) {
-    const home = HOME_FOR_ROLE[session.role];
+    /*
+      Where to send someone who is in the wrong place: their own portal if they
+      hold exactly one, the chooser if several. Never a hardcoded other portal —
+      an earlier version bounced a non-admin to /coach and a non-coach to
+      /admin, which was fine with two roles and became a redirect loop with
+      three.
+    */
+    const mine = portalsFor(session.roles);
+    const home = mine.length === 1 ? HOME_FOR_ROLE[mine[0]] : "/portal";
+
     if (pathname === "/login") {
       return NextResponse.redirect(new URL(home, req.nextUrl));
     }
     /*
-      A portal belongs to one role, and anyone else is sent to their own — not
-      to a hardcoded other one. The previous version bounced a non-admin to
-      /coach and a non-coach to /admin, which was fine while there were exactly
-      two roles and became a redirect loop the moment there were three.
+      A portal admits anyone **holding** its kind. Holding a second kind is
+      never a reason to be turned away from the first.
     */
     for (const [role, portal] of Object.entries(HOME_FOR_ROLE) as [Role, string][]) {
-      if (pathname.startsWith(portal) && session.role !== role) {
+      if (pathname.startsWith(portal) && !session.roles.includes(role)) {
         return NextResponse.redirect(new URL(home, req.nextUrl));
       }
     }

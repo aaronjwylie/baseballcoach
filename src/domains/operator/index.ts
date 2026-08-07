@@ -46,7 +46,7 @@ export {
   updateProfiledOperatorAction,
   type OperatorProfileFormState,
 } from "./api/operatorProfileActions";
-export { getAssignee } from "./api/operatorProfileApi";
+export { getAssignee, listByRole, getByRole } from "./api/operatorProfileApi";
 export {
   createCoachAction,
   updateCoachAction,
@@ -54,6 +54,16 @@ export {
   notifyCoachAction,
 } from "./api/coachActions";
 export { OperatorProfileForm } from "./ui/OperatorProfileForm";
+export { OperatorRoleToggles } from "./ui/OperatorRoleToggles";
+export {
+  rolesFor,
+  rolesForMany,
+  grantRole,
+  revokeRole,
+  setRoles,
+  holdsRole,
+} from "./api/operatorRoleApi";
+export { setRolesAction } from "./api/operatorRoleActions";
 export { OperatorProfileDirectory } from "./ui/OperatorProfileDirectory";
 export { AssignCoachSelect } from "./ui/AssignCoachSelect";
 export { AssignTranslatorSelect } from "./ui/AssignTranslatorSelect";

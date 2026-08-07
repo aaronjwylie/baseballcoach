@@ -16,6 +16,7 @@ import {
   type ChangePasswordState,
   type LoginState,
   type OperatorSession,
+  portalsFor,
 } from "../model/session";
 
 const LoginSchema = z.object({
@@ -41,10 +42,18 @@ export async function login(
 
   await setSessionCookie({
     operatorId: operator.id,
-    role: operator.role,
+    roles: operator.roles,
   } satisfies OperatorSession);
 
-  redirect(HOME_FOR_ROLE[operator.role]);
+  /*
+    One kind goes straight in; several get the chooser.
+
+    Guessing on their behalf was the alternative, and it is wrong for the person
+    it most affects: someone who both runs the platform and coaches is doing one
+    of those two jobs on any given login, and only they know which.
+  */
+  const mine = portalsFor(operator.roles);
+  redirect(mine.length === 1 ? HOME_FOR_ROLE[mine[0]] : "/portal");
 }
 
 export async function logout(): Promise<void> {

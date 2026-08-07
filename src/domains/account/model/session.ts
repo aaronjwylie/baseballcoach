@@ -27,7 +27,32 @@ export const HOME_FOR_ROLE: Record<Role, string> = {
 /** The session cookie payload — minimal, no PII (CLAUDE.md authentication). */
 export interface OperatorSession {
   operatorId: string;
-  role: Role;
+  /**
+   * **Every kind they are**, not one.
+   *
+   * A person can run the platform and coach; a coach who reads both languages
+   * can translate their own submissions. The session carries the whole set so a
+   * guard never has to go back to the database to ask a second time.
+   *
+   * **Changing this shape signs everyone out once.** An old cookie carries
+   * `role` and no `roles`, so it fails to parse and reads as no session — which
+   * is the safe direction for a session change to fail.
+   */
+  roles: Role[];
+}
+
+/**
+ * Where to send someone who holds several kinds, when they have not chosen.
+ *
+ * Not a hierarchy — holding `admin` does not contain holding `coach`. It is
+ * only a tiebreak for the portal chooser's default, and the reason it is
+ * admin-first is that someone who runs the platform is usually here to run it.
+ */
+export const PORTAL_ORDER: readonly Role[] = ["admin", "coach", "translator"];
+
+/** The portals this person may enter, in the order the chooser lists them. */
+export function portalsFor(roles: Role[]): Role[] {
+  return PORTAL_ORDER.filter((role) => roles.includes(role));
 }
 
 /** Return shape of the login server action, for `useActionState`. */

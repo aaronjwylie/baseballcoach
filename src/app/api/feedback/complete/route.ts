@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
 
-  if (session.role !== "admin" && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
+  if (!session.roles.includes("admin") && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
     return NextResponse.json({ error: "Not your submission." }, { status: 403 });
   }
 

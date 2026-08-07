@@ -18,6 +18,8 @@ export {
 } from "./api/credentialApi";
 export {
   HOME_FOR_ROLE,
+  PORTAL_ORDER,
+  portalsFor,
   type OperatorSession,
   type LoginState,
   type ChangePasswordState,

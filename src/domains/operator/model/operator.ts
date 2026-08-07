@@ -17,7 +17,15 @@ import type { Role } from "./operatorRoleEnum";
 export interface Operator {
   id: string;
   email: string;
-  role: Role;
+  /**
+   * Every kind they are.
+   *
+   * A person can run the platform and coach, or coach and translate. This was
+   * a single `role` until 2026-08-07, which meant being two things required two
+   * logins and two email addresses — and the second onboarding failed on the
+   * unique email, which is how the limitation was found.
+   */
+  roles: Role[];
 }
 
 /**

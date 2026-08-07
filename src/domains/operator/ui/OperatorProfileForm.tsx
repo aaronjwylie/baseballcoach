@@ -6,6 +6,7 @@ import { FOCUS_OPTIONS, choiceForLanguages } from "@/domains/submission/model/su
 import { LanguageChoiceField } from "@/domains/submission/ui/LanguageChoiceField";
 import { DEFAULT_LANGUAGE_CHOICE } from "../model/operatorProfile";
 import type { OperatorProfile } from "../model/operatorProfile";
+import type { Role } from "../model/operatorRoleEnum";
 import type { OperatorProfileFormState } from "../api/operatorProfileActions";
 
 /**
@@ -31,7 +32,7 @@ export function OperatorProfileForm({
   action: submitAction,
   existing,
 }: {
-  role: "coach" | "translator";
+  role: Role;
   action: (
     state: OperatorProfileFormState,
     formData: FormData,
@@ -47,7 +48,14 @@ export function OperatorProfileForm({
   // Only a coach is shown publicly, so only a coach is asked for the two fields
   // that exist for the public site.
   const isPublic = role === "coach";
-  const noun = role === "coach" ? "Coach" : "Translator";
+  /*
+    Specialties are the coaching focuses — Hitting, Pitching and the rest. They
+    describe work an admin does not do, so an admin is not asked. A translator
+    keeps them: which focus a submission is about affects the vocabulary they
+    need, even though they are not the one reviewing it.
+  */
+  const showSpecialties = role !== "admin";
+  const noun = role.charAt(0).toUpperCase() + role.slice(1);
 
   return (
     <form action={action} className="space-y-4">
@@ -102,6 +110,7 @@ export function OperatorProfileForm({
         />
       </Field>
 
+      {showSpecialties && (
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-ink">Specialties</legend>
         <div className="flex flex-wrap gap-3">
@@ -118,13 +127,16 @@ export function OperatorProfileForm({
           ))}
         </div>
       </fieldset>
+      )}
 
       <LanguageChoiceField
         label="Languages"
         hint={
           isPublic
             ? "What this coach reads. A submission is translated when it shares none with the customer."
-            : "What this translator works between."
+            : role === "translator"
+              ? "What this translator works between."
+              : "What this admin reads — so the portal can show who is able to talk to whom."
         }
         defaultChoice={
           existing

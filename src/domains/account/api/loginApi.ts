@@ -15,6 +15,7 @@ import { createCredential, verifyPassword } from "./credentialApi";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "@/domains/operator/model/operatorTable";
+import { operatorRoleGrantTable } from "@/domains/operator/model/operatorRoleGrantTable";
 
 import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 
@@ -33,7 +34,8 @@ import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 export interface Authenticated {
   id: string;
   email: string;
-  role: Role;
+  /** Every kind they hold — see `operator_role_grant`. */
+  roles: Role[];
 }
 
 /**
@@ -48,16 +50,26 @@ export async function verifyCredentials(
   password: string,
 ): Promise<Authenticated | null> {
   const [operator] = await db
-    .select({
-      id: operatorTable.id,
-      email: operatorTable.email,
-      role: operatorTable.role,
-    })
+    .select({ id: operatorTable.id, email: operatorTable.email })
     .from(operatorTable)
     .where(eq(operatorTable.email, email.trim().toLowerCase()))
     .limit(1);
   if (!operator) return null;
-  return (await verifyPassword(operator.id, password)) ? operator : null;
+  if (!(await verifyPassword(operator.id, password))) return null;
+
+  /*
+    The grants, read at the declaration plane like the operator row above.
+
+    Someone with a login and no grants can authenticate and enter nothing —
+    which is the right answer for an operator who has been onboarded but not yet
+    given a kind, rather than an error the person cannot act on.
+  */
+  const grants = await db
+    .select({ role: operatorRoleGrantTable.role })
+    .from(operatorRoleGrantTable)
+    .where(eq(operatorRoleGrantTable.operatorId, operator.id));
+
+  return { ...operator, roles: grants.map((g) => g.role) };
 }
 
 /**
@@ -71,17 +83,19 @@ export async function verifyCredentials(
 export async function createOperator(
   email: string,
   password: string,
-  role: Role,
   name: string,
 ): Promise<Authenticated> {
   const [row] = await db
     .insert(operatorTable)
-    .values({ email: email.trim().toLowerCase(), role, name })
-    .returning({
-      id: operatorTable.id,
-      email: operatorTable.email,
-      role: operatorTable.role,
-    });
+    .values({ email: email.trim().toLowerCase(), name })
+    .returning({ id: operatorTable.id, email: operatorTable.email });
   await createCredential(row.id, password);
-  return row;
+
+  /*
+    No kinds yet, deliberately. Creating a login and deciding what someone is
+    are separate acts on separate tables, and the caller in `operator` grants
+    the roles — which is also what keeps this domain from having to know what a
+    coach is.
+  */
+  return { ...row, roles: [] };
 }

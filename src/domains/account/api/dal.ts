@@ -9,7 +9,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
-import { HOME_FOR_ROLE } from "../model/session";
+import { HOME_FOR_ROLE, portalsFor } from "../model/session";
 import type { OperatorSession } from "../model/session";
 import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 
@@ -27,13 +27,21 @@ export async function requireSession(): Promise<OperatorSession> {
 }
 
 /**
- * Require one of the given roles. Wrong-role operators are sent to their own
- * portal rather than /login, since they *are* signed in.
+ * Require **any one** of the given kinds.
+ *
+ * An operator holding several passes if any of them is allowed — the question
+ * is *may this person be here*, and holding an extra kind has never been a
+ * reason to say no.
+ *
+ * Someone signed in but not permitted is sent to a portal they *do* hold rather
+ * than to `/login`: they are authenticated, just in the wrong place. If they
+ * hold more than one, the chooser decides — which is why this redirects there
+ * rather than guessing.
  */
 export async function requireRole(...allowed: Role[]): Promise<OperatorSession> {
   const session = await requireSession();
-  if (!allowed.includes(session.role)) {
-    redirect(HOME_FOR_ROLE[session.role]);
-  }
-  return session;
+  if (session.roles.some((role) => allowed.includes(role))) return session;
+
+  const mine = portalsFor(session.roles);
+  redirect(mine.length === 1 ? HOME_FOR_ROLE[mine[0]] : "/portal");
 }

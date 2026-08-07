@@ -20,7 +20,7 @@
  *   npx tsx --tsconfig tsconfig.json scripts/simulate.ts
  */
 import "./loadEnv";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorProfileTable } from "@/domains/operator/model/operatorProfileTable";
 import {
@@ -56,6 +56,8 @@ import {
 import { approveAndComplete, resolveSubmission, sendFeedbackForApproval } from "@/domains/feedback";
 import { runRetentionSweep } from "@/domains/upload";
 import { getSettings } from "@/domains/settings";
+import { grantRole, rolesFor, listByRole, setRoles } from "@/domains/operator";
+import { operatorRoleGrantTable } from "@/domains/operator/model/operatorRoleGrantTable";
 import { issueCode, isEmailVerified, verifyCode } from "@/domains/verification";
 import { submissionInputSchema } from "@/domains/submission/model/submissionInput";
 
@@ -403,11 +405,14 @@ async function ensureCoach(name: string, languages: string[]) {
 
   const [operator] = await db
     .insert(operatorTable)
-    .values({ email, passwordHash: "x", role: "coach", name })
+    .values({ email, passwordHash: "x", name })
     .returning();
   await db
     .insert(operatorProfileTable)
     .values({ operatorId: operator.id, languages, specialties: ["Hitting"] });
+  // A kind is a grant now, not a column. A fixture without one is unlike any
+  // real operator — it would not appear in `listCoaches()`.
+  await grantRole(operator.id, "coach", null);
   return { id: operator.id, name: operator.name, languages };
 }
 
@@ -428,12 +433,84 @@ async function ensureTranslator(name: string) {
 
   const [operator] = await db
     .insert(operatorTable)
-    .values({ email, passwordHash: "x", role: "translator", name })
+    .values({ email, passwordHash: "x", name })
     .returning();
   await db
     .insert(operatorProfileTable)
     .values({ operatorId: operator.id, languages: ["English", "Japanese"], specialties: [] });
+  await grantRole(operator.id, "translator", null);
   return { id: operator.id, name: operator.name };
+}
+
+/**
+ * One person, several kinds — the thing a single `role` column could not hold.
+ *
+ * Worth walking because the limitation was invisible from the inside: with one
+ * column, being both a coach and an admin meant two logins and two email
+ * addresses, and the second onboarding failed on the unique email rather than
+ * on anything that explained itself.
+ */
+async function multiRole() {
+  console.log("\n━━ one operator, several kinds ━━");
+  const person = await ensureCoach("Wearer Of Hats", ["English"]);
+
+  check((await rolesFor(person.id)).join() === "coach", "   starts as one kind");
+
+  await setRoles(person.id, ["coach", "translator", "admin"], null);
+  const held = (await rolesFor(person.id)).sort();
+  check(held.join(",") === "admin,coach,translator", `   holds all three (${held.join("+")})`);
+
+  // The point of the whole change: they are on every list they qualify for.
+  for (const role of ["coach", "translator", "admin"] as const) {
+    const listed = await listByRole(role);
+    check(
+      listed.some((p) => p.id === person.id),
+      `   appears in the ${role} list`,
+    );
+  }
+
+  // And it is one person, not three — same row, same profile, seen three ways.
+  const asCoach = (await listByRole("coach")).find((p) => p.id === person.id);
+  const asAdmin = (await listByRole("admin")).find((p) => p.id === person.id);
+  check(
+    asCoach?.email === asAdmin?.email && asCoach?.name === asAdmin?.name,
+    "   the same person, not a copy per list",
+  );
+
+  // Revoking a kind removes them from that list and leaves the others alone.
+  await setRoles(person.id, ["coach"], null);
+  check(
+    !(await listByRole("admin")).some((p) => p.id === person.id),
+    "   revoking a kind drops them from that list",
+  );
+  check(
+    (await listByRole("coach")).some((p) => p.id === person.id),
+    "   and leaves the others standing",
+  );
+
+  /*
+    A grant that was already held keeps its original grantedAt — `setRoles`
+    diffs rather than replacing. Restating every existing grant as having
+    happened just now, by whoever last opened the form, would quietly destroy
+    the only reason this is a table and not an array column.
+  */
+  const before = await grantedAt(person.id, "coach");
+  await setRoles(person.id, ["coach", "admin"], null);
+  const after = await grantedAt(person.id, "coach");
+  check(before === after, "   an unchanged grant keeps its original timestamp");
+}
+
+async function grantedAt(operatorId: string, role: string) {
+  const [row] = await db
+    .select({ at: operatorRoleGrantTable.grantedAt })
+    .from(operatorRoleGrantTable)
+    .where(
+      and(
+        eq(operatorRoleGrantTable.operatorId, operatorId),
+        eq(operatorRoleGrantTable.role, role as "coach"),
+      ),
+    );
+  return row?.at?.toISOString();
 }
 
 /**
@@ -484,6 +561,7 @@ async function main() {
   checkLanguageRule();
   await walk("English-reading coach — skips translation", false);
   await walk("Japanese-only coach — full translation path", true);
+  await multiRole();
 
   console.log(`\n${"─".repeat(56)}`);
   console.log(fail === 0 ? `All ${pass} checks passed.` : `FAILED — ${fail} of ${pass + fail}`);

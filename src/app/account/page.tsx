@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/shared/ui";
 import { getOperatorById } from "@/domains/operator";
-import { requireSession, ChangePasswordForm } from "@/domains/account";
+import { requireSession, ChangePasswordForm, portalsFor, HOME_FOR_ROLE } from "@/domains/account";
 
 export const metadata: Metadata = {
   title: "Account",
@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 export default async function AccountPage() {
   const session = await requireSession();
   const operator = await getOperatorById(session.operatorId);
-  const home = session.role === "admin" ? "/admin" : "/coach";
+  // Their own portal if they hold exactly one; the chooser if several.
+  const mine = portalsFor(session.roles);
+  const home = mine.length === 1 ? HOME_FOR_ROLE[mine[0]] : "/portal";
 
   return (
     <section className="py-10">
@@ -22,7 +24,7 @@ export default async function AccountPage() {
         </Link>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">Account</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          {operator?.email} · {operator?.role}
+          {operator?.email} · {operator?.roles.join(" · ") || "no roles yet"}
         </p>
 
         <div className="mt-6 rounded-2xl border border-line bg-white p-6">

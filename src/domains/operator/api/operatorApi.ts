@@ -1,5 +1,5 @@
 /**
- * The operator record — who exists, and what role they hold.
+ * The operator record — who exists, and which kinds they are.
  *
  * Everything about an operator **except their password**, which is not in this
  * domain at all — it lives in `account`, on its own table, behind its own
@@ -8,11 +8,14 @@
  * can grep. A habit is what you lose first, when a function grows one
  * convenient extra field.
  *
- * Callers get an `Operator` — id, email, role — never a raw row.
+ * Callers get an `Operator` — id, email, and every role they hold — never a
+ * raw row.
  */
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
+import { operatorRoleGrantTable } from "../model/operatorRoleGrantTable";
+import { rolesFor } from "./operatorRoleApi";
 import type { Operator } from "../model/operator";
 
 /**
@@ -32,7 +35,11 @@ export async function listAdminEmails(): Promise<string[]> {
   const rows = await db
     .select({ email: operatorTable.email })
     .from(operatorTable)
-    .where(eq(operatorTable.role, "admin"));
+    .innerJoin(
+      operatorRoleGrantTable,
+      eq(operatorRoleGrantTable.operatorId, operatorTable.id),
+    )
+    .where(eq(operatorRoleGrantTable.role, "admin"));
   return rows.map((row) => row.email);
 }
 
@@ -50,12 +57,11 @@ export async function findOperatorByEmail(
     .select({
       id: operatorTable.id,
       email: operatorTable.email,
-      role: operatorTable.role,
     })
     .from(operatorTable)
     .where(eq(operatorTable.email, email.trim().toLowerCase()))
     .limit(1);
-  return rows[0] ?? null;
+  return rows[0] ? { ...rows[0], roles: await rolesFor(rows[0].id) } : null;
 }
 
 export async function getOperatorById(id: string): Promise<Operator | null> {
@@ -63,10 +69,9 @@ export async function getOperatorById(id: string): Promise<Operator | null> {
     .select({
       id: operatorTable.id,
       email: operatorTable.email,
-      role: operatorTable.role,
     })
     .from(operatorTable)
     .where(eq(operatorTable.id, id))
     .limit(1);
-  return rows[0] ?? null;
+  return rows[0] ? { ...rows[0], roles: await rolesFor(rows[0].id) } : null;
 }

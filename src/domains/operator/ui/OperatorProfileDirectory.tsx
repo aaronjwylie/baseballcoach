@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { OperatorProfileForm } from "./OperatorProfileForm";
 import type { OperatorProfile } from "../model/operatorProfile";
+import type { Role } from "../model/operatorRoleEnum";
 import type { OperatorProfileFormState } from "../api/operatorProfileActions";
 
 /**
@@ -20,14 +21,14 @@ export function OperatorProfileDirectory({
   people,
   addAction,
 }: {
-  role: "coach" | "translator";
+  role: Role;
   people: OperatorProfile[];
   addAction: (
     state: OperatorProfileFormState,
     formData: FormData,
   ) => Promise<OperatorProfileFormState>;
 }) {
-  const plural = role === "coach" ? "coaches" : "translators";
+  const plural = role === "coach" ? "coaches" : `${role}s`;
   const count = `${people.length} ${people.length === 1 ? role : plural}`;
 
   return (
@@ -63,7 +64,7 @@ export function OperatorProfileDirectory({
                     {person.isActive ? "Active" : "Inactive"}
                   </span>
                   <Link
-                    href={`/admin/${plural}/${person.id}`}
+                    href={`/admin/onboarding/${plural}/${person.id}`}
                     className="text-xs font-semibold text-accent hover:underline"
                   >
                     Edit

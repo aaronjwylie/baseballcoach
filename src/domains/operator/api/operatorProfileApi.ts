@@ -22,11 +22,13 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
+import { operatorRoleGrantTable } from "../model/operatorRoleGrantTable";
 import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
 import type { Role } from "../model/operatorRoleEnum";
 import type { Focus } from "@/domains/submission";
 import { setOperatorPassword } from "@/domains/account";
 import { createOperator } from "@/domains/account";
+import { grantRole } from "./operatorRoleApi";
 
 /** The one place two rows become one `OperatorProfile`. */
 export function toProfile(
@@ -63,18 +65,33 @@ function profileQuery() {
     );
 }
 
+/** The same, joined to the grants — the caller supplies the condition. */
+function grantedQuery() {
+  return db
+    .select()
+    .from(operatorTable)
+    .innerJoin(
+      operatorProfileTable,
+      eq(operatorProfileTable.operatorId, operatorTable.id),
+    )
+    .innerJoin(
+      operatorRoleGrantTable,
+      eq(operatorRoleGrantTable.operatorId, operatorTable.id),
+    );
+}
+
 /** Everyone holding one role, by name. */
 export async function listByRole(role: Role): Promise<OperatorProfile[]> {
-  const rows = await profileQuery()
-    .where(eq(operatorTable.role, role))
+  const rows = await grantedQuery()
+    .where(eq(operatorRoleGrantTable.role, role))
     .orderBy(asc(operatorTable.name));
   return rows.map((r) => toProfile(r.operator, r.operator_profile));
 }
 
 /** One person, if they hold this role. Null if they don't — a coach id asked for as a translator is a miss, not a match. */
 export async function getByRole(id: string, role: Role): Promise<OperatorProfile | null> {
-  const [row] = await profileQuery()
-    .where(and(eq(operatorTable.id, id), eq(operatorTable.role, role)))
+  const [row] = await grantedQuery()
+    .where(and(eq(operatorTable.id, id), eq(operatorRoleGrantTable.role, role)))
     .limit(1);
   return row ? toProfile(row.operator, row.operator_profile) : null;
 }
@@ -108,8 +125,11 @@ export async function getAssignee(id: string): Promise<OperatorProfile | null> {
 export async function createProfiledOperator(
   role: Role,
   input: NewOperatorProfile,
+  grantedBy?: string | null,
 ): Promise<OperatorProfile> {
-  const operator = await createOperator(input.email, input.password, role, input.name);
+  const operator = await createOperator(input.email, input.password, input.name);
+  // The login exists; now say what kind of person it belongs to.
+  await grantRole(operator.id, role, grantedBy ?? null);
   const [profile] = await db
     .insert(operatorProfileTable)
     .values({

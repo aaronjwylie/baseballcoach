@@ -19,7 +19,7 @@ export async function sendFeedbackForApprovalAction(
   const submission = await getSubmission(submissionId);
   if (!submission) return { ok: false, error: "That submission doesn't exist." };
 
-  if (session.role !== "admin" && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
+  if (!session.roles.includes("admin") && !(await isAssignedTo(submissionId, session.operatorId, "feedback"))) {
     return { ok: false, error: "That isn't your submission." };
   }
 

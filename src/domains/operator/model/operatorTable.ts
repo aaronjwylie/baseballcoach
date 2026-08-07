@@ -27,7 +27,12 @@ export const operatorTable = pgTable("operator", {
    * it; the next migration drops it once this deploy is live. Nothing reads it.
    */
   passwordHash: text(),
-  role: operatorRole().notNull(),
+  /**
+   * **Vestigial — `operator_role_grant` is the record** since `0015`. Nullable
+   * so a new operator need not write it; nothing reads it. A later migration
+   * drops it.
+   */
+  role: operatorRole(),
   name: text().notNull(),
   /*
     Whether they may still sign in and be given work.

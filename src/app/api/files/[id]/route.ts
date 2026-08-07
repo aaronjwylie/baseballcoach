@@ -54,7 +54,13 @@ export async function GET(
     Not awaited. The stamp and its email must never be the reason a download
     fails, and the customer of this route is a coach waiting on bytes.
   */
-  if (session.role === "coach" && isIntake(file)) {
+  /*
+    Someone who is both a coach and a translator reaches both branches, and that
+    is safe rather than lucky: each stamp only moves a submission sitting on the
+    rung *it* follows, and `sent_to_coach` and `sent_to_*_translator` are
+    mutually exclusive. At most one can succeed, and the other is a no-op.
+  */
+  if (session.roles.includes("coach") && isIntake(file)) {
     void noteCoachCollected(file.submissionId, session.operatorId);
   }
 
@@ -67,7 +73,7 @@ export async function GET(
     doesn't say whether this is a pick-up. Where the submission already sits
     does, and `markTranslatorCollected` reads that rather than being told.
   */
-  if (session.role === "translator") {
+  if (session.roles.includes("translator")) {
     void markTranslatorCollected(file.submissionId).catch((err) => {
       console.error("[files] recording a translator collection failed:", err);
     });

@@ -24,7 +24,7 @@
  * drizzle-kit maps them to snake_case columns, so the app reads camelCase and
  * the database stays idiomatic SQL.
  *
- * Eight tables: `operator` (who exists), `operator_credential` (their
+ * Nine tables: `operator` (who exists), `operator_credential` (their
  * ability to sign in), `operator_profile` (what they cover),
  * `submissionTable` (the spine — one row per request), `submissionFileTable` (the files,
  * both directions, discriminated by `kind`), `submissionEventTable` (one row per
@@ -47,6 +47,7 @@ export * from "@/domains/submission/model/emailOutcomeEnum";
 // Tables, each with its inferred row types.
 export * from "@/domains/operator/model/operatorTable";
 export * from "@/domains/operator/model/operatorProfileTable";
+export * from "@/domains/operator/model/operatorRoleGrantTable";
 export * from "@/domains/account/model/credentialTable";
 export * from "@/domains/submission/model/submissionTable";
 export * from "@/domains/submission/model/submissionFileTable";

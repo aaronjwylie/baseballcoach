@@ -2,8 +2,7 @@ import { PortalBar } from "../_portal/PortalBar";
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Submissions" },
-  { href: "/admin/coaches", label: "Coaches" },
-  { href: "/admin/translators", label: "Translators" },
+  { href: "/admin/onboarding", label: "Onboarding" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
