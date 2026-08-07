@@ -12,12 +12,15 @@ two nouns shared a record and neither could be described without the other.
 
 Invariants:
 
-- **Everything here is keyed by an operator id.** This domain does not know what
-  an email is or what a role is.
 - **`api/credentialApi.ts` is the only file in `src/` that reads or writes
   `password_hash`**, and the only one that imports bcrypt. One grep confirms it.
-- **`operator` imports `account`. `account` imports nothing from `operator`.**
-  That direction is the whole design — see below.
+- **`operator` imports `account`'s barrel. `account` never imports `operator`'s** —
+  it reaches `operatorTable` at the declaration plane and nothing else. That
+  direction is the whole design; see below.
+- **The secure check lives here and is done close to the data** (`api/dal.ts`, in
+  the page or action). `proxy.ts` is optimistic and never the sole defence.
+- **A wrong-role operator is redirected to *their* portal**, not to `/login` —
+  they are authenticated, just in the wrong place.
 
 ## Everything about signing in moved here — 2026-08-06
 
@@ -56,12 +59,8 @@ how tables reach each other uniformly.
 ## Why the direction is one-way — 2026-08-06
 
 Two acts need a fact from both sides: **signing in** (an email → a person, then
-a secret → a yes) and **creating a login** (a person, then a secret). If they
-lived here, this domain would have to resolve emails, and the two would import
-each other.
-
-So they compose in **`operator`**, in `api/operatorCredentialApi.ts`, which is
-allowed to import this. What arrives here is always an id and a secret.
+a secret → a yes) and **creating a login** (a person, then a secret). They
+compose in `api/loginApi.ts`, here.
 
 **`account` reads `operatorTable` at the declaration plane** to answer "which
 operator has this email". That is the sanctioned route (`_StructureLaw` §5.7) and
