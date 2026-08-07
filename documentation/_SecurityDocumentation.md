@@ -55,8 +55,9 @@ that and say so.
 **Nothing else reads configuration.** Two further files read `NODE_ENV` — the framework's own switch,
 not a secret.
 
-**Passwords stop at one file.** `operatorCredentialApi.ts` is the only file in `src/` that reads or
-writes `operatorTable.passwordHash`, and the only one in its domain importing bcrypt. Checkable:
+**Passwords stop at one file, in their own domain.** `account/api/credentialApi.ts` is the only file
+in `src/` that reads or writes `credentialTable.passwordHash`, and the only one importing bcrypt.
+Checkable:
 
 ```
 grep -rn "passwordHash" src/

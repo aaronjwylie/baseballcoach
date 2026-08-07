@@ -25,7 +25,19 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { operatorTable } from "@/domains/operator/model/operatorTable";
 
-export const operatorCredentialTable = pgTable("operator_credential", {
+/*
+  The JS export is `credentialTable`; the SQL name stays `operator_credential`.
+
+  Inside `account` the word is just *credential* — an "operator" prefix would
+  restate the domain in every filename. In the schema there is no domain to
+  imply it, and the table pairs with `operator_profile`: the two satellites of
+  `operator`, one for what someone may do and one for how they prove who they
+  are. Breaking that pairing to save a word would cost more than it saves.
+
+  `_NomenclatureLaw` §2 already decouples these — the export carries the `Table`
+  suffix and the SQL name does not — so they were never required to match.
+*/
+export const credentialTable = pgTable("operator_credential", {
   operatorId: uuid()
     .primaryKey()
     .references(() => operatorTable.id, { onDelete: "cascade" }),
@@ -33,4 +45,4 @@ export const operatorCredentialTable = pgTable("operator_credential", {
   updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
 });
 
-export type OperatorCredentialRow = typeof operatorCredentialTable.$inferSelect;
+export type CredentialRow = typeof credentialTable.$inferSelect;

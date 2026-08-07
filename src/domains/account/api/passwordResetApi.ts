@@ -24,7 +24,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
 import { operatorTable } from "@/domains/operator/model/operatorTable";
 import { passwordFingerprint, setOperatorPassword } from "./credentialApi";
-import { sendPasswordResetEmail } from "./resetEmail";
+import { sendPasswordResetEmail } from "./passwordResetEmail";
 
 const RESET_MAX_AGE_S = 60 * 60; // one hour
 const PURPOSE = "pwreset";

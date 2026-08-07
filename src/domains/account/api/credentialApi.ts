@@ -7,7 +7,7 @@
  * grep -rn "passwordHash" src/
  * ```
  *
- * should name this file and `operatorCredentialTable.ts` and nothing else.
+ * should name this file and `credentialTable.ts` and nothing else.
  * Same for `bcrypt`. (`scripts/seed.ts` writes the column directly — it runs
  * against a database with no app in front of it, which is the one situation
  * this boundary is not trying to govern.)
@@ -30,7 +30,7 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/shared/db";
-import { operatorCredentialTable } from "../model/operatorCredentialTable";
+import { credentialTable } from "../model/credentialTable";
 
 
 /** The one cost factor. A second literal somewhere else is a second policy. */
@@ -57,9 +57,9 @@ export async function changePassword(
   newPassword: string,
 ): Promise<boolean> {
   const [row] = await db
-    .select({ passwordHash: operatorCredentialTable.passwordHash })
-    .from(operatorCredentialTable)
-    .where(eq(operatorCredentialTable.operatorId, operatorId))
+    .select({ passwordHash: credentialTable.passwordHash })
+    .from(credentialTable)
+    .where(eq(credentialTable.operatorId, operatorId))
     .limit(1);
   if (!row) return false;
 
@@ -87,9 +87,9 @@ export async function passwordFingerprint(
   operatorId: string,
 ): Promise<string | null> {
   const [row] = await db
-    .select({ passwordHash: operatorCredentialTable.passwordHash })
-    .from(operatorCredentialTable)
-    .where(eq(operatorCredentialTable.operatorId, operatorId))
+    .select({ passwordHash: credentialTable.passwordHash })
+    .from(credentialTable)
+    .where(eq(credentialTable.operatorId, operatorId))
     .limit(1);
   return row ? row.passwordHash.slice(0, FINGERPRINT_LENGTH) : null;
 }
@@ -108,9 +108,9 @@ export async function setOperatorPassword(
 ): Promise<void> {
   const passwordHash = await bcrypt.hash(newPassword, COST);
   await db
-    .update(operatorCredentialTable)
+    .update(credentialTable)
     .set({ passwordHash, updatedAt: new Date() })
-    .where(eq(operatorCredentialTable.operatorId, operatorId));
+    .where(eq(credentialTable.operatorId, operatorId));
 }
 
 /**
@@ -126,9 +126,9 @@ export async function verifyPassword(
   password: string,
 ): Promise<boolean> {
   const [row] = await db
-    .select({ passwordHash: operatorCredentialTable.passwordHash })
-    .from(operatorCredentialTable)
-    .where(eq(operatorCredentialTable.operatorId, operatorId))
+    .select({ passwordHash: credentialTable.passwordHash })
+    .from(credentialTable)
+    .where(eq(credentialTable.operatorId, operatorId))
     .limit(1);
   if (!row) return false;
   return bcrypt.compare(password, row.passwordHash);
@@ -146,10 +146,10 @@ export async function createCredential(
 ): Promise<void> {
   const passwordHash = await bcrypt.hash(password, COST);
   await db
-    .insert(operatorCredentialTable)
+    .insert(credentialTable)
     .values({ operatorId, passwordHash })
     .onConflictDoUpdate({
-      target: operatorCredentialTable.operatorId,
+      target: credentialTable.operatorId,
       set: { passwordHash, updatedAt: new Date() },
     });
 }

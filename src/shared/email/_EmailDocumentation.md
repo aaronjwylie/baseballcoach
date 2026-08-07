@@ -166,7 +166,7 @@ table's numbering. One message exists that isn't on that path at all:
 
 | Trigger | To | Status |
 |---|---|---|
-| Operator requested a password reset | operator | ✅ **built** — `domains/operator/api/resetEmail.ts`, one-hour link |
+| Operator requested a password reset | operator | ✅ **built** — `domains/operator/api/passwordResetEmail.ts`, one-hour link |
 
 It's listed here because this doc's job is knowing which emails exist, not only
 which ones a submission causes. **It's also the second message in the product that

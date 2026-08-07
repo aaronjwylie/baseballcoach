@@ -1,11 +1,12 @@
 /**
  * The operator record — who exists, and what role they hold.
  *
- * Everything about an operator **except their password**, which lives next door
- * in `operatorCredentialApi.ts` and never leaves it. The split is not filing:
- * it turns "no other file reads the stored hash" from a habit into a property
- * of the folder, greppable in one line. A habit is what you lose first, when a
- * function grows one convenient extra field.
+ * Everything about an operator **except their password**, which is not in this
+ * domain at all — it lives in `account`, on its own table, behind its own
+ * barrel. That started as a file boundary here and became a folder one, which
+ * turns "no other file reads the stored hash" from a habit into a property you
+ * can grep. A habit is what you lose first, when a function grows one
+ * convenient extra field.
  *
  * Callers get an `Operator` — id, email, role — never a raw row.
  */

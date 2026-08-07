@@ -38,7 +38,7 @@ So the whole surface is here:
 ```
 model/role.ts                  ROLES · HOME_FOR_ROLE · CAN_BE_ASSIGNED · OperatorSession
 model/operatorRoleEnum.ts      the DB enum, beside the vocabulary it derives from
-model/operatorCredentialTable  the secret
+model/credentialTable         the secret
 api/dal.ts                     requireSession · requireRole — the secure check
 api/auth.ts                    login · logout · changePassword
 api/loginApi.ts                the two acts needing a person *and* a secret

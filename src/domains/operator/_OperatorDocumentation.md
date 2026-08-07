@@ -8,7 +8,7 @@ touch. Three roles: **admin** (the admin), **coach**, and **translator**.
 their submission, not a login.
 
 The noun is an `Operator` (`{ id, email, role }`) — the password hash never
-leaves `api/operatorCredentialApi.ts`. The verbs are `login` / `logout` (server
+leaves `api/credentialApi.ts`. The verbs are `login` / `logout` (server
 actions) and the guards `requireSession` / `requireRole` (the DAL). The session
 is a stateless HS256 JWT in an httpOnly cookie; the crypto seam lives in
 `shared/auth`, this domain owns the payload shape
@@ -57,7 +57,7 @@ consolation:
 
 | the seam | how it is enforced |
 | --- | --- |
-| passwords never leave one file | `operatorCredentialApi.ts` is the only file in `src/` that reads `operatorTable.passwordHash` — greppable in one line |
+| passwords are not in this domain at all | they live in `account`, on `credentialTable`, behind their own barrel — the file boundary became a folder one |
 | the secure check lives near the data | `dal.ts`; `proxy.ts` is optimistic and never the sole defence |
 | roles are answered, not compared | `HOME_FOR_ROLE` / `CAN_BE_ASSIGNED` are exhaustive `Record`s, so a fourth role is a compile error |
 
@@ -101,8 +101,8 @@ life.
 
 `api/operatorApi.ts` split in two. The record — `listAdminEmails`,
 `getOperatorById`, `findOperatorByEmail` — stayed. Everything that touches the
-stored hash moved to **`api/operatorCredentialApi.ts`**, which is now the only
-file in `src/` that reads or writes `operatorTable.passwordHash`, and the only
+stored hash moved to **`api/credentialApi.ts`**, which is now the only
+file in `src/` that reads or writes `credentialTable.passwordHash`, and the only
 one in this domain that imports bcrypt. One grep confirms it, which is the
 whole reason the split is worth its two files:
 

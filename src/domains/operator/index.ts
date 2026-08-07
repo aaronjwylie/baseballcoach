@@ -9,7 +9,7 @@
  */
 export { getOperatorById, listAdminEmails } from "./api/operatorApi";
 /*
-  `operatorCredentialApi` is deliberately absent.
+  `credentialApi` is deliberately absent.
 
   Its four functions were all exported here and none of them was ever imported
   from outside this domain — `auth`, `coachApi` and `passwordResetApi` reach
