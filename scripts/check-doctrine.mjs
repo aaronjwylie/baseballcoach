@@ -1,0 +1,131 @@
+#!/usr/bin/env node
+/**
+ * check-doctrine — the doctrine's own rail.
+ *
+ * Every law in this pack preaches *make the rail mechanical* ([PRINCIPLES §14]),
+ * and until 2026-08-06 the doctrine itself had none: nothing asserted that a law
+ * had a live companion, that a `{{placeholder}}` had been filled, or that a
+ * cross-reference pointed at a file that exists. By its own §14 that is a defect.
+ *
+ * It is not hypothetical. Writing the six Documentation companions produced
+ * **fourteen broken links in files that had just been authored**, and moving one
+ * law between folders silently orphaned twelve more. Both were found by a script
+ * written in five minutes, after neither `tsc`, `eslint`, `next build` nor
+ * `check:names` could see them — a markdown link is a string, and a wrong string
+ * is a well-typed string.
+ *
+ * Four checks, cheapest first:
+ *
+ *   1. PAIRING      every laws/_XLaw.md has documentation/_XDocumentation.md
+ *   2. PLACEHOLDERS no {{…}} survives outside templates/, where it is the point
+ *   3. LINKS        every relative markdown link resolves to a real path
+ *   4. SLICES       every domain carries a _XxxDocumentation.md
+ *
+ * Runs in `npm run build`. A broken doctrine link blocking a deploy is a
+ * deliberate trade: this project has spent more time on documents that quietly
+ * stopped being true than on any bug.
+ */
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
+import { join, dirname, normalize, relative } from "node:path";
+
+const ROOT = process.cwd();
+const SKIP_DIRS = new Set(["node_modules", ".git", ".next", ".storage", "drizzle"]);
+
+/** Every .md in the repo, excluding build output and dependencies. */
+function markdownFiles(dir = ROOT, out = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") && entry.name !== ".") continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      markdownFiles(full, out);
+    } else if (entry.name.endsWith(".md")) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const findings = [];
+const note = (file, message) => findings.push({ file: relative(ROOT, file), message });
+
+// ── 1 · PAIRING ────────────────────────────────────────────────────────────
+// A law with no companion is a rule nobody has had to apply, which is the state
+// a rule is least trustworthy in.
+const lawsDir = join(ROOT, "laws");
+const docsDir = join(ROOT, "documentation");
+let laws = [];
+if (existsSync(lawsDir)) {
+  laws = readdirSync(lawsDir).filter((f) => /^_[A-Za-z]+Law\.md$/.test(f));
+  for (const law of laws) {
+    const stem = law.replace(/^_(.+)Law\.md$/, "$1");
+    const companion = join(docsDir, `_${stem}Documentation.md`);
+    if (!existsSync(companion)) {
+      note(join(lawsDir, law), `no companion — expected documentation/_${stem}Documentation.md`);
+    }
+  }
+}
+
+// ── 2 · PLACEHOLDERS ───────────────────────────────────────────────────────
+// `templates/` is where {{…}} belongs; anywhere else it is an unfinished doc
+// wearing a finished one's name.
+for (const file of markdownFiles()) {
+  const rel = relative(ROOT, file);
+  if (rel.startsWith("templates/")) continue;
+  const lines = readFileSync(file, "utf8").split("\n");
+  let inFence = false;
+  lines.forEach((line, i) => {
+    if (/^\s*```/.test(line)) { inFence = !inFence; return; }
+    /*
+      A placeholder inside a fence is a *form* — a law showing the shape a thing
+      must take, which is a law doing its job. In prose it is an unfinished
+      document wearing a finished one's name. That distinction is the whole rule,
+      and it is why this check reads fences rather than grepping for braces:
+      `_DesignLaw` §2 legitimately shows the shape of a principle, and a blunter
+      version of this check flagged it on the first run.
+    */
+    if (inFence) return;
+    const hit = line.match(/\{\{[^}]{1,60}\}\}/);
+    if (hit) note(file, `line ${i + 1}: unfilled placeholder ${hit[0]}`);
+  });
+}
+
+// ── 3 · LINKS ──────────────────────────────────────────────────────────────
+// The check that has already paid for itself twice.
+const LINK = /\]\((?!https?:|mailto:|#)([^)\s#]+)(?:#[^)]*)?\)/g;
+for (const file of markdownFiles()) {
+  const body = readFileSync(file, "utf8");
+  for (const match of body.matchAll(LINK)) {
+    const target = match[1].trim();
+    if (target.startsWith("/") || target.includes("{{")) continue;
+    const resolved = normalize(join(dirname(file), target));
+    if (!existsSync(resolved)) note(file, `dead link → ${target}`);
+  }
+}
+
+// ── 4 · SLICES ─────────────────────────────────────────────────────────────
+// "Read the slice's doc before changing the slice" only works if there is one.
+const domainsDir = join(ROOT, "src", "domains");
+if (existsSync(domainsDir)) {
+  for (const slice of readdirSync(domainsDir)) {
+    const dir = join(domainsDir, slice);
+    if (!statSync(dir).isDirectory()) continue;
+    const expected = `_${slice[0].toUpperCase()}${slice.slice(1)}Documentation.md`;
+    if (!existsSync(join(dir, expected))) {
+      note(dir, `slice has no doc — expected ${expected}`);
+    }
+  }
+}
+
+// ── report ─────────────────────────────────────────────────────────────────
+if (findings.length) {
+  console.error(`\n[doctrine] ${findings.length} problem${findings.length === 1 ? "" : "s"}:\n`);
+  for (const f of findings) console.error(`  ${f.file}\n      ${f.message}`);
+  console.error("");
+  process.exit(1);
+}
+
+const docCount = existsSync(docsDir)
+  ? readdirSync(docsDir).filter((f) => f.endsWith("Documentation.md")).length
+  : 0;
+console.log(`[doctrine] ok — ${laws.length} laws, ${docCount} companions, every link resolves`);

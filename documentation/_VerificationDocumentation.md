@@ -12,14 +12,15 @@
 
 ### 1a · The roster
 
-Four gates run in `npm run build`, in this order, and the build stops at the first failure:
+Five gates run in `npm run build`, in this order, and the build stops at the first failure:
 
 | # | Gate | Command | Blocks a deploy? |
 |---|---|---|---|
 | 1 | **Names** | `node scripts/check-names.mjs` | ✅ first step of `build` |
-| 2 | **Migrations** | `node scripts/migrate-on-deploy.mjs` | ✅ **fails the build if it cannot migrate** |
-| 3 | **Types + lint + compile** | `next build` (runs `tsc`, then bundles) | ✅ |
-| 4 | **The ladder** | `npm run simulate` | ❌ **run by hand — the gap in this roster** |
+| 2 | **Doctrine** | `node scripts/check-doctrine.mjs` | ✅ law↔companion pairing, placeholders, dead links, slice docs |
+| 3 | **Migrations** | `node scripts/migrate-on-deploy.mjs` | ✅ **fails the build if it cannot migrate** |
+| 4 | **Types + lint + compile** | `next build` (runs `tsc`, then bundles) | ✅ |
+| 5 | **The ladder** | `npm run simulate` | ❌ **run by hand — the gap in this roster** |
 
 Plus `npm run lint` (eslint) standalone.
 
@@ -32,6 +33,7 @@ Not what it is *supposed* to do — what it has actually caught here.
 | `check:names` | **66 wrong strings that shipped to production.** A bulk rename put a table's export name into the public FAQ, a nav link that 404'd, and a Blob storage path. Every other check was green, and none of them could have failed |
 | `migrate-on-deploy` | **A production outage, 2026-08-02.** Fresh code deployed against an old schema errored on every request. The gate now fails the build instead, because a build that cannot migrate must not produce a deploy |
 | `tsc` + exhaustive `Record`s | **Every rung addition since.** Growing the ladder from 16 to 20 produced eight compile errors — each one a place that had to answer for the new state rather than silently default |
+| `check:doctrine` | **Fourteen dead links in files authored minutes earlier**, and twelve more created by moving one law between folders. Same class as `check:names` — a link is a string |
 | `simulate` | **Three guards that stopped matching when the ladder grew**, two of which made the translation path impossible to complete. Also a duplicated trail row, and a test that had begun passing while exercising nothing |
 
 ### 1c · The gates as vectors
@@ -45,6 +47,7 @@ Each catches a different class, and the classes barely overlap:
 | **strings** | `check:names` | an identifier used as a word. **Structurally invisible to `tsc`** — a wrong string is a well-typed string |
 | **behaviour over time** | `simulate` | a guard that is still valid TypeScript and no longer true. It walks all 20 rungs twice — once with translation, once without — through the real domain functions |
 | **schema lineage** | `migrate-on-deploy` | code and database disagreeing about what exists |
+| **the documents** | `check:doctrine` | a cross-reference that stopped resolving, or a rule with no instance. **The rail the doctrine lacked while preaching rails** |
 
 ---
 
