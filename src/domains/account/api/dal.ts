@@ -9,15 +9,16 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { readSession } from "@/shared/auth";
-import { HOME_FOR_ROLE, portalsFor } from "../model/session";
+import { HOME_FOR_ROLE, portalsFor, isOperatorSession } from "../model/session";
 import type { OperatorSession } from "../model/session";
 import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 
 /** The verified session, or null if unauthenticated. */
-export const getSession = cache(
-  async (): Promise<OperatorSession | null> =>
-    readSession<OperatorSession>(),
-);
+export const getSession = cache(async (): Promise<OperatorSession | null> => {
+  const session = await readSession<unknown>();
+  // Shape-checked, not just signature-checked — see `isOperatorSession`.
+  return isOperatorSession(session) ? session : null;
+});
 
 /** Require any operator; redirect to /login if not signed in. */
 export async function requireSession(): Promise<OperatorSession> {

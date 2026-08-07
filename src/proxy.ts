@@ -16,7 +16,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/shared/auth/token";
 import { env } from "@/shared/config/env";
-import { HOME_FOR_ROLE, portalsFor } from "@/domains/account/model/session";
+import { HOME_FOR_ROLE, portalsFor, isOperatorSession } from "@/domains/account/model/session";
 import type { Role } from "@/domains/operator/model/operatorRoleEnum";
 import type { OperatorSession } from "@/domains/account/model/session";
 
@@ -59,9 +59,12 @@ export async function proxy(req: NextRequest) {
   // Public pages have nothing more to check once the site gate has passed.
   if (!isPortal && pathname !== "/login") return NextResponse.next();
 
-  const session = await verifySessionToken<OperatorSession>(
+  const verified = await verifySessionToken<unknown>(
     req.cookies.get(SESSION_COOKIE)?.value,
   );
+  // A validly signed cookie of the *previous* shape is not a session. The proxy
+  // checks this too rather than trusting the DAL, because it runs first.
+  const session = isOperatorSession(verified) ? verified : null;
 
   if (isPortal && !session) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));

@@ -61,3 +61,30 @@ export type LoginState = { error: string } | undefined;
 /** Return shape of the change-password server action. */
 export type ChangePasswordState = { error: string } | { ok: true } | undefined;
 
+
+/**
+ * Is this actually a session of the current shape?
+ *
+ * **`verifySessionToken` proves the signature, not the shape.** It casts the
+ * payload with `as T`, so a cookie signed by *us* is trusted to be whatever the
+ * caller says — which is fine until the shape changes underneath it.
+ *
+ * ⟨EVIDENCE — 2026-08-07⟩ It changed. `role` became `roles`, and every cookie
+ * issued before that verified perfectly and arrived with `roles` undefined. The
+ * first `session.roles.some(...)` threw, and `/admin` returned a 500 to
+ * everyone still holding one. The claim written down at the time — "an old
+ * cookie fails to parse, which is the safe direction" — was wrong: it failed
+ * **open**, and nothing was checking.
+ *
+ * So the shape is verified here, not assumed. An unrecognised payload is no
+ * session, which sends someone to `/login` and costs them one sign-in.
+ */
+export function isOperatorSession(value: unknown): value is OperatorSession {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<OperatorSession>;
+  return (
+    typeof candidate.operatorId === "string" &&
+    Array.isArray(candidate.roles) &&
+    candidate.roles.every((role) => typeof role === "string")
+  );
+}

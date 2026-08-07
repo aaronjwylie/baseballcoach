@@ -56,6 +56,7 @@ import {
 import { approveAndComplete, resolveSubmission, sendFeedbackForApproval } from "@/domains/feedback";
 import { runRetentionSweep } from "@/domains/upload";
 import { getSettings } from "@/domains/settings";
+import { isOperatorSession } from "@/domains/account/model/session";
 import { grantRole, rolesFor, listByRole, setRoles, setGrants, grantsFor, listOperators, listCoaches } from "@/domains/operator";
 import { operatorRoleGrantTable } from "@/domains/operator/model/operatorRoleGrantTable";
 import { issueCode, isEmailVerified, verifyCode } from "@/domains/verification";
@@ -450,6 +451,36 @@ async function ensureTranslator(name: string) {
  * addresses, and the second onboarding failed on the unique email rather than
  * on anything that explained itself.
  */
+async function sessionShape() {
+  console.log("\n━━ a session of the wrong shape is not a session ━━");
+
+  /*
+    The 2026-08-07 outage, as a check.
+
+    `role` became `roles`, and every cookie issued before that verified fine —
+    same secret, valid signature — then arrived with `roles` undefined and threw
+    on the first `.some()`. /admin returned 500 to everyone holding one.
+
+    The mistake was believing a signature check is a shape check. It is not:
+    `verifySessionToken` casts with `as T` and trusts the caller's word.
+  */
+  check(
+    isOperatorSession({ operatorId: "x", roles: ["admin"] }),
+    "   the current shape is a session",
+  );
+  check(
+    !isOperatorSession({ operatorId: "x", role: "admin" }),
+    "   the PREVIOUS shape is not — this is the one that 500'd",
+  );
+  check(!isOperatorSession({ operatorId: "x" }), "   no roles at all is not");
+  check(!isOperatorSession({ roles: ["admin"] }), "   no operatorId is not");
+  check(!isOperatorSession(null) && !isOperatorSession("nope"), "   nor is junk");
+  check(
+    !isOperatorSession({ operatorId: "x", roles: [1, 2] }),
+    "   nor roles that are not strings",
+  );
+}
+
 async function multiRole() {
   console.log("\n━━ one operator, several kinds ━━");
   const person = await ensureCoach("Wearer Of Hats", ["English"]);
@@ -607,6 +638,7 @@ async function main() {
   checkLanguageRule();
   await walk("English-reading coach — skips translation", false);
   await walk("Japanese-only coach — full translation path", true);
+  await sessionShape();
   await multiRole();
 
   console.log(`\n${"─".repeat(56)}`);
