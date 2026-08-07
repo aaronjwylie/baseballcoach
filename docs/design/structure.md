@@ -47,13 +47,13 @@ Read top to bottom, that's the business: *someone tells us about a player, prove
 email, uploads their clips, pays, and a coach responds.*
 That's rule #3 working — the tree names the domain, not the tech.
 
-**`operator` is the one that looks like two.** It holds logging in (~630 lines) and the
-people who do the work (~1000), and the split looks obvious until you try it: `listCoaches()`
-is an inner join across `operator` and `operator_profile`, and a join needs both tables in one
-query. Separate domains would mean one reading the other's tables — the rule `domains/coach`
-was dissolved for breaking. The seam is carried by file boundaries instead
-([`_OperatorDocumentation.md`](../../src/domains/operator/_OperatorDocumentation.md)), and it
-is a constraint rather than a preference: if the profile fields ever stop being shared, revisit it.
+**`operator` is the one that looks like two.** It holds logging in (~630 lines) and the people
+who do the work (~1000). The join between `operator` and `operator_profile` genuinely does bind
+*the record* to *the profile* — a join needs both tables in one query. **It does not bind
+authentication**, which joins nothing and reads one column, and saying otherwise was an
+overreach corrected on 2026-08-06. Splitting an `account` domain out needs a schema change, not
+a rule change — see [PRINCIPLES §7c](../../PRINCIPLES.md) and
+[`_OperatorDocumentation.md`](../../src/domains/operator/_OperatorDocumentation.md).
 
 **`submission` is the noun every other domain orbits.** `checkout` opens one, `verification`
 unlocks it, `upload` attaches files to one, `payment` marks it paid, `feedback` completes
@@ -190,6 +190,23 @@ declarations (`*Table.ts`, `*Enum.ts`), since 2026-08-05
    drizzle-kit has one entry point, and it's outside the cake because it imports every domain,
    which rule 4 forbids anything in `shared/` from doing. Nothing in `src/` imports it; only
    `drizzle.config.ts` and `scripts/`.
+
+### The corollary these rules have, and what to do about it
+
+Rules 3 and 7 together mean **two concerns that share a table cannot be two domains**. That is
+sound, and it hands the schema authorship of the folder tree — which is fine when the table is
+right and quietly harmful when it isn't, because the rules will then defend a schema mistake as
+though it were a structural fact.
+
+**So read the constraint as evidence, not as a verdict.** If two concerns *would* be separate
+domains but for sharing a table, ask what the table is doing before you accept the tree. A
+constraint arriving from the schema deserves one round of *why is the schema like that* before
+it becomes an architectural conclusion; a constraint nobody has tried to remove is an assumption
+wearing a rule's clothes.
+
+The reasoning, and the worked example that produced it, are in
+[PRINCIPLES §7c](../../PRINCIPLES.md) — `domains/operator` was told twice it could not split, on
+an argument that turned out not to reach the question being asked.
 
 ---
 

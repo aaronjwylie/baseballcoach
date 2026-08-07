@@ -22,23 +22,38 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
-## The folder does not split — 2026-08-06
+## The folder splits — but it needs a migration first — 2026-08-06
 
-The obvious reading of this slice is that it holds two things: **logging in**
-(~630 lines) and **the people who do the work** (~1000). It looks like two
-domains wearing one coat, and the question has come up more than once.
+**Superseding what stood here this morning**, which said the folder could not split and gave a
+reason that did not reach the question.
 
-**It cannot be two domains, and the reason is one line of SQL.**
+The reason given was the join: `listCoaches()` reads `operator` and `operator_profile` in one
+query, so those two cannot be separate domains. **That part is still true.** It binds *the
+record* to *the profile*, and no API boundary survives a join.
 
-`listCoaches()` is an inner join across `operator` and `operator_profile` — the
-login row for name and email, the profile row for languages and specialties.
-Split those tables into separate domains and that query cannot be written: one
-side would be reading the other's tables, which is precisely the rule
-`domains/coach` was dissolved for breaking (ADR 018 §5). A join needs both
-tables in one query, and there is no API boundary that survives that.
+It says nothing about authentication. **Authentication joins nothing** — it reads one column,
+`passwordHash`. The only thing holding it in this slice is that the column sits on the operator
+table, and that is a schema decision rather than a law. Stated as a constraint twice, it was an
+assumption both times.
 
-So the seam is real but it is **not a folder boundary**. It is carried three
-other ways instead:
+Three concerns live here, not two:
+
+| | is | owns |
+| --- | --- | --- |
+| **the account** | the ability to sign in | `password_hash` — today a column, and it should be its own table |
+| **the operator** | a person in the business | `operator` — id, email, role, name, isActive |
+| **the profile** | what they can be given | `operator_profile` — languages, specialties, bio |
+
+The account and the operator are genuinely different nouns: **a coach can exist before anyone
+gives them a login**, and `role` is a business fact while `password_hash` is an account fact. One
+table holds both.
+
+Splitting `password_hash` into `operator_credential` is better schema regardless of folders —
+today every `SELECT *` on an operator carries a hash into memory for a column almost nothing
+reads. And once it is its own table, `domains/account` owns it and breaks no rule.
+
+**Until that migration exists, the seam is carried by file boundaries** — and those are real, not
+consolation:
 
 | the seam | how it is enforced |
 | --- | --- |
@@ -46,11 +61,15 @@ other ways instead:
 | the secure check lives near the data | `dal.ts`; `proxy.ts` is optimistic and never the sole defence |
 | roles are answered, not compared | `HOME_FOR_ROLE` / `CAN_BE_ASSIGNED` are exhaustive `Record`s, so a fourth role is a compile error |
 
-If the profile fields ever stop being shared — a translator needing something a
-coach's row cannot express — the join stops being the constraint and this
-decision should be revisited. It is a constraint, not a preference.
+The general lesson is now [PRINCIPLES §7c](../../../PRINCIPLES.md): a constraint that arrives
+from the schema deserves one round of *why is the schema like that* before it is written down as
+an architectural conclusion.
 
 ## Coach and translator get their own files — 2026-08-06
+
+> **Partial.** This separated the two roles' *verbs* and left the shared *shape* named for one
+> of them. `Coach` is a role, not an entity — see `_NomenclatureLaw.md` §4 — and until it is
+> renamed, `translatorApi` importing it is the tell that the job is half done.
 
 For one day, `coachApi.ts` held `listTranslators()` and `coachActions.ts` held
 `assignTranslatorAction`. A file named for one role holding another role's verbs

@@ -134,6 +134,51 @@ load-bearing.
 Recorded this way on purpose. The reasoning above is worth more than the conclusion, because the
 conclusion is a judgment call and the reasoning is what will tell us if it was the wrong one.
 
+### 7c · A shared table is not a reason to share a folder
+
+Rule 7b says a table's columns are declared in the domain that owns it, and `structure.md` §4
+says an `api/` file never reads another domain's tables. Both hold. Together they have a
+consequence nobody wrote down:
+
+> **Two concerns that share a table cannot be two domains.**
+
+Which quietly makes the schema the author of the folder tree. That is fine when the table is
+right. When it isn't, the rules turn a schema mistake into a structural one and then defend it,
+because the violation you would have to commit to fix it is visible and the mistake is not.
+
+**So the question runs the other way.** If two concerns *would* be separate domains but for
+sharing a table, that is evidence about the **table**, not a verdict about the folder. Ask what
+the table is doing before accepting what the tree looks like.
+
+Worked example, 2026-08-06. `domains/operator` holds logging in (~630 lines) and the people who
+do the work (~1,000). Asked three times whether it should split, and answered twice with "it
+can't — `listCoaches()` joins `operator` and `operator_profile`, and a join needs both tables in
+one query."
+
+That answer was true and did not reach the question. The join constrains *record vs profile*.
+**Authentication joins nothing** — it reads one column, `passwordHash`. The only thing keeping it
+in the slice was that the column sits on the operator table, and that is a schema decision, not a
+law:
+
+```
+operator             id · email · role · name · isActive     a person in the business
+operator_credential  operator_id · password_hash             the ability to sign in
+operator_profile     operator_id · languages · specialties   what they can be given
+```
+
+Three tables, and `account` becomes a domain that owns its own. **The schema is better
+independently of the folders** — today every `SELECT *` on an operator carries a password hash
+into memory for the sake of a column almost nothing reads.
+
+The concepts were distinct the whole time: a coach can exist before anyone gives them a login.
+`role` is a business fact and `passwordHash` is an account fact, and one table held both.
+
+**The general form.** A constraint that arrives from the schema should be met with *why is the
+schema like that* at least once before it is written down as an architectural conclusion. A
+constraint you have not tried to remove is an assumption.
+
+---
+
 ### 8 · Compartmentalize the differences; unify the commonality
 
 Separate concepts that are genuinely different even when they share a shape. But write the
@@ -143,6 +188,37 @@ brand shell (`shared/email` owns that).
 
 This is the counterweight to rule 2: unify what's the *same*, separate what's *different*.
 The goal is a bijection — one fact, one home.
+
+**The diagnostic: two files for parallel concepts should be roughly the same size.**
+
+When they aren't, the shared part is living inside one of them. That is the whole failure, and
+it is visible from a directory listing — you do not need to read either file.
+
+Worked example, 2026-08-06. `coach` and `translator` are two roles of one thing: an operator
+with a profile row, same two tables, same fields, same query. Yet:
+
+```
+coachApi.ts        235 lines      translatorApi.ts        25
+coachActions.ts    272 lines      translatorActions.ts    38
+coachEmail.ts      121 lines      translatorEmail.ts       —
+model/coach.ts      52 lines      model/translator.ts      —
+ui/AddCoachForm     70 lines      ui/AddTranslatorForm     —
+```
+
+Read as a bug list that is five items long. Read correctly, it is **one** item: the shared
+weight was written into the files named for the role that came first, so the second role could
+only ever be a thin wrapper importing from it. `translatorApi` importing `Coach` is the tell —
+a file reaching across to its sibling for the shape they both are.
+
+The fix is never to fatten the thin side. It is to move the commonality out until **both** sides
+are thin, and what remains in each is only what is genuinely that role's own. A coach has a
+public bio on the landing page; a translator does not. *That* is a difference worth a file. The
+join is not.
+
+**A missing twin is the same signal.** `coachEmail` sends "work is assigned to you" and "X
+picked up Y". Neither sentence is about coaching — they are hand-off emails, and the absent
+`translatorEmail` was evidence they had been filed under the wrong noun, not evidence that a
+translator needs no mail.
 
 ---
 

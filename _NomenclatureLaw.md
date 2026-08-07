@@ -184,7 +184,7 @@ One `model/<x>.ts` file holds the whole family. Only the shapes the entity actua
 
 | Type | Meaning | Example |
 |---|---|---|
-| `X` | the full entity — the **operator's** view | `Submission` · `Coach` |
+| `X` | the full entity — the **operator's** view | `Submission` (⚠️ `Coach` is a *role*, see below) |
 | `PublicX` | the shareable subset, `Pick<X, …>`, co-located | `PublicSubmission` |
 | `XInput` | what a **form** collects, before it's an entity | `SubmissionInput` |
 | `XDraft` | the partially-filled input a form holds mid-edit | `SubmissionInputDraft` |
@@ -195,6 +195,29 @@ One `model/<x>.ts` file holds the whole family. Only the shapes the entity actua
 
 **`Pick<X, …>` over a hand-written subset**, always. A `PublicSubmission` that restates its
 fields drifts the moment `Submission` changes; a `Pick` cannot.
+
+### Name the shape, not the role that reached it first
+
+`X` is what the entity **is**. If a second kind of person turns out to have the identical shape,
+`X` was named after a *role* and the role got mistaken for the entity.
+
+The tell is an import: a file about one role reaching into its sibling for the type they both
+are. `translatorApi.ts` importing `Coach` (2026-08-06) was that, exactly — and reading it in a
+diff is easier than noticing the type was wrong two months earlier.
+
+`Coach` was a real entity while there was a `coach` table. ADR 018 dissolved it into
+`operator` + `operator_profile`, and from that moment `Coach` described *an operator with a
+profile* — which a translator also is, field for field. The name survived its own entity.
+
+**The test:** if a second role arrived tomorrow, would the type need renaming? If yes it is
+already named wrong, because the name is describing a *use* of the shape rather than the shape.
+A role belongs in the enum (`Role = admin · coach · translator`), which is where a value that
+varies per row is supposed to live. It does not belong in a type name, where it can only be
+changed by a rename.
+
+This does **not** mean role-named files are wrong. `coachApi.ts` is right when it holds what is
+genuinely a coach's alone — the public bio, the landing-page photo. It is wrong when it holds
+the machinery both roles use, and `PRINCIPLES.md` §8 has the diagnostic for telling those apart.
 
 ### Exhaustive maps over lists
 
