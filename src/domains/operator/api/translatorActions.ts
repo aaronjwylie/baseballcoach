@@ -9,6 +9,7 @@
  * needs the filename to tell them which one they are looking at.
  */
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/shared/lib/actionResult";
 import { requireRole } from "@/domains/account";
 import { getSubmission, assignSubmissionTranslator } from "@/domains/submission";
 import {
@@ -26,16 +27,22 @@ import {
  * translator who has already been emailed it is exactly what the UI guard
  * cannot cover.
  */
-export async function assignTranslatorAction(formData: FormData): Promise<void> {
+export async function assignTranslatorAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const submissionId = String(formData.get("submissionId") ?? "");
   const operatorId = String(formData.get("operatorId") ?? "");
   const leg = String(formData.get("leg") ?? "");
-  if (!submissionId || !operatorId) return;
-  if (leg !== "intake_translation" && leg !== "feedback_translation") return;
+  if (!submissionId) return { error: "No submission — reload and try again." };
+  if (!operatorId) return { error: "Pick a translator first." };
+  if (leg !== "intake_translation" && leg !== "feedback_translation") {
+    return { error: "That is not a translation leg." };
+  }
 
   const submission = await getSubmission(submissionId);
-  if (!submission) return;
+  if (!submission) return { error: "That submission no longer exists." };
 
   // Each leg is staffed from the rung before it, or re-staffed from its own —
   // a second look at the dropdown before sending is ordinary.
@@ -45,10 +52,16 @@ export async function assignTranslatorAction(formData: FormData): Promise<void> 
         submission.status === "intake_translator_assigned"
       : submission.status === "awaiting_approval" ||
         submission.status === "feedback_translator_assigned";
-  if (!allowed) return;
+  if (!allowed) {
+    return {
+      error:
+        "This leg has already been sent out. Move the status back first if you need to change who has it.",
+    };
+  }
 
   await assignSubmissionTranslator(submissionId, operatorId, leg);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /**

@@ -11,6 +11,7 @@
  * Admin-only — the guard is re-checked here, not trusted from the UI.
  */
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/shared/lib/actionResult";
 import { requireRole } from "@/domains/account";
 import {
   FILE_SETS,
@@ -52,11 +53,15 @@ export async function updateCoachAction(
   return updateProfiledOperatorAction("coach", prev, formData);
 }
 
-export async function assignCoachAction(formData: FormData): Promise<void> {
+export async function assignCoachAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const submissionId = String(formData.get("submissionId") ?? "");
   const coachId = String(formData.get("coachId") ?? "");
-  if (!submissionId || !coachId) return;
+  if (!submissionId) return { error: "No submission — reload and try again." };
+  if (!coachId) return { error: "Pick a coach first." };
 
   /*
     Reassignment stops once the work has been handed over.
@@ -67,11 +72,17 @@ export async function assignCoachAction(formData: FormData): Promise<void> {
     was checked here and the status wasn't, which is the weaker half of the pair.
   */
   const submission = await getSubmission(submissionId);
-  if (!submission) return;
-  if (submission.status !== "new" && submission.status !== "assigned") return;
+  if (!submission) return { error: "That submission no longer exists." };
+  if (submission.status !== "new" && submission.status !== "assigned") {
+    return {
+      error:
+        "This has already gone out to a coach. Move the status back first if you need to reassign it.",
+    };
+  }
 
   await assignSubmissionCoach(submissionId, coachId);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 

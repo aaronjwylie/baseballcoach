@@ -1,22 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { failed, succeeded, type ActionResult } from "@/shared/lib/actionResult";
 import { assignCoachAction } from "../api/coachActions";
 
 /**
  * The coach-assignment control on the admin queue.
  *
- * Two things a plain `<form action={serverAction}>` got wrong here:
+ * **`useActionState`, not a hand-rolled pending flag.** The previous version
+ * tracked `busy` itself and threw the action's return value away — which was
+ * fine while the action returned `void`, and was exactly why a refusal ("this
+ * has already gone out to a coach") looked identical to a success: nothing
+ * happened and nothing was said. React owns pending now, and the result is
+ * rendered.
+ *
+ * Two things that were already right and stay right:
  *
  * 1. **Controlled, not `defaultValue`.** An uncontrolled `<select>` in a
- *    Server-Action form didn't reliably carry the user's new pick across the
- *    submit re-render, so Save posted the *previous* coach id and the row looked
- *    unchanged. Holding the choice in state fixes what gets submitted.
- * 2. **`router.refresh()` after the action.** `revalidatePath` clears the server
- *    cache, but the current page keeps serving its cached RSC until a real
- *    navigation — so the row showed the old coach until a manual refresh. The
- *    explicit refresh re-fetches the row we're looking at.
+ *    Server-Action form did not reliably carry the user's new pick across the
+ *    submit re-render, so Save posted the *previous* coach id.
+ * 2. **`router.refresh()` after a success.** `revalidatePath` clears the server
+ *    cache, but the page keeps serving its cached RSC until a real navigation.
  */
 export function AssignCoachSelect({
   submissionId,
@@ -28,35 +33,47 @@ export function AssignCoachSelect({
   coaches: { id: string; name: string }[];
 }) {
   const [coachId, setCoachId] = useState(assignedOperatorId ?? "");
+  const [state, action, pending] = useActionState<ActionResult, FormData>(
+    assignCoachAction,
+    undefined,
+  );
   const router = useRouter();
 
+  useEffect(() => {
+    if (succeeded(state)) router.refresh();
+  }, [state, router]);
+
   return (
-    <form
-      action={async (formData) => {
-        await assignCoachAction(formData);
-        router.refresh();
-      }}
-      className="flex items-center gap-2"
-    >
-      <input type="hidden" name="submissionId" value={submissionId} />
-      <select
-        name="coachId"
-        value={coachId}
-        onChange={(e) => setCoachId(e.target.value)}
-        className="rounded-md border border-line bg-white px-2 py-1 text-sm"
-      >
-        <option value="" disabled>
-          Assign…
-        </option>
-        {coaches.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
+    <form action={action} className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <input type="hidden" name="submissionId" value={submissionId} />
+        <select
+          name="coachId"
+          value={coachId}
+          onChange={(e) => setCoachId(e.target.value)}
+          disabled={pending}
+          className="rounded-md border border-line bg-white px-2 py-1.5 text-sm disabled:opacity-60"
+        >
+          <option value="" disabled>
+            Assign…
           </option>
-        ))}
-      </select>
-      <button type="submit" className="text-xs font-semibold text-accent hover:underline">
-        Save
-      </button>
+          {coaches.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          disabled={pending || !coachId}
+          className="rounded-md border border-line px-2.5 py-1.5 text-xs font-semibold text-accent hover:text-ink disabled:opacity-50"
+        >
+          {pending ? "Saving…" : "Save"}
+        </button>
+      </div>
+      {failed(state) && (
+        <p className="text-[13px] text-rose-700">{state.error}</p>
+      )}
     </form>
   );
 }

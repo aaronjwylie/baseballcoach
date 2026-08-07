@@ -6,3 +6,4 @@ export {
   type RateLimitOptions,
   type RateLimitResult,
 } from "./rateLimit";
+export { type ActionResult, failed, succeeded } from "./actionResult";

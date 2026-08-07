@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { failed, succeeded, type ActionResult } from "@/shared/lib/actionResult";
 import {
   SUBMISSION_STATUSES,
   numberedRungLabel,
@@ -34,12 +35,26 @@ export function OperatorOverride({
   submissionId: string;
   status: SubmissionStatus;
   purgeAction: (formData: FormData) => Promise<void>;
-  resetAction: (formData: FormData) => Promise<void>;
+  resetAction: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  /*
+    Starts on the current rung so the dropdown reads as "where it is", and the
+    button below is disabled until that changes. Previously it started here too
+    and the button was live — so the most likely thing anyone did was press it
+    unchanged, which hit a silent guard and looked like a broken button.
+  */
   const [target, setTarget] = useState<SubmissionStatus>(status);
+  const [reset, resetSubmit, resetting] = useActionState<ActionResult, FormData>(
+    resetAction,
+    undefined,
+  );
+
+  useEffect(() => {
+    if (succeeded(reset)) router.refresh();
+  }, [reset, router]);
 
   // Nothing may come back out of `purged` — the bytes it describes are gone, and
   // a status implying otherwise would make the queue lie about what a customer
@@ -52,6 +67,8 @@ export function OperatorOverride({
     setBusy(false);
     router.refresh();
   }
+
+  const unchanged = target === status;
 
   if (!open) {
     return (
@@ -83,17 +100,17 @@ export function OperatorOverride({
       {canReset && (
         <form
           className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3"
-          action={(fd) => run(resetAction, fd)}
+          action={resetSubmit}
         >
           <input type="hidden" name="submissionId" value={submissionId} />
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-[11px] text-ink-muted">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-xs text-ink-muted">
               Move back to:
               <select
                 name="status"
                 value={target}
                 onChange={(e) => setTarget(e.target.value as SubmissionStatus)}
-                className="ml-1.5 rounded border border-line bg-white px-1.5 py-0.5 text-[11px]"
+                className="ml-1.5 rounded-md border border-line bg-white px-2 py-1.5 text-sm"
               >
                 {SUBMISSION_STATUSES.map((option) => (
                   <option key={option} value={option}>
@@ -114,12 +131,12 @@ export function OperatorOverride({
               The northstar is that a reset actually resumes the pipeline from
               the start of the chosen substep *(not built)*.
             */}
-            <label className="text-[11px] text-ink-muted">
+            <label className="text-xs text-ink-muted">
               at:
               <select
                 name="substep"
                 key={target}
-                className="ml-1.5 rounded border border-line bg-white px-1.5 py-0.5 text-[11px]"
+                className="ml-1.5 rounded-md border border-line bg-white px-2 py-1.5 text-sm"
               >
                 <option value="">the start of the step</option>
                 {STAGE_CHAIN[target].map((line) => (
@@ -129,25 +146,38 @@ export function OperatorOverride({
                 ))}
               </select>
             </label>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+            {/*
+              Inline with the two selects — it is one sentence ("move back to X
+              at Y, because Z"), and splitting it across two rows read as two
+              separate controls.
+            */}
             <input
               name="reason"
               placeholder="why (optional)"
-              className="w-44 rounded border border-line bg-white px-1.5 py-0.5 text-[11px]"
+              className="w-44 rounded-md border border-line bg-white px-2 py-1.5 text-sm"
             />
             <button
               type="submit"
-              disabled={busy}
-              className="rounded-md border border-line bg-white px-2 py-0.5 text-[11px] font-semibold text-ink-muted hover:text-ink disabled:opacity-50"
+              disabled={resetting || unchanged}
+              title={unchanged ? "Pick a different rung first" : undefined}
+              className="rounded-md border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink hover:border-ink disabled:opacity-50"
             >
-              Reset status
+              {resetting ? "Resetting…" : "Reset status"}
             </button>
-            <span className="text-[11px] text-ink-muted">
-              Recorded against the submission with your name on it.
-            </span>
           </div>
+
+          {failed(reset) && (
+            <p className="text-[13px] text-rose-700">{reset.error}</p>
+          )}
+          {succeeded(reset) && (
+            <p className="text-[13px] text-emerald-700">Moved back.</p>
+          )}
+          <p className="text-[11px] text-ink-muted">
+            {unchanged
+              ? "Pick a rung it should go back to — it is on that one now."
+              : "Recorded against the submission with your name on it."}
+          </p>
         </form>
       )}
 

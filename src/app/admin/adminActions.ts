@@ -6,8 +6,9 @@
  * including account/auth). Admin-only — the guard is re-checked here.
  */
 import { revalidatePath } from "next/cache";
+import type { ActionResult } from "@/shared/lib/actionResult";
 import { requireRole } from "@/domains/account";
-import {
+import { numberedRungLabel,
   FILE_KINDS,
   FILE_SETS,
   SUBMISSION_STATUSES,
@@ -210,7 +211,10 @@ export async function purgeFolderAction(formData: FormData): Promise<void> {
  * bytes are gone; letting the status claim otherwise would make the queue lie
  * about what a customer can still download.
  */
-export async function resetStatusAction(formData: FormData): Promise<void> {
+export async function resetStatusAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
   const rawStatus = String(formData.get("status") ?? "");
@@ -223,18 +227,38 @@ export async function resetStatusAction(formData: FormData): Promise<void> {
     the one worth being able to say afterwards.
   */
   const substep = String(formData.get("substep") ?? "").trim();
-  if (!id) return;
-  if (!SUBMISSION_STATUSES.includes(rawStatus as SubmissionStatus)) return;
+  /*
+    Every refusal below used to be a bare `return`, which is why this button
+    read as broken: the dropdown starts on the current status, so pressing it
+    unchanged hit the second guard and did nothing, silently. See
+    `shared/lib/actionResult.ts`.
+  */
+  if (!id) return { error: "No submission — reload the page and try again." };
+  if (!SUBMISSION_STATUSES.includes(rawStatus as SubmissionStatus)) {
+    return { error: `“${rawStatus}” is not a status on the ladder.` };
+  }
   const status = rawStatus as SubmissionStatus;
 
   const submission = await getSubmission(id);
-  if (!submission || submission.status === status) return;
+  if (!submission) return { error: "That submission no longer exists." };
+
+  if (submission.status === status) {
+    return {
+      error: `It is already at ${numberedRungLabel(status)} — pick a different rung to move it back to.`,
+    };
+  }
   // Nothing may be moved out of `purged`: the files it describes no longer
   // exist, and a status that implies otherwise is worse than no status at all.
-  if (submission.status === "purged") return;
+  if (submission.status === "purged") {
+    return { error: "Purged submissions cannot be moved — the files are gone." };
+  }
   // Nor back before payment — that would put a paid submission somewhere the
   // discard path is willing to delete it outright.
-  if (!PAID_AT_STATUS_SAFE(status)) return;
+  if (!PAID_AT_STATUS_SAFE(status)) {
+    return {
+      error: `${numberedRungLabel(status)} is before payment, and the discard sweep deletes anything sitting there. Pick a rung from New onward.`,
+    };
+  }
 
   await updateSubmission(
     id,
@@ -245,6 +269,7 @@ export async function resetStatusAction(formData: FormData): Promise<void> {
     ].join(": "),
   );
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /** A reset may only land on a rung that still counts as paid. */
