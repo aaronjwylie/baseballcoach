@@ -1,13 +1,13 @@
 # Nomenclature — how Baseball Sensei names things
 
-The one home for naming. Pairs with [PRINCIPLES.md](PRINCIPLES.md) (the *why*) and
-[`docs/design/structure.md`](docs/design/structure.md) (the *where*); this is **how it's
+The one home for naming. Pairs with [PRINCIPLES.md](../PRINCIPLES.md) (the *why*) and
+[`docs/design/structure.md`](_StructureLaw.md) (the *where*); this is **how it's
 spelled**. If a name here disagrees with a file, the file is wrong.
 
 Adopted from `wrld-sandbox/_NomenclatureLaw.md` so the two codebases read alike, then
 rebuilt around this product's own nouns. Supersedes `structure.md` §6, which now points here.
 
-> **Tense** ([PRINCIPLES §12](PRINCIPLES.md)): present tense = the **northstar**; past tense =
+> **Tense** ([PRINCIPLES §12](../PRINCIPLES.md)): present tense = the **northstar**; past tense =
 > what we left. This doc is present tense throughout. Where the code hasn't caught up, the
 > divergence is marked *(today: …)* — never by softening the rule.
 
@@ -58,7 +58,7 @@ submission · submissionApi · SubmissionPatch · submission_file · _Submission
 
 A mix of `submission` and `submissions` in code is the exact smell this kills — and since
 2026-08-05 there is no plural anywhere to mix with. Tables are singular, named for what **one
-row** is: `submission`, `coach`, `operator` ([ADR 017](docs/decisions/017-singular-table-names.md)).
+row** is: `submission`, `coach`, `operator` ([ADR 017](../docs/decisions/017-singular-table-names.md)).
 
 **The JavaScript export carries the `Table` suffix; the SQL name does not.**
 
@@ -174,7 +174,7 @@ police.
 | ~~awaiting_upload~~ | — | retired with the flow that needed it; files arrive before payment |
 | ~~funnel~~ | **the flow** | one word for the customer's path |
 | ~~passthrough~~ | — | the Mux trick. A submission's own uuid is the link |
-| ~~user~~ / ~~account~~ (the entity) | **operator** | settled above since the portal existed, but the code said `account` (folder), `user` (files, table) and `Operator` (types) — three words, and the settled one used only by the types. Worse than untidy: **customers use this product constantly and never get a row**, so a table called `users` named the wrong population. Renamed 2026-08-05, migration `0001` ([ADR 016](docs/decisions/016-operator-not-account.md)). The last one hiding in a function name — `setUserPassword` — went on 2026-08-06 |
+| ~~user~~ / ~~account~~ (the entity) | **operator** | settled above since the portal existed, but the code said `account` (folder), `user` (files, table) and `Operator` (types) — three words, and the settled one used only by the types. Worse than untidy: **customers use this product constantly and never get a row**, so a table called `users` named the wrong population. Renamed 2026-08-05, migration `0001` ([ADR 016](../docs/decisions/016-operator-not-account.md)). The last one hiding in a function name — `setUserPassword` — went on 2026-08-06 |
 
 ---
 
@@ -217,7 +217,7 @@ changed by a rename.
 
 This does **not** mean role-named files are wrong. `coachApi.ts` is right when it holds what is
 genuinely a coach's alone — the public bio, the landing-page photo. It is wrong when it holds
-the machinery both roles use, and [`laws/_StructureLaw.md`](laws/_StructureLaw.md) §3a has the diagnostic for telling those apart.
+the machinery both roles use, and [`laws/_StructureLaw.md`](_StructureLaw.md) §3a has the diagnostic for telling those apart.
 
 ### Exhaustive maps over lists
 
@@ -257,7 +257,7 @@ Segments are created **when they're needed**, never pre-made empty.
 - **Every storage column name lives in one place** — the owning slice's `model/<x>Table.ts`,
   surfaced through `<slice>/api/<slice>Row.ts`. If you're mapping columns anywhere else, you're
   in the wrong file. *(The address moved from `shared/db` on 2026-08-05,
-  [ADR 015](docs/decisions/015-schema-by-domain.md); the invariant didn't.)*
+  [ADR 015](../docs/decisions/015-schema-by-domain.md); the invariant didn't.)*
 - **One declaration per file, always** — even the two-line enums. The rule buys the *absence of
   a judgment call* about what groups with what, which is worth more than the file count it
   costs: the moment a `submissionEnums.ts` exists, the next enum joins it by default and the
@@ -277,7 +277,7 @@ and the build fails.
 
 Each email lives in the domain that owns its event, as `api/<x>Email.ts`, and is **numbered**
 ①–⑨ to match the path table in
-[`_SubmissionDocumentation.md` §2](src/domains/submission/_SubmissionDocumentation.md). The
+[`_SubmissionDocumentation.md` §2](../src/domains/submission/_SubmissionDocumentation.md). The
 number is the shared handle: say "⑦" and everyone knows which message, which step, and who
 receives it.
 
@@ -311,7 +311,7 @@ audit the code: a term that can't be written plainly in a sentence is a term to 
 
 ## Related
 
-- [PRINCIPLES.md](PRINCIPLES.md) — why the codebase is shaped this way
-- [`docs/design/structure.md`](docs/design/structure.md) — the layout and dependency rules
-- [`src/domains/submission/_SubmissionDocumentation.md`](src/domains/submission/_SubmissionDocumentation.md) — the path, the ladder, the point of no return
-- [`docs/design/rollout.md`](docs/design/rollout.md) — the route from here to there
+- [PRINCIPLES.md](../PRINCIPLES.md) — why the codebase is shaped this way
+- [`docs/design/structure.md`](_StructureLaw.md) — the layout and dependency rules
+- [`src/domains/submission/_SubmissionDocumentation.md`](../src/domains/submission/_SubmissionDocumentation.md) — the path, the ladder, the point of no return
+- [`docs/design/rollout.md`](../docs/design/rollout.md) — the route from here to there

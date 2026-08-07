@@ -93,7 +93,7 @@ names use **`intake_*` / `response_*`** for the same two concepts. **The decisio
 It costs a data migration the other direction wouldn't have. It buys a vocabulary
 that survives: *intake* and *response* say **who the files came from**, which is the
 distinction that actually matters, while `submission`-inside-`submissionFileTable` says
-almost nothing. The full vocabulary is now [`_NomenclatureLaw.md`](../../_NomenclatureLaw.md).
+almost nothing. The full vocabulary is now [`_NomenclatureLaw.md`](../../laws/_NomenclatureLaw.md).
 
 **Grammar keeps the two axes apart** where the stem is shared — a file kind is a
 **noun** (*what is this file*), a status is a **participle** (*what has happened*):
@@ -498,5 +498,5 @@ sixteen-value enum was always the migration, and there is nothing to migrate.
 - [`domains/submission/_SubmissionDocumentation.md` §2](../../src/domains/submission/_SubmissionDocumentation.md) — the northstar path, the status ladder, the point of no return
 - [`shared/email/_EmailDocumentation.md`](../../src/shared/email/_EmailDocumentation.md) — the nine messages and which exist
 - [`domains/settings/_SettingsDocumentation.md`](../../src/domains/settings/_SettingsDocumentation.md) — the timer taxonomy
-- [`_NomenclatureLaw.md`](../../_NomenclatureLaw.md) — the settled vocabulary and how it's spelled
+- [`_NomenclatureLaw.md`](../../laws/_NomenclatureLaw.md) — the settled vocabulary and how it's spelled
 - [OPERATIONS.md](../../OPERATIONS.md) — Phase 0 in detail

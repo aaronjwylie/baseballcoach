@@ -3,7 +3,7 @@
 **Date:** 2026-08-05
 **Status:** accepted and built
 **Amends:** [PRINCIPLES §7b](../../PRINCIPLES.md), [structure.md §4/§5](../design/structure.md),
-[_NomenclatureLaw §1/§2/§5](../../_NomenclatureLaw.md), CLAUDE.md §5/§8/§12 — all of which
+[_NomenclatureLaw §1/§2/§5](../../laws/_NomenclatureLaw.md), CLAUDE.md §5/§8/§12 — all of which
 said storage lived in one shared file.
 
 ## Context

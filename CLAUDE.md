@@ -958,7 +958,7 @@ doc's table carries no `(not built)` markers for the first time.
 
 ### Naming
 
-**Specified in [`_NomenclatureLaw.md`](_NomenclatureLaw.md)** — the one home for how things
+**Specified in [`laws/_NomenclatureLaw.md`](laws/_NomenclatureLaw.md)** — the one home for how things
 are spelled, superseding `structure.md` §6 on 2026-08-01. Adopted from the WRLD sandbox and
 rebuilt around this product's own nouns.
 
@@ -1126,10 +1126,10 @@ For anything ambiguous: **the accepted proposal (v4) is the source of truth for 
 ## Related Documents
 
 - **[OPERATIONS.md](OPERATIONS.md)** — Account setup, database + storage provisioning, admin seeding, webhook configuration, Resend domain, Vercel, DNS, go-live checklist, and the operator workflow _(being swept to match the pivot as each piece is built)_
-- **[PRINCIPLES.md](PRINCIPLES.md)** — how this codebase is built: the rules the structure rests on
-- **[_NomenclatureLaw.md](_NomenclatureLaw.md)** — how things are spelled: casing, the type family, the settled words, the retired ones
+- **[PRINCIPLES.md](PRINCIPLES.md)** — the constitution: *why* we build this way. One per project, outranks the laws
+- **[laws/](laws/)** — six laws, copied verbatim between projects: structure · nomenclature · security · verification · commerce · design
+- **[documentation/](documentation/)** — this project's instance of each law. **Start at [documentation/README.md](documentation/README.md)** for the map
 - **[docs/design/rollout.md](docs/design/rollout.md)** — the route from what's deployed to the northstar pipeline, with phases, dependencies, and red flags
-- **[docs/design/structure.md](docs/design/structure.md)** — the layout, segments, dependency rules, and naming
 - **[docs/design/northstar/](docs/design/northstar/)** — the pipeline as it should be: every step, substep, trail row and message. Edit `northstar.py`, then run `build.py`
 - **`src/domains/*/_XxxDocumentation.md`** — per-slice: northstar, honest current state, and the dated decision trail. Read the slice's doc before changing the slice
 - **[docs/decisions/](docs/decisions/)** — ADRs recording where and why the implementation departs from this document

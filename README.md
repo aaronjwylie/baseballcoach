@@ -12,6 +12,11 @@ Built with **Next.js 16** (App Router, Turbopack), React 19, Tailwind v4,
 Blob in prod). Payments on Stripe; transactional mail on Resend. No Airtable, no
 Mux, no external automation — the app is the system of record and the glue.
 
+## The governing documents
+
+**Read [`documentation/README.md`](documentation/README.md) first** — it maps the six laws to this
+project's instance of each. `PRINCIPLES.md` sits above them and answers *why*.
+
 ## The flow
 
 ```
@@ -39,7 +44,7 @@ NIGHTLY
 | --- | --- |
 | What a submission's whole life looks like | [`_SubmissionDocumentation.md` §2](src/domains/submission/_SubmissionDocumentation.md) — seventeen stages, the sixteen-rung ladder, and what each stage keeps when it fails partway |
 | Why the code is shaped this way | [PRINCIPLES.md](PRINCIPLES.md) |
-| How things are spelled | [`_NomenclatureLaw.md`](_NomenclatureLaw.md) — the settled *intake / response* vocabulary, and the retired words |
+| How things are spelled | [`_NomenclatureLaw.md`](laws/_NomenclatureLaw.md) — the settled *intake / response* vocabulary, and the retired words |
 | Where files go | [`docs/design/structure.md`](docs/design/structure.md) |
 | What still has to happen to go live | [`docs/design/rollout.md`](docs/design/rollout.md) |
 | Why a decision was made | [`docs/decisions/`](docs/decisions/) |
