@@ -287,7 +287,7 @@ The 30-second version:
 src/
 ├── app/        Next.js routes + API handlers — thin
 ├── domains/    submission · checkout · verification · payment · upload ·
-│               feedback · account · coach · settings · landing
+│               feedback · operator · settings · landing
 └── shared/     the domain-less floor
 ```
 

@@ -18,7 +18,6 @@ import {
   type FileSet,
   type Focus,
   assigneeFor,
-  assignSubmissionTranslator,
 } from "@/domains/submission";
 import { storage, coachImageKey } from "@/shared/storage";
 import { languagesForChoice, readLanguageChoice } from "@/domains/submission/model/submission";
@@ -168,39 +167,6 @@ export async function assignCoachAction(formData: FormData): Promise<void> {
   revalidatePath("/admin");
 }
 
-/**
- * Pick who translates one leg. Admin-only.
- *
- * Guarded on the rung as well as the role, for the same reason
- * `assignCoachAction` is: the UI hides the control once the work has gone out,
- * but a stale tab can still post — and pulling a submission out from under a
- * translator who has already been emailed it is exactly what the UI guard
- * cannot cover.
- */
-export async function assignTranslatorAction(formData: FormData): Promise<void> {
-  await requireRole("admin");
-  const submissionId = String(formData.get("submissionId") ?? "");
-  const operatorId = String(formData.get("operatorId") ?? "");
-  const leg = String(formData.get("leg") ?? "");
-  if (!submissionId || !operatorId) return;
-  if (leg !== "intake_translation" && leg !== "feedback_translation") return;
-
-  const submission = await getSubmission(submissionId);
-  if (!submission) return;
-
-  // Each leg is staffed from the rung before it, or re-staffed from its own —
-  // a second look at the dropdown before sending is ordinary.
-  const allowed =
-    leg === "intake_translation"
-      ? submission.status === "assigned" ||
-        submission.status === "intake_translator_assigned"
-      : submission.status === "awaiting_approval" ||
-        submission.status === "feedback_translator_assigned";
-  if (!allowed) return;
-
-  await assignSubmissionTranslator(submissionId, operatorId, leg);
-  revalidatePath("/admin");
-}
 
 /**
  * Hand a submission to its assigned coach: email them the customer's details and

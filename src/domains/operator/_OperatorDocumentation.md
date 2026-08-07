@@ -22,6 +22,62 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
+## The folder does not split — 2026-08-06
+
+The obvious reading of this slice is that it holds two things: **logging in**
+(~630 lines) and **the people who do the work** (~1000). It looks like two
+domains wearing one coat, and the question has come up more than once.
+
+**It cannot be two domains, and the reason is one line of SQL.**
+
+`listCoaches()` is an inner join across `operator` and `operator_profile` — the
+login row for name and email, the profile row for languages and specialties.
+Split those tables into separate domains and that query cannot be written: one
+side would be reading the other's tables, which is precisely the rule
+`domains/coach` was dissolved for breaking (ADR 018 §5). A join needs both
+tables in one query, and there is no API boundary that survives that.
+
+So the seam is real but it is **not a folder boundary**. It is carried three
+other ways instead:
+
+| the seam | how it is enforced |
+| --- | --- |
+| passwords never leave one file | `operatorCredentialApi.ts` is the only file in `src/` that reads `operatorTable.passwordHash` — greppable in one line |
+| the secure check lives near the data | `dal.ts`; `proxy.ts` is optimistic and never the sole defence |
+| roles are answered, not compared | `HOME_FOR_ROLE` / `CAN_BE_ASSIGNED` are exhaustive `Record`s, so a fourth role is a compile error |
+
+If the profile fields ever stop being shared — a translator needing something a
+coach's row cannot express — the join stops being the constraint and this
+decision should be revisited. It is a constraint, not a preference.
+
+## Coach and translator get their own files — 2026-08-06
+
+For one day, `coachApi.ts` held `listTranslators()` and `coachActions.ts` held
+`assignTranslatorAction`. A file named for one role holding another role's verbs
+is the one-stem violation `_NomenclatureLaw.md` §2 exists to catch, and it
+matters more here than usual: **the two roles are genuinely similar**, which is
+exactly when a reader needs the filename to say which one they are looking at.
+
+Now:
+
+```
+operatorProfileApi.ts   the join + the role filter — what coach and translator share
+coachApi.ts             coaches
+translatorApi.ts        translators
+translatorActions.ts    the admin picking one
+```
+
+`profileQuery()` is private to `operatorProfileApi`. The two role files call
+`listByRole` / `getByRole` and never touch a table, so the join has one home
+even though three files depend on it.
+
+**The role filter is explicit, and that was a bug fix.** The join alone used to
+be the filter — an admin has no profile, so with two roles "has a profile" and
+"is a coach" were the same set. A translator broke it: they carry languages too,
+so every translator would have appeared in the coach dropdown. A shape that
+happens to filter correctly is not a filter; it is a coincidence with a shelf
+life.
+
 ## The password stops at one file — 2026-08-06
 
 `api/operatorApi.ts` split in two. The record — `listAdminEmails`,

@@ -47,6 +47,14 @@ Read top to bottom, that's the business: *someone tells us about a player, prove
 email, uploads their clips, pays, and a coach responds.*
 That's rule #3 working — the tree names the domain, not the tech.
 
+**`operator` is the one that looks like two.** It holds logging in (~630 lines) and the
+people who do the work (~1000), and the split looks obvious until you try it: `listCoaches()`
+is an inner join across `operator` and `operator_profile`, and a join needs both tables in one
+query. Separate domains would mean one reading the other's tables — the rule `domains/coach`
+was dissolved for breaking. The seam is carried by file boundaries instead
+([`_OperatorDocumentation.md`](../../src/domains/operator/_OperatorDocumentation.md)), and it
+is a constraint rather than a preference: if the profile fields ever stop being shared, revisit it.
+
 **`submission` is the noun every other domain orbits.** `checkout` opens one, `verification`
 unlocks it, `upload` attaches files to one, `payment` marks it paid, `feedback` completes
 one. They import its barrel; it imports none of

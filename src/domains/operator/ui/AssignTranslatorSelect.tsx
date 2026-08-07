@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { assignTranslatorAction } from "../api/coachActions";
+import { assignTranslatorAction } from "../api/translatorActions";
 
 /**
  * Choosing who translates one leg — the translator's `AssignCoachSelect`.

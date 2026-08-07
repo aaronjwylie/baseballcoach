@@ -39,19 +39,19 @@ export type {
 */
 export {
   listCoaches,
-  listTranslators,
-  getAssignee,
   getCoachByOperatorId,
   getCoach,
   createCoach,
   updateCoach,
   noteCoachCollected,
 } from "./api/coachApi";
+export { listTranslators, getTranslator } from "./api/translatorApi";
+export { assignTranslatorAction } from "./api/translatorActions";
+export { getAssignee } from "./api/operatorProfileApi";
 export {
   createCoachAction,
   updateCoachAction,
   assignCoachAction,
-  assignTranslatorAction,
   notifyCoachAction,
   type CoachFormState,
 } from "./api/coachActions";
