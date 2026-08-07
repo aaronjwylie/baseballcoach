@@ -54,3 +54,52 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/**
+ * Buttons feel like buttons.
+ *
+ * **Tailwind v4's preflight sets `cursor: default` on `button`**, which is the
+ * CSS spec's own default and reliably reads as "not clickable" to anyone who
+ * has used a website. Restored here rather than as a class, because nineteen
+ * raw `<button>` elements across the admin screens never pass through
+ * `shared/ui/Button` — a class would have fixed the ones that were already fine.
+ *
+ * The press is one pixel down. It is enough to feel and small enough that a
+ * button inside a row does not shift what is around it; anything larger reads
+ * as the layout breaking rather than as the control responding.
+ *
+ * `:disabled` deliberately gets neither: a control that presses and does
+ * nothing is the thing we spent today removing.
+ */
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/*
+  A press is a state change, not an animation — it should land the instant the
+  mouse goes down. Transitioning `transform` here would put a lag between the
+  click and the feedback, which is the opposite of what this is for.
+*/
+button {
+  transition-property: color, background-color, border-color, opacity;
+  transition-duration: 150ms;
+}
+
+/*
+  Someone who has asked for less motion still gets the feedback; a 1px shift is
+  not what that setting is about, but honouring it costs nothing and the border
+  darkening carries the same information.
+*/
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled):active {
+    transform: none;
+  }
+}

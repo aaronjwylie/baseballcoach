@@ -210,6 +210,19 @@ export default async function AdminHomePage({
               <Link
                 key={t.key}
                 href={href}
+                /*
+                  **No prefetch.** Each tab is its own entry in the client Router
+                  Cache, keyed by search params. `revalidatePath("/admin")`
+                  clears the *server* cache and `router.refresh()` re-fetches the
+                  tab you are standing on — neither reaches a sibling tab whose
+                  payload was prefetched on hover before the change.
+
+                  So bumping a submission back off `complete` left it listed
+                  under Completed until a hard reload. These are ten cheap links
+                  on one screen; fetching them on click costs a few milliseconds
+                  and removes a whole class of "the queue is lying to me".
+                */
+                prefetch={false}
                 className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive
                     ? "border-ink bg-ink text-surface"
