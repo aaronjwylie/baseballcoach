@@ -61,7 +61,7 @@ consolation:
 | the secure check lives near the data | `dal.ts`; `proxy.ts` is optimistic and never the sole defence |
 | roles are answered, not compared | `HOME_FOR_ROLE` / `CAN_BE_ASSIGNED` are exhaustive `Record`s, so a fourth role is a compile error |
 
-The general lesson is now [PRINCIPLES §7c](../../../PRINCIPLES.md): a constraint that arrives
+The general lesson is now [`laws/_StructureLaw.md`](../../../laws/_StructureLaw.md) §5b: a constraint that arrives
 from the schema deserves one round of *why is the schema like that* before it is written down as
 an architectural conclusion.
 

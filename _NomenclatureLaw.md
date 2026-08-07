@@ -217,7 +217,7 @@ changed by a rename.
 
 This does **not** mean role-named files are wrong. `coachApi.ts` is right when it holds what is
 genuinely a coach's alone — the public bio, the landing-page photo. It is wrong when it holds
-the machinery both roles use, and `PRINCIPLES.md` §8 has the diagnostic for telling those apart.
+the machinery both roles use, and [`laws/_StructureLaw.md`](laws/_StructureLaw.md) §3a has the diagnostic for telling those apart.
 
 ### Exhaustive maps over lists
 

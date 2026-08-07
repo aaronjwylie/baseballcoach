@@ -52,7 +52,7 @@ who do the work (~1000). The join between `operator` and `operator_profile` genu
 *the record* to *the profile* — a join needs both tables in one query. **It does not bind
 authentication**, which joins nothing and reads one column, and saying otherwise was an
 overreach corrected on 2026-08-06. Splitting an `account` domain out needs a schema change, not
-a rule change — see [PRINCIPLES §7c](../../PRINCIPLES.md) and
+a rule change — see [`laws/_StructureLaw.md`](../../laws/_StructureLaw.md) §5b and
 [`_OperatorDocumentation.md`](../../src/domains/operator/_OperatorDocumentation.md).
 
 **`submission` is the noun every other domain orbits.** `checkout` opens one, `verification`
@@ -204,9 +204,9 @@ constraint arriving from the schema deserves one round of *why is the schema lik
 it becomes an architectural conclusion; a constraint nobody has tried to remove is an assumption
 wearing a rule's clothes.
 
-The reasoning, and the worked example that produced it, are in
-[PRINCIPLES §7c](../../PRINCIPLES.md) — `domains/operator` was told twice it could not split, on
-an argument that turned out not to reach the question being asked.
+The rule, and the worked example that produced it, are now
+[`laws/_StructureLaw.md`](../../laws/_StructureLaw.md) §5b — `domains/operator` was told twice it
+could not split, on an argument that turned out not to reach the question being asked.
 
 ---
 
