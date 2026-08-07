@@ -31,3 +31,5 @@ export {
   stepNumber,
   type CheckoutStep,
 } from "./model/steps";
+export { confirmPaymentForFlow } from "./api/confirmPayment";
+export { CheckoutFlow } from "./ui/CheckoutFlow";

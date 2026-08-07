@@ -58,14 +58,22 @@ pattern worth copying.**
 
 ### 1d · Dependency enforcement
 
-**Convention and review**, not lint. At nine domains and one developer the graph is small enough to
-hold in your head, and the two rules that actually bite — the declaration plane and the client
-boundary — fail loudly at build time rather than silently: a barrel cycle produces an `undefined`
-table inside Drizzle, and a client component importing a domain barrel fails the build with the
-Postgres client in the browser bundle.
+**Mechanical, since 2026-08-06** — [`scripts/check-structure.mjs`](../scripts/check-structure.mjs),
+gate 3 of `npm run build`. It enforces three things: a cross-domain deep import is legal only from a
+`"use client"` file or toward a declaration, the domain graph is acyclic, and nothing imports upward.
 
-**What would change it:** a second developer, or the first time a violation ships rather than being
-caught by the build.
+It replaced "convention and review", which was honest and was not working. Its first run found **a
+domain cycle and seven unsanctioned deep imports** that had compiled, linted and deployed for weeks.
+
+**Why they hid is the interesting part.** A deep cross-domain import is *sometimes* legal — a client
+component must import `model/` directly or the barrel drags the Postgres client into the browser. So
+twenty deep imports existed of which most were correct, and **nothing distinguished a violation from
+an exception by reading it.** An exception nobody can identify is an exception that launders
+violations.
+
+**And the cause was not laziness.** Every one of the seven was a case where the barrel had no
+matching export — people reached deep because the boundary had no door. The fix was five barrel
+exports, not five scoldings.
 
 ### 1e · The exceptions, named
 
@@ -88,6 +96,7 @@ caught by the build.
 | `shared/auth` | the JWT crypto seam. `operator` owns the *payload shape*; the signing does not belong to it, because `proxy.ts` verifies without importing a domain |
 | `shared/config` | the only place `process.env` is read, split by audience (§2) |
 | `shared/ui` | primitives with no domain knowledge |
+| `shared/upload` | the browser's upload transport. Three domains reached for it — `checkout`, `feedback`, `upload` — which is the `shared/` test answering itself, and was putting a cycle in the graph |
 
 **`shared/` is not a junk drawer.** Nothing here knows what a Submission is.
 
@@ -102,6 +111,7 @@ caught by the build.
   `operatorApi`. Defensible — the operator "row" is a join of two tables rather than one row — but it
   means the rule reads differently in two domains, which is worth either a mapper or a sentence in the
   slice doc.
+- ✅ **The graph is acyclic**, enforced. It wasn't until 2026-08-06: `submission → feedback → submission`, plus `feedback → upload → feedback`.
 - 🔶 **`operator` holds two concerns** — authentication and the people who do the work. Not a violation
   of any rule, and that is the problem: see [`_StructureLaw §5b`](../laws/_StructureLaw.md). It splits
   once `password_hash` moves to its own table.

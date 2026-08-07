@@ -1,7 +1,7 @@
 "use client";
+import type { ReactNode } from "react";
 
 import { ButtonLink } from "@/shared/ui";
-import { FeedbackAccess } from "@/domains/feedback/ui/FeedbackAccess";
 import type { PublicSubmission } from "../model/publicSubmission";
 
 /**
@@ -15,9 +15,20 @@ import type { PublicSubmission } from "../model/publicSubmission";
 export function StatusList({
   submissions,
   email,
+  feedbackAccess,
 }: {
   submissions: PublicSubmission[];
   email: string;
+  /**
+   * What to show once any submission has feedback waiting.
+   *
+   * **Passed in, not imported.** Rendering it here directly made
+   * `submission` depend on `feedback`, which already depends on `submission` —
+   * a cycle the graph forbids (`_StructureLaw` §5.3) and nothing could see
+   * until `check:structure` existed. Composition belongs to the layer above;
+   * this component says *where* it goes and `app/` says *what* it is.
+   */
+  feedbackAccess?: ReactNode;
 }) {
   if (submissions.length === 0) {
     return (
@@ -42,10 +53,8 @@ export function StatusList({
           <StatusRow key={index} submission={submission} />
         ))}
       </ul>
-      {submissions.some((s) => s.hasFeedback) && (
-        <div className="mt-6">
-          <FeedbackAccess email={email} />
-        </div>
+      {submissions.some((s) => s.hasFeedback) && feedbackAccess && (
+        <div className="mt-6">{feedbackAccess}</div>
       )}
     </>
   );

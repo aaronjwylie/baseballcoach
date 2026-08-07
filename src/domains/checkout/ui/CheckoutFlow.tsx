@@ -12,7 +12,7 @@ import { UploadPanel } from "@/domains/upload/ui/UploadPanel";
 import type {
   UploadMode,
   UploadedFile,
-} from "@/domains/upload/ui/uploadTransport";
+} from "@/shared/upload";
 import { PaymentPanel } from "@/domains/payment/ui/PaymentPanel";
 import type { CreatedIntent } from "@/domains/payment/api/paymentApi";
 import {

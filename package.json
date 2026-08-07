@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/check-names.mjs && node scripts/check-doctrine.mjs && node scripts/migrate-on-deploy.mjs && next build",
+    "build": "node scripts/check-names.mjs && node scripts/check-doctrine.mjs && node scripts/check-structure.mjs && node scripts/migrate-on-deploy.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
@@ -19,7 +19,8 @@
     "stripe": "tsx --tsconfig tsconfig.json scripts/stripe-webhook.ts",
     "db:baseline": "tsx --tsconfig tsconfig.json scripts/baseline-migrations.ts",
     "check:names": "node scripts/check-names.mjs",
-    "check:doctrine": "node scripts/check-doctrine.mjs"
+    "check:doctrine": "node scripts/check-doctrine.mjs",
+    "check:structure": "node scripts/check-structure.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

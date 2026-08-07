@@ -3,7 +3,7 @@ import { ButtonLink, Container } from "@/shared/ui";
 import { site, formatPrice } from "@/shared/config/site";
 import { getSettings } from "@/domains/settings";
 import { resolveFlowState } from "@/domains/checkout";
-import { CheckoutFlow } from "@/domains/checkout/ui/CheckoutFlow";
+import { CheckoutFlow } from "@/domains/checkout";
 
 export const metadata: Metadata = {
   title: "Get started",

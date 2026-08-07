@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { env } from "@/shared/config/env";
-import { confirmPaymentForFlow } from "@/domains/checkout/api/confirmPayment";
+import { confirmPaymentForFlow } from "@/domains/checkout";
 import { clearFlowSession } from "@/domains/submission";
 
 /**

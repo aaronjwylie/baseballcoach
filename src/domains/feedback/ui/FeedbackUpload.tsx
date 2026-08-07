@@ -7,7 +7,7 @@ import {
   uploadFile,
   type UploadEndpoints,
   type UploadMode,
-} from "@/domains/upload/ui/uploadTransport";
+} from "@/shared/upload";
 // A client component imports the slice's client-safe model directly, not the
 // barrel — the barrel re-exports Postgres code that can't reach the browser.
 import { formatFileSize } from "@/domains/submission/model/submissionFile";

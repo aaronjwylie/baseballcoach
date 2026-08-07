@@ -33,3 +33,4 @@ export {
   resolveSubmission,
 } from "./api/feedbackApi";
 export { FeedbackUpload } from "./ui/FeedbackUpload";
+export { FeedbackAccess } from "./ui/FeedbackAccess";

@@ -5,7 +5,8 @@ import {
   lookupPublicSubmissions,
   verifyStatusToken,
 } from "@/domains/submission";
-import { StatusList } from "@/domains/submission/ui/StatusList";
+import { StatusList } from "@/domains/submission";
+import { FeedbackAccess } from "@/domains/feedback";
 
 export const metadata: Metadata = {
   title: "Your submissions",
@@ -75,7 +76,11 @@ export default async function StatusByTokenPage({
         </div>
 
         <div className="mt-10">
-          <StatusList submissions={submissions} email={email} />
+          <StatusList
+            submissions={submissions}
+            email={email}
+            feedbackAccess={<FeedbackAccess email={email} />}
+          />
         </div>
 
         <p className="mt-8 text-center text-xs text-ink-muted">

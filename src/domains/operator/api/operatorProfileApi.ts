@@ -24,7 +24,7 @@ import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
 import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
 import type { Role } from "../model/operator";
-import type { Focus } from "@/domains/submission/model/submission";
+import type { Focus } from "@/domains/submission";
 import { createOperator, setOperatorPassword } from "./operatorCredentialApi";
 
 /** The one place two rows become one `OperatorProfile`. */

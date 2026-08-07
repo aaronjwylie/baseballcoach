@@ -9,7 +9,7 @@ import {
   describeAllowedTypes,
   isAllowedFilename,
 } from "../model/fileTypes";
-import { uploadFile, type UploadMode, type UploadedFile } from "./uploadTransport";
+import { uploadFile, type UploadMode, type UploadedFile } from "@/shared/upload";
 
 /**
  * Step three — the customer's files.

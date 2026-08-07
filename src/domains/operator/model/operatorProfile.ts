@@ -21,7 +21,7 @@
  * filled in yet*, and it keeps the admin out of every assignment list by the
  * shape of the query rather than by a check someone has to remember.
  */
-import type { Focus, LanguageChoice } from "@/domains/submission/model/submission";
+import type { Focus, LanguageChoice } from "@/domains/submission";
 
 export interface OperatorProfile {
   /** The operator's id. They *are* an operator, so there is only the one. */

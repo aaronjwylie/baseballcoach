@@ -22,7 +22,7 @@ import { FOCUS_OPTIONS, type Focus } from "@/domains/submission";
 import {
   languagesForChoice,
   readLanguageChoice,
-} from "@/domains/submission/model/submission";
+} from "@/domains/submission";
 import { DEFAULT_LANGUAGE_CHOICE } from "../model/operatorProfile";
 import {
   createProfiledOperator,

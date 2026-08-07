@@ -15,7 +15,7 @@ import {
   isWithCoach,
 } from "@/domains/submission";
 import { FeedbackUpload } from "@/domains/feedback";
-import type { UploadMode } from "@/domains/upload/ui/uploadTransport";
+import type { UploadMode } from "@/shared/upload";
 
 export const metadata: Metadata = {
   title: "Coach portal",
