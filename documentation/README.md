@@ -6,7 +6,7 @@ the wrong file.
 
 | Law (`laws/`) | Documentation (here) | Answers |
 |---|---|---|
-| [`_StructureLaw`](../laws/_StructureLaw.md) | [`_StructureDocumentation`](_StructureDocumentation.md) | our layers, our nine domains, our exceptions |
+| [`_StructureLaw`](../laws/_StructureLaw.md) | [`_StructureDocumentation`](_StructureDocumentation.md) | our layers, our ten domains, our exceptions |
 | [`_NomenclatureLaw`](../laws/_NomenclatureLaw.md) | [`_NomenclatureDocumentation`](_NomenclatureDocumentation.md) | the glossary — what "intake" means here |
 | [`_SecurityLaw`](../laws/_SecurityLaw.md) | [`_SecurityDocumentation`](_SecurityDocumentation.md) | our threat model, boundaries, open findings |
 | [`_VerificationLaw`](../laws/_VerificationLaw.md) | [`_VerificationDocumentation`](_VerificationDocumentation.md) | our gate roster and what each has caught |

@@ -78,15 +78,22 @@ different part of speech, no ambiguity at the call site.
 ## 2 · Where we are now — 2026-08-06
 
 - ✅ **`intake` / `feedback` runs end to end** — file kinds, statuses, folders, storage paths, copy.
-- ✅ **`operator` covers all three roles**; there is no `user` and no `account` in the code.
+- ✅ **`operator` covers all three roles**; there is no `user` in the code. **`account` is now a
+  domain of its own** — the ability to sign in, as distinct from the person who signs in.
 - ✅ **No plurals anywhere in storage.** Tables are singular, named for what one row is.
 - ✅ **`check:names` enforces** the one rule that a compiler cannot: a table's export name never
   appears as a word.
-- 🔶 **`Coach` is a role wearing an entity's name.** It describes *an operator with a profile*, which a
-  translator also is — so `translatorApi` imports `Coach` to say what it returns. See
-  [`_NomenclatureLaw §4`](../laws/_NomenclatureLaw.md); the rename is scoped and not yet done.
-- 🔶 **`coachEmail.ts`** holds two messages that are about hand-offs, not about coaching, and has no
-  translator counterpart. Same root cause.
+- ✅ **`Coach` the type is gone — it was a role wearing an entity's name.** The shape is
+  `OperatorProfile`, which is what a coach and a translator both are; what separates them is `role`,
+  a column ([`_NomenclatureLaw §4`](../laws/_NomenclatureLaw.md)).
+- ✅ **`coachEmail.ts` is `handoffEmail.ts`.** Neither of its messages was about coaching — one says
+  work is waiting, the other says it was collected, and both are true of a translator word for word.
+  The recipient's role is a parameter now.
+- ✅ **One stem per domain.** `account` says *credential* throughout; the SQL name stays
+  `operator_credential` so it pairs with `operator_profile`, which §2 explicitly allows.
+- 🔶 **`in_review` keeps the word *review*** even though §1d pins it to a coach assessing a
+  submission. It is the one rung a coach and an admin both say out loud, and renaming a status is a
+  migration — deliberate, not overlooked.
 
 ---
 

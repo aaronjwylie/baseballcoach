@@ -22,16 +22,16 @@ Invariants:
 - A wrong-role operator is redirected to *their* portal, not to `/login` — they
   are authenticated, just in the wrong place.
 
-## The folder splits — but it needs a migration first — 2026-08-06
+## The folder split — 2026-08-06
 
-**Superseding what stood here this morning**, which said the folder could not split and gave a
-reason that did not reach the question.
+**Done.** `domains/account` exists; this slice no longer holds a password, a session, or a login
+form. What follows is the reasoning, kept because the argument was wrong twice before it was right.
 
-The reason given was the join: `listCoaches()` reads `operator` and `operator_profile` in one
-query, so those two cannot be separate domains. **That part is still true.** It binds *the
-record* to *the profile*, and no API boundary survives a join.
+The first answer was that the folder *could not* split, because `listCoaches()` reads `operator` and
+`operator_profile` in one query. **That part is still true** — it binds *the record* to *the
+profile*, and no API boundary survives a join.
 
-It says nothing about authentication. **Authentication joins nothing** — it reads one column,
+It said nothing about authentication. **Authentication joins nothing** — it reads one column,
 `passwordHash`. The only thing holding it in this slice is that the column sits on the operator
 table, and that is a schema decision rather than a law. Stated as a constraint twice, it was an
 assumption both times.
@@ -52,14 +52,19 @@ Splitting `password_hash` into `operator_credential` is better schema regardless
 today every `SELECT *` on an operator carries a hash into memory for a column almost nothing
 reads. And once it is its own table, `domains/account` owns it and breaks no rule.
 
-**Until that migration exists, the seam is carried by file boundaries** — and those are real, not
-consolation:
+The migration is `0013`, and it is applied. The seam that file boundaries used to carry is a folder
+boundary now:
 
-| the seam | how it is enforced |
-| --- | --- |
-| passwords are not in this domain at all | they live in `account`, on `credentialTable`, behind their own barrel — the file boundary became a folder one |
-| the secure check lives near the data | `dal.ts`; `proxy.ts` is optimistic and never the sole defence |
-| roles are answered, not compared | `HOME_FOR_ROLE` / `CAN_BE_ASSIGNED` are exhaustive `Record`s, so a fourth role is a compile error |
+| | Where it went | |
+| --- | --- | --- |
+| the password, bcrypt, the session, the guards | **`account`** | none of it is in this domain any more, in any file |
+| login, logout, change-password, forgot-password | **`account`** | including all four forms |
+| `HOME_FOR_ROLE`, `OperatorSession` | **`account`** | where signing in sends you, and what a session carries |
+| `ROLES`, `Role`, `CAN_BE_ASSIGNED` | **stayed** | a role is a kind of operator, not a permission — see the entry below |
+| the operator record, profiles, coaches, translators, assignment | **stayed** | this domain's actual subject |
+
+`CAN_BE_ASSIGNED` is still an exhaustive `Record<Role, boolean>`, so a fourth role is a compile
+error here rather than a silent default.
 
 The general lesson is now [`laws/_StructureLaw.md`](../../../laws/_StructureLaw.md) §5b: a constraint that arrives
 from the schema deserves one round of *why is the schema like that* before it is written down as
