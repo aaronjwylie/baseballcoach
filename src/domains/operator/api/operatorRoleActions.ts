@@ -9,7 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/domains/account";
 import { ROLES, type Role } from "../model/operatorRoleEnum";
-import { setRoles } from "./operatorRoleApi";
+import { setGrants } from "./operatorRoleApi";
 
 const isRole = (value: string): value is Role =>
   (ROLES as readonly string[]).includes(value);
@@ -21,16 +21,25 @@ export async function setRolesAction(formData: FormData): Promise<void> {
   if (!operatorId) return;
 
   /*
+    Two fields, so holding and being available arrive together and are applied
+    together — a half-saved change between "is a coach" and "is taking work" is
+    not a state worth being able to reach.
+
     Unknown values are dropped rather than rejected. The form only ever submits
-    the three, so anything else arrived by hand — and silently ignoring it is
-    safer than trusting it into a `Role` cast.
+    the three, so anything else arrived by hand, and ignoring it is safer than
+    trusting it into a `Role` cast.
   */
-  const roles = formData.getAll("roles").map(String).filter(isRole);
+  const active = formData.getAll("active").map(String).filter(isRole);
+  const paused = formData.getAll("paused").map(String).filter(isRole);
+  const grants = [
+    ...active.map((role) => ({ role, isActive: true })),
+    ...paused.map((role) => ({ role, isActive: false })),
+  ];
 
-  await setRoles(operatorId, roles, session.operatorId);
+  await setGrants(operatorId, grants, session.operatorId);
 
-  for (const kind of ["admins", "coaches", "translators"]) {
-    revalidatePath(`/admin/onboarding/${kind}`);
-    revalidatePath(`/admin/onboarding/${kind}/${operatorId}`);
+  for (const kind of ["all", "admins", "coaches", "translators"]) {
+    revalidatePath(`/admin/operators/${kind}`);
+    revalidatePath(`/admin/operators/${kind}/${operatorId}`);
   }
 }

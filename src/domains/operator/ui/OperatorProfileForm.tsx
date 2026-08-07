@@ -28,11 +28,12 @@ import type { OperatorProfileFormState } from "../api/operatorProfileActions";
  * "active" can be turned off, which is two conditionals, not two files.
  */
 export function OperatorProfileForm({
-  role,
+  roles,
   action: submitAction,
   existing,
 }: {
-  role: Role;
+  /** Every kind this person holds — the fields are the union of what they need. */
+  roles: Role[];
   action: (
     state: OperatorProfileFormState,
     formData: FormData,
@@ -47,15 +48,17 @@ export function OperatorProfileForm({
   const editing = existing !== undefined;
   // Only a coach is shown publicly, so only a coach is asked for the two fields
   // that exist for the public site.
-  const isPublic = role === "coach";
+  const holds = (role: Role) => roles.includes(role);
+  const isPublic = holds("coach");
   /*
     Specialties are the coaching focuses — Hitting, Pitching and the rest. They
     describe work an admin does not do, so an admin is not asked. A translator
     keeps them: which focus a submission is about affects the vocabulary they
     need, even though they are not the one reviewing it.
   */
-  const showSpecialties = role !== "admin";
-  const noun = role.charAt(0).toUpperCase() + role.slice(1);
+  const showSpecialties = holds("coach") || holds("translator");
+  const primary = roles[0] ?? "admin";
+  const noun = primary.charAt(0).toUpperCase() + primary.slice(1);
 
   return (
     <form action={action} className="space-y-4">
@@ -81,7 +84,7 @@ export function OperatorProfileForm({
         />
       </Field>
 
-      <Field label="Email" hint={`Their login for the ${role} portal`}>
+      <Field label="Email" hint="Their login">
         <input
           name="email"
           type="email"
@@ -97,7 +100,7 @@ export function OperatorProfileForm({
         hint={
           editing
             ? "Leave blank to keep the current one."
-            : `At least 8 characters. The ${role} can change it later.`
+            : "At least 8 characters. They can change it later."
         }
       >
         <input
@@ -134,9 +137,9 @@ export function OperatorProfileForm({
         hint={
           isPublic
             ? "What this coach reads. A submission is translated when it shares none with the customer."
-            : role === "translator"
-              ? "What this translator works between."
-              : "What this admin reads — so the portal can show who is able to talk to whom."
+            : holds("translator")
+              ? "What they work between."
+              : "What they read — so the portal can show who is able to talk to whom."
         }
         defaultChoice={
           existing
@@ -169,21 +172,14 @@ export function OperatorProfileForm({
         </>
       )}
 
-      {editing && (
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" name="isActive" defaultChecked={existing.isActive} />
-          Active — can sign in and be assigned work
-        </label>
-      )}
-
-      <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={pending}>
         {pending
           ? editing
             ? "Saving…"
             : "Adding…"
           : editing
             ? "Save changes"
-            : `Add ${role}`}
+            : `Add ${primary}`}
       </Button>
     </form>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/shared/ui";
 import { setRolesAction } from "../api/operatorRoleActions";
 import { ROLES, type Role } from "../model/operatorRoleEnum";
+import type { RoleGrant } from "../api/operatorRoleApi";
 
 const BLURB: Record<Role, string> = {
   admin: "Runs the platform — the queue, onboarding, settings.",
@@ -27,18 +28,35 @@ const BLURB: Record<Role, string> = {
  */
 export function OperatorRoleToggles({
   operatorId,
-  held,
+  grants,
 }: {
   operatorId: string;
-  held: Role[];
+  grants: RoleGrant[];
 }) {
-  const [roles, setRoles] = useState<Role[]>(held);
+  const [held, setHeld] = useState<RoleGrant[]>(grants);
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const router = useRouter();
 
-  const dirty =
-    roles.length !== held.length || roles.some((r) => !held.includes(r));
+  const key = (gs: RoleGrant[]) =>
+    [...gs].sort((a, b) => a.role.localeCompare(b.role))
+      .map((g) => `${g.role}:${g.isActive}`)
+      .join("|");
+  const dirty = key(held) !== key(grants);
+
+  const holds = (role: Role) => held.some((g) => g.role === role);
+  const activeIn = (role: Role) => held.find((g) => g.role === role)?.isActive ?? false;
+
+  function toggleHold(role: Role, on: boolean) {
+    setSaved(false);
+    setHeld((cur) =>
+      on ? [...cur, { role, isActive: true }] : cur.filter((g) => g.role !== role),
+    );
+  }
+  function toggleActive(role: Role, on: boolean) {
+    setSaved(false);
+    setHeld((cur) => cur.map((g) => (g.role === role ? { ...g, isActive: on } : g)));
+  }
 
   return (
     <form
@@ -52,8 +70,13 @@ export function OperatorRoleToggles({
       className="space-y-3"
     >
       <input type="hidden" name="operatorId" value={operatorId} />
-      {roles.map((role) => (
-        <input key={role} type="hidden" name="roles" value={role} />
+      {held.map((g) => (
+        <input
+          key={g.role}
+          type="hidden"
+          name={g.isActive ? "active" : "paused"}
+          value={g.role}
+        />
       ))}
 
       <ul className="space-y-2">
@@ -62,27 +85,41 @@ export function OperatorRoleToggles({
             <label className="flex items-start gap-2.5 text-sm">
               <input
                 type="checkbox"
-                checked={roles.includes(role)}
-                onChange={(e) => {
-                  setSaved(false);
-                  setRoles((current) =>
-                    e.target.checked
-                      ? [...current, role]
-                      : current.filter((r) => r !== role),
-                  );
-                }}
+                checked={holds(role)}
+                onChange={(e) => toggleHold(role, e.target.checked)}
                 className="mt-0.5"
               />
               <span>
                 <span className="font-medium capitalize text-ink">{role}</span>
                 <span className="block text-ink-muted">{BLURB[role]}</span>
+
+                {/*
+                  Availability is a second, nested decision — and only askable
+                  once they hold the kind. Pausing a coach is not the same act
+                  as removing them: the grant survives, its history survives,
+                  and they simply stop appearing as assignable.
+                */}
+                {holds(role) && role !== "admin" && (
+                  <label className="mt-1.5 flex items-center gap-2 text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={activeIn(role)}
+                      onChange={(e) => toggleActive(role, e.target.checked)}
+                    />
+                    <span className={activeIn(role) ? "text-ink" : "text-ink-muted"}>
+                      {activeIn(role)
+                        ? `Taking ${role === "coach" ? "submissions" : "translations"}`
+                        : "Paused — holds the role, cannot be assigned"}
+                    </span>
+                  </label>
+                )}
               </span>
             </label>
           </li>
         ))}
       </ul>
 
-      {roles.length === 0 && (
+      {held.length === 0 && (
         <p className="text-[13px] text-amber-700">
           With no roles they can still sign in, but there is nowhere for them to
           go until one is added back.

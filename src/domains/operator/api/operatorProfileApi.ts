@@ -23,6 +23,7 @@ import { db } from "@/shared/db";
 import { operatorTable } from "../model/operatorTable";
 import { operatorProfileTable } from "../model/operatorProfileTable";
 import { operatorRoleGrantTable } from "../model/operatorRoleGrantTable";
+import { grantsForMany, type RoleGrant } from "./operatorRoleApi";
 import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
 import type { Role } from "../model/operatorRoleEnum";
 import type { Focus } from "@/domains/submission";
@@ -34,12 +35,18 @@ import { grantRole } from "./operatorRoleApi";
 export function toProfile(
   operator: typeof operatorTable.$inferSelect,
   profile: typeof operatorProfileTable.$inferSelect,
+  /**
+   * Availability **for the kind that was asked about**, off the grant — not
+   * `operator.isActive`, which is whether they may sign in at all. A coach who
+   * is taking submissions and a translator who is not are the same person.
+   */
+  isActive: boolean,
 ): OperatorProfile {
   return {
     id: operator.id,
     email: operator.email,
     name: operator.name,
-    isActive: operator.isActive,
+    isActive,
     specialties: profile.specialties,
     languages: profile.languages,
     imageUrl: profile.imageUrl ?? undefined,
@@ -80,12 +87,34 @@ function grantedQuery() {
     );
 }
 
-/** Everyone holding one role, by name. */
+/**
+ * Everyone who can be **given** this kind of work right now.
+ *
+ * Active grants only — this is the assignment dropdown, and offering a paused
+ * coach there would make pausing decorative. Distinct from `listByRole`, which
+ * is the admin's roster and shows the paused too, because you cannot un-pause
+ * somebody you cannot see.
+ */
+export async function listAssignable(role: Role): Promise<OperatorProfile[]> {
+  const rows = await grantedQuery()
+    .where(
+      and(
+        eq(operatorRoleGrantTable.role, role),
+        eq(operatorRoleGrantTable.isActive, true),
+      ),
+    )
+    .orderBy(asc(operatorTable.name));
+  return rows.map((r) => toProfile(r.operator, r.operator_profile, true));
+}
+
+/** Everyone holding one role, paused included — the admin's roster. */
 export async function listByRole(role: Role): Promise<OperatorProfile[]> {
   const rows = await grantedQuery()
     .where(eq(operatorRoleGrantTable.role, role))
     .orderBy(asc(operatorTable.name));
-  return rows.map((r) => toProfile(r.operator, r.operator_profile));
+  return rows.map((r) =>
+    toProfile(r.operator, r.operator_profile, r.operator_role_grant.isActive),
+  );
 }
 
 /** One person, if they hold this role. Null if they don't — a coach id asked for as a translator is a miss, not a match. */
@@ -93,7 +122,21 @@ export async function getByRole(id: string, role: Role): Promise<OperatorProfile
   const [row] = await grantedQuery()
     .where(and(eq(operatorTable.id, id), eq(operatorRoleGrantTable.role, role)))
     .limit(1);
-  return row ? toProfile(row.operator, row.operator_profile) : null;
+  return row
+    ? toProfile(row.operator, row.operator_profile, row.operator_role_grant.isActive)
+    : null;
+}
+
+/**
+ * One operator by id, whatever they are — what the edit page loads.
+ *
+ * Deliberately not by role. Fetching by role was right when three lists meant
+ * three kinds of person, and became wrong the moment one person could be
+ * several: arriving from the admins tab must not hide that they are a coach.
+ */
+export async function getOperatorProfile(id: string): Promise<OperatorProfile | null> {
+  const [row] = await profileQuery().where(eq(operatorTable.id, id)).limit(1);
+  return row ? toProfile(row.operator, row.operator_profile, true) : null;
 }
 
 /**
@@ -104,7 +147,8 @@ export async function getByRole(id: string, role: Role): Promise<OperatorProfile
  */
 export async function getAssignee(id: string): Promise<OperatorProfile | null> {
   const [row] = await profileQuery().where(eq(operatorTable.id, id)).limit(1);
-  return row ? toProfile(row.operator, row.operator_profile) : null;
+  // No role in the question, so no per-kind availability to report.
+  return row ? toProfile(row.operator, row.operator_profile, true) : null;
 }
 
 /**
@@ -144,7 +188,7 @@ export async function createProfiledOperator(
     .from(operatorTable)
     .where(eq(operatorTable.id, operator.id))
     .limit(1);
-  return toProfile(row, profile);
+  return toProfile(row, profile, true);
 }
 
 /** What may be changed about someone, across both of their rows. */
@@ -202,4 +246,73 @@ export async function updateProfiledOperator(
   const updated = await getByRole(id, role);
   if (!updated) throw new Error(`${role} ${id} vanished mid-update`);
   return updated;
+}
+
+/**
+ * One operator as the Operators page shows them — the person, plus every kind
+ * they are and whether each is taking work.
+ *
+ * `isActive` on the base shape is per-*question*; this carries the whole set,
+ * because a row on the unfiltered list has no single role to report about.
+ */
+export interface OperatorListing extends OperatorProfile {
+  grants: RoleGrant[];
+  /**
+   * What this person is missing for a kind they hold.
+   *
+   * Onboarding an admin does not ask for specialties — an admin does not review
+   * footage. Add `coach` to that same person later and the specialties nobody
+   * asked for are suddenly load-bearing, with nothing prompting anyone. This is
+   * that prompt, computed rather than stored so it cannot go stale.
+   */
+  missing: string[];
+}
+
+/**
+ * The Operators list — everyone, or one kind.
+ *
+ * **The three tabs are filters over one list**, not three lists. A person
+ * holding several kinds is one row on the unfiltered view and appears again
+ * under each kind they hold; it is the same operator and the same profile
+ * throughout.
+ *
+ * Two queries rather than one per row: the people, then their grants.
+ */
+export async function listOperators(role?: Role): Promise<OperatorListing[]> {
+  const rows = role
+    ? await grantedQuery()
+        .where(eq(operatorRoleGrantTable.role, role))
+        .orderBy(asc(operatorTable.name))
+    : await profileQuery().orderBy(asc(operatorTable.name));
+
+  const seen = new Map<string, { operator: typeof operatorTable.$inferSelect; profile: typeof operatorProfileTable.$inferSelect }>();
+  for (const r of rows) seen.set(r.operator.id, { operator: r.operator, profile: r.operator_profile });
+
+  const byId = await grantsForMany([...seen.keys()]);
+
+  return [...seen.values()].map(({ operator, profile }) => {
+    const grants = byId.get(operator.id) ?? [];
+    // Availability for the kind being asked about; true when asking about none.
+    const forRole = role ? grants.find((g) => g.role === role)?.isActive : true;
+    const base = toProfile(operator, profile, forRole ?? true);
+    return { ...base, grants, missing: whatIsMissing(base, grants) };
+  });
+}
+
+/**
+ * What a kind needs that this person has not got.
+ *
+ * Deliberately not a boolean: the admin needs to know *which* field to go and
+ * fill, and "incomplete" without saying what is a prompt to go hunting.
+ */
+function whatIsMissing(person: OperatorProfile, grants: RoleGrant[]): string[] {
+  const holds = (role: Role) => grants.some((g) => g.role === role);
+  const gaps: string[] = [];
+  if (!person.languages.length) gaps.push("languages");
+  // Specialties are the coaching focuses. A translator needs them to know what
+  // vocabulary a submission calls for; an admin does not review anything.
+  if ((holds("coach") || holds("translator")) && !person.specialties.length) {
+    gaps.push("specialties");
+  }
+  return gaps;
 }

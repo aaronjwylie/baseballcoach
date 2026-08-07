@@ -54,8 +54,9 @@ async function savePhoto(id: string, formData: FormData): Promise<string | null>
 
 /** Which pages show this role, so a save is reflected without a hard reload. */
 function pathsFor(role: Role, id?: string): string[] {
-  const root = role === "coach" ? "/admin/coaches" : "/admin/translators";
-  return id ? [root, `${root}/${id}`] : [root];
+  const kind = role === "coach" ? "coaches" : `${role}s`;
+  const roots = ["all", kind].map((k) => `/admin/operators/${k}`);
+  return id ? [...roots, ...roots.map((r) => `${r}/${id}`)] : roots;
 }
 
 export async function createProfiledOperatorAction(

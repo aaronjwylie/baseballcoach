@@ -4,75 +4,77 @@ import { notFound } from "next/navigation";
 import { Container } from "@/shared/ui";
 import { requireRole } from "@/domains/account";
 import {
-  listByRole,
+  listOperators,
   createProfiledOperatorAction,
-  OperatorProfileDirectory,
+  OperatorList,
   type Role,
 } from "@/domains/operator";
 
 /**
- * Onboarding, one page for all three kinds.
+ * Operators — one list, filtered by kind.
  *
- * The three were nearly identical, which `_StructureLaw` §3a says is the shape
- * to refuse — the difference between adding a coach and adding an admin is one
- * field and one noun. So `kind` is a route segment rather than three files.
- *
- * **Someone holding several kinds appears on several of these pages**, because
- * each list asks *who holds this grant*. It is one person seen from three
- * angles: edit them from any of the three and you have edited them everywhere.
+ * The three kinds are **not three lists**. A role is a grant, so a person
+ * holding several is one operator who shows up under several filters; `all` is
+ * the same query without a `where`. Building them as separate pages would have
+ * been three copies of one screen and a lie about the data.
  */
-const KINDS = {
+const FILTERS = {
+  all: {
+    role: undefined,
+    label: "All",
+    blurb:
+      "Everyone who can sign in. One person can be more than one kind — the tabs are filters over this list, not separate lists.",
+  },
   admins: {
     role: "admin" as Role,
-    title: "Admins",
+    label: "Admins",
     blurb:
       "They run the platform: the queue, assignment, settings, and onboarding. Recording their languages is worth doing — an admin often has to talk to a customer, a coach and a translator in the same afternoon.",
   },
   coaches: {
     role: "coach" as Role,
-    title: "Coaches",
+    label: "Coaches",
     blurb:
       "They review submissions and write the feedback. Their languages decide whether a submission needs translating at all.",
   },
   translators: {
     role: "translator" as Role,
-    title: "Translators",
+    label: "Translators",
     blurb:
       "They carry a submission between languages — out to the coach, and back to the customer. Needed only when a coach and a customer share none.",
   },
 } as const;
 
-type Kind = keyof typeof KINDS;
-
-const isKind = (value: string): value is Kind => value in KINDS;
+type Filter = keyof typeof FILTERS;
+const isFilter = (v: string): v is Filter => v in FILTERS;
 
 export async function generateMetadata(props: {
   params: Promise<{ kind: string }>;
 }): Promise<Metadata> {
   const { kind } = await props.params;
   return {
-    title: isKind(kind) ? `Onboarding — ${KINDS[kind].title}` : "Onboarding",
+    title: isFilter(kind) ? `Operators — ${FILTERS[kind].label}` : "Operators",
     robots: { index: false },
   };
 }
 
-export default async function OnboardingPage(props: {
+export default async function OperatorsPage(props: {
   params: Promise<{ kind: string }>;
 }) {
   await requireRole("admin");
   const { kind } = await props.params;
-  if (!isKind(kind)) notFound();
-  const { role, blurb } = KINDS[kind];
+  if (!isFilter(kind)) notFound();
+  const { role, blurb } = FILTERS[kind];
 
   return (
     <Container>
-      <h1 className="text-2xl font-bold tracking-tight text-ink">Onboarding</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-ink">Operators</h1>
 
       <nav className="mt-4 flex gap-1 border-b border-line">
-        {(Object.keys(KINDS) as Kind[]).map((key) => (
+        {(Object.keys(FILTERS) as Filter[]).map((key) => (
           <Link
             key={key}
-            href={`/admin/onboarding/${key}`}
+            href={`/admin/operators/${key}`}
             aria-current={key === kind ? "page" : undefined}
             className={
               key === kind
@@ -80,17 +82,17 @@ export default async function OnboardingPage(props: {
                 : "border-b-2 border-transparent px-3 py-2 text-sm text-ink-muted hover:text-ink"
             }
           >
-            {KINDS[key].title}
+            {FILTERS[key].label}
           </Link>
         ))}
       </nav>
 
       <p className="mt-4 max-w-2xl text-sm text-ink-muted">{blurb}</p>
 
-      <OperatorProfileDirectory
-        role={role}
-        people={await listByRole(role)}
-        addAction={createProfiledOperatorAction.bind(null, role)}
+      <OperatorList
+        filter={role}
+        people={await listOperators(role)}
+        addAction={createProfiledOperatorAction.bind(null, role ?? "admin")}
       />
     </Container>
   );

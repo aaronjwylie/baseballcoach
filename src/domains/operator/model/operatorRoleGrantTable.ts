@@ -30,7 +30,7 @@
  * `grantedAt` uses `clock_timestamp()`, not `now()` — see
  * `submissionEventTable` for the day that distinction cost us.
  */
-import { pgTable, uuid, timestamp, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { operatorTable } from "./operatorTable";
 import { operatorRole } from "./operatorRoleEnum";
@@ -42,6 +42,19 @@ export const operatorRoleGrantTable = pgTable(
       .notNull()
       .references(() => operatorTable.id, { onDelete: "cascade" }),
     role: operatorRole().notNull(),
+    /**
+     * Available for **this kind** of work.
+     *
+     * Per-grant rather than per-operator, because the two are genuinely
+     * independent: someone can be a coach who is taking submissions and a
+     * translator who is not, or paused on both while still being an admin. A
+     * single flag on the operator could not say that.
+     *
+     * Distinct from `operator.isActive`, which is whether they may sign in at
+     * all. Suspending an account and pausing one kind of work are different
+     * decisions, made for different reasons, by possibly different people.
+     */
+    isActive: boolean().notNull().default(true),
     grantedAt: timestamp({ withTimezone: true })
       .default(sql`clock_timestamp()`)
       .notNull(),

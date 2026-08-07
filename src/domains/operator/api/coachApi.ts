@@ -11,7 +11,7 @@
  * wrapper. Read the two files side by side: they should be about the same size,
  * and §3a says so out loud.
  */
-import { listByRole, getByRole, createProfiledOperator, updateProfiledOperator } from "./operatorProfileApi";
+import { listAssignable, getByRole, createProfiledOperator, updateProfiledOperator } from "./operatorProfileApi";
 import { listAdminEmails } from "./operatorApi";
 import { isAssignedTo, markCoachCollected, noteEmailSent } from "@/domains/submission";
 import { env } from "@/shared/config/env";
@@ -20,7 +20,9 @@ import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfi
 import type { OperatorProfilePatch } from "./operatorProfileApi";
 
 export function listCoaches(): Promise<OperatorProfile[]> {
-  return listByRole("coach");
+  // Assignable, not merely holding the role — a paused coach is off this
+  // list and still on the admin's roster.
+  return listAssignable("coach");
 }
 
 export function getCoach(id: string): Promise<OperatorProfile | null> {

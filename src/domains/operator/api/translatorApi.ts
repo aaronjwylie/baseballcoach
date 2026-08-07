@@ -11,12 +11,14 @@
  * waiting on a coach to start rather than on a translation leg. That absence is
  * argued in `coachApi.noteCoachCollected` rather than left to be noticed.
  */
-import { listByRole, getByRole, createProfiledOperator, updateProfiledOperator } from "./operatorProfileApi";
+import { listAssignable, getByRole, createProfiledOperator, updateProfiledOperator } from "./operatorProfileApi";
 import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
 import type { OperatorProfilePatch } from "./operatorProfileApi";
 
 export function listTranslators(): Promise<OperatorProfile[]> {
-  return listByRole("translator");
+  // Assignable, not merely holding the role — a paused translator is off this
+  // list and still on the admin's roster.
+  return listAssignable("translator");
 }
 
 /** One translator by id — null if that id belongs to a coach or the admin. */

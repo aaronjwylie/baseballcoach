@@ -23,13 +23,76 @@ import { operatorRoleGrantTable } from "../model/operatorRoleGrantTable";
 import { operatorTable } from "../model/operatorTable";
 import type { Role } from "../model/operatorRoleEnum";
 
+/** One membership: the kind, and whether they are taking that work. */
+export interface RoleGrant {
+  role: Role;
+  isActive: boolean;
+}
+
 /** Every kind this operator is. Empty means onboarded but given nothing yet. */
 export async function rolesFor(operatorId: string): Promise<Role[]> {
+  return (await grantsFor(operatorId)).map((g) => g.role);
+}
+
+/** The same, with availability — what the toggles render from. */
+export async function grantsFor(operatorId: string): Promise<RoleGrant[]> {
   const rows = await db
-    .select({ role: operatorRoleGrantTable.role })
+    .select({
+      role: operatorRoleGrantTable.role,
+      isActive: operatorRoleGrantTable.isActive,
+    })
     .from(operatorRoleGrantTable)
     .where(eq(operatorRoleGrantTable.operatorId, operatorId));
-  return rows.map((r) => r.role);
+  return rows;
+}
+
+/**
+ * Set the kinds **and** their availability in one go.
+ *
+ * Availability is part of the same submit as membership because they are edited
+ * together and a half-applied change is not a state worth being able to reach.
+ * A role already held keeps its `grantedAt` and `grantedBy`; only `isActive`
+ * moves, so re-saving does not restate when someone became a coach.
+ */
+export async function setGrants(
+  operatorId: string,
+  grants: RoleGrant[],
+  grantedBy: string | null,
+): Promise<void> {
+  const wanted = new Map(grants.map((g) => [g.role, g.isActive]));
+  const held = new Map((await grantsFor(operatorId)).map((g) => [g.role, g.isActive]));
+
+  await db.transaction(async (tx) => {
+    for (const [role, isActive] of wanted) {
+      if (!held.has(role)) {
+        await tx
+          .insert(operatorRoleGrantTable)
+          .values({ operatorId, role, isActive, grantedBy })
+          .onConflictDoNothing();
+      } else if (held.get(role) !== isActive) {
+        await tx
+          .update(operatorRoleGrantTable)
+          .set({ isActive })
+          .where(
+            and(
+              eq(operatorRoleGrantTable.operatorId, operatorId),
+              eq(operatorRoleGrantTable.role, role),
+            ),
+          );
+      }
+    }
+    for (const role of held.keys()) {
+      if (wanted.has(role)) continue;
+      await tx
+        .delete(operatorRoleGrantTable)
+        .where(
+          and(
+            eq(operatorRoleGrantTable.operatorId, operatorId),
+            eq(operatorRoleGrantTable.role, role),
+          ),
+        );
+    }
+  });
 }
 
 /**
@@ -41,14 +104,24 @@ export async function rolesFor(operatorId: string): Promise<Role[]> {
 export async function rolesForMany(
   operatorIds: string[],
 ): Promise<Map<string, Role[]>> {
-  const byId = new Map<string, Role[]>(operatorIds.map((id) => [id, []]));
+  const byId = await grantsForMany(operatorIds);
+  return new Map([...byId].map(([id, gs]) => [id, gs.map((g) => g.role)]));
+}
+
+/** The same with availability — the Operators list renders from this. */
+export async function grantsForMany(
+  operatorIds: string[],
+): Promise<Map<string, RoleGrant[]>> {
+  const byId = new Map<string, RoleGrant[]>(operatorIds.map((id) => [id, []]));
   if (!operatorIds.length) return byId;
 
   const rows = await db
     .select()
     .from(operatorRoleGrantTable)
     .where(inArray(operatorRoleGrantTable.operatorId, operatorIds));
-  for (const row of rows) byId.get(row.operatorId)?.push(row.role);
+  for (const row of rows) {
+    byId.get(row.operatorId)?.push({ role: row.role, isActive: row.isActive });
+  }
   return byId;
 }
 
@@ -91,41 +164,23 @@ export async function revokeRole(operatorId: string, role: Role): Promise<void> 
 }
 
 /**
- * Set someone's kinds to exactly this list — what the toggles submit.
+ * Set the kinds, leaving availability alone — the convenience over `setGrants`.
  *
- * Diffed rather than deleted-and-reinserted, so a role that was already held
- * keeps its original `grantedAt` and `grantedBy`. Rewriting the row would
- * silently restate every existing grant as having happened just now, by
- * whoever last opened the form.
+ * A kind newly granted starts active; one already held keeps whatever it had.
+ * There is one implementation, not two: this only decides what `isActive`
+ * should be before handing over.
  */
 export async function setRoles(
   operatorId: string,
   roles: Role[],
   grantedBy: string | null,
 ): Promise<void> {
-  const wanted = new Set(roles);
-  const held = new Set(await rolesFor(operatorId));
-
-  await db.transaction(async (tx) => {
-    for (const role of wanted) {
-      if (held.has(role)) continue;
-      await tx
-        .insert(operatorRoleGrantTable)
-        .values({ operatorId, role, grantedBy })
-        .onConflictDoNothing();
-    }
-    for (const role of held) {
-      if (wanted.has(role)) continue;
-      await tx
-        .delete(operatorRoleGrantTable)
-        .where(
-          and(
-            eq(operatorRoleGrantTable.operatorId, operatorId),
-            eq(operatorRoleGrantTable.role, role),
-          ),
-        );
-    }
-  });
+  const held = new Map((await grantsFor(operatorId)).map((g) => [g.role, g.isActive]));
+  await setGrants(
+    operatorId,
+    roles.map((role) => ({ role, isActive: held.get(role) ?? true })),
+    grantedBy,
+  );
 }
 
 /**

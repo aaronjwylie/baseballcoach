@@ -56,7 +56,7 @@ import {
 import { approveAndComplete, resolveSubmission, sendFeedbackForApproval } from "@/domains/feedback";
 import { runRetentionSweep } from "@/domains/upload";
 import { getSettings } from "@/domains/settings";
-import { grantRole, rolesFor, listByRole, setRoles } from "@/domains/operator";
+import { grantRole, rolesFor, listByRole, setRoles, setGrants, grantsFor, listOperators, listCoaches } from "@/domains/operator";
 import { operatorRoleGrantTable } from "@/domains/operator/model/operatorRoleGrantTable";
 import { issueCode, isEmailVerified, verifyCode } from "@/domains/verification";
 import { submissionInputSchema } from "@/domains/submission/model/submissionInput";
@@ -454,6 +454,13 @@ async function multiRole() {
   console.log("\n━━ one operator, several kinds ━━");
   const person = await ensureCoach("Wearer Of Hats", ["English"]);
 
+  /*
+    Arranged, not assumed. The fixture persists between runs and this walk ends
+    with it holding two kinds, so a second run would have started from the first
+    run's leftovers — which is how this check failed the first time it was
+    written, and is a better bug to find here than in something that matters.
+  */
+  await setRoles(person.id, ["coach"], null);
   check((await rolesFor(person.id)).join() === "coach", "   starts as one kind");
 
   await setRoles(person.id, ["coach", "translator", "admin"], null);
@@ -477,6 +484,33 @@ async function multiRole() {
     "   the same person, not a copy per list",
   );
 
+  /*
+    Availability is per kind. Pausing a coach must not touch their translator
+    membership — the two are independent decisions about the same person, which
+    a single `operator.isActive` could not express.
+  */
+  await setGrants(person.id, [
+    { role: "coach", isActive: false },
+    { role: "translator", isActive: true },
+    { role: "admin", isActive: true },
+  ], null);
+  const paused = await grantsFor(person.id);
+  check(
+    paused.find((g) => g.role === "coach")?.isActive === false &&
+      paused.find((g) => g.role === "translator")?.isActive === true,
+    "   paused as a coach, still taking translations",
+  );
+  check(
+    (await listByRole("coach")).some((p) => p.id === person.id),
+    "   a paused coach still holds the role and stays on the list",
+  );
+
+  // …and "paused" has to mean something, or it is decoration.
+  check(
+    !(await listCoaches()).some((p) => p.id === person.id),
+    "   a paused coach is not offered for assignment",
+  );
+
   // Revoking a kind removes them from that list and leaves the others alone.
   await setRoles(person.id, ["coach"], null);
   check(
@@ -498,6 +532,18 @@ async function multiRole() {
   await setRoles(person.id, ["coach", "admin"], null);
   const after = await grantedAt(person.id, "coach");
   check(before === after, "   an unchanged grant keeps its original timestamp");
+
+  /*
+    The gap that opens when a kind is added to someone onboarded as something
+    else: an admin made a coach has no specialties, because onboarding an admin
+    never asks for them.
+  */
+  const listed = (await listOperators()).find((p) => p.id === person.id);
+  check(!!listed, "   appears on the unfiltered list too");
+  check(
+    (listed?.grants.length ?? 0) >= 2,
+    "   the unfiltered row carries every kind, not just one",
+  );
 }
 
 async function grantedAt(operatorId: string, role: string) {

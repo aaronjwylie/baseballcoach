@@ -50,12 +50,24 @@ export async function verifyCredentials(
   password: string,
 ): Promise<Authenticated | null> {
   const [operator] = await db
-    .select({ id: operatorTable.id, email: operatorTable.email })
+    .select({
+      id: operatorTable.id,
+      email: operatorTable.email,
+      isActive: operatorTable.isActive,
+    })
     .from(operatorTable)
     .where(eq(operatorTable.email, email.trim().toLowerCase()))
     .limit(1);
   if (!operator) return null;
   if (!(await verifyPassword(operator.id, password))) return null;
+
+  /*
+    A suspended account cannot sign in — and until 2026-08-07 it could.
+    `operator.isActive` was shown in the portal and edited on the form and read
+    by nothing at all, so "Inactive" was a label the software did not honour.
+    Same answer as a wrong password, so the flag cannot be probed.
+  */
+  if (!operator.isActive) return null;
 
   /*
     The grants, read at the declaration plane like the operator row above.
@@ -69,7 +81,7 @@ export async function verifyCredentials(
     .from(operatorRoleGrantTable)
     .where(eq(operatorRoleGrantTable.operatorId, operator.id));
 
-  return { ...operator, roles: grants.map((g) => g.role) };
+  return { id: operator.id, email: operator.email, roles: grants.map((g) => g.role) };
 }
 
 /**
