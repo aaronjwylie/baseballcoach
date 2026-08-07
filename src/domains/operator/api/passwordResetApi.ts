@@ -12,7 +12,7 @@ import { findOperatorByEmail } from "./operatorApi";
 import {
   passwordFingerprint,
   setOperatorPassword,
-} from "./operatorCredentialApi";
+} from "@/domains/account";
 import { sendPasswordResetEmail } from "./resetEmail";
 
 const RESET_MAX_AGE_S = 60 * 60; // one hour

@@ -17,7 +17,7 @@
 | Layer | Taken? | Why |
 |---|---|---|
 | `app/` | ✅ | Next.js App Router; routes and API handlers, kept thin |
-| `domains/` | ✅ | nine slices — the heart |
+| `domains/` | ✅ | ten slices — the heart |
 | `shared/` | ✅ | the domain-less floor: SDK seams, UI primitives, config |
 | `widgets/` | ❌ | nothing here is a cross-domain block that *knows* domains. The site header is domain-less, so it is `shared/ui` |
 | `pages/` | ❌ | Next.js reserves the name, and one screen per route leaves the layer nothing to earn |
@@ -34,7 +34,8 @@ domains/
   upload/        getting their files to us (storage)
   payment/       paying for one (Stripe) — the LAST step
   feedback/      the coach's response coming back
-  operator/      everyone who logs in — admin, coach, translator — and their profiles
+  account/       the ability to sign in — one table, the secret, nothing else
+  operator/      who exists — admin, coach, translator — and what they cover
   settings/      the limits the admin tunes without a deploy
   landing/       the sales pitch
 ```
@@ -112,9 +113,10 @@ exports, not five scoldings.
   means the rule reads differently in two domains, which is worth either a mapper or a sentence in the
   slice doc.
 - ✅ **The graph is acyclic**, enforced. It wasn't until 2026-08-06: `submission → feedback → submission`, plus `feedback → upload → feedback`.
-- 🔶 **`operator` holds two concerns** — authentication and the people who do the work. Not a violation
-  of any rule, and that is the problem: see [`_StructureLaw §5b`](../laws/_StructureLaw.md). It splits
-  once `password_hash` moves to its own table.
+- ✅ **`operator` and `account` are separate domains** since 2026-08-06. `password_hash` moved to
+  `operator_credential` (`0013`), which is what made the split legal — the constraint was the schema,
+  not the rules ([`_StructureLaw §5b`](../laws/_StructureLaw.md)). `operator` imports `account`, never
+  the reverse.
 - 🔶 **The `Coach` type is a role, not a shape** — `translatorApi` imports it to describe a translator.
   [`_NomenclatureLaw §4`](../laws/_NomenclatureLaw.md).
 
@@ -127,8 +129,8 @@ exports, not five scoldings.
 | files reading configuration | **2** — `shared/config/env.ts` and `publicEnv.ts` |
 | files reading `process.env` at all | **4** — the two above, plus `shared/db/client.ts` and `shared/auth/cookie.ts`, which read `NODE_ENV`. That is the framework's own switch, not configuration, and it is why the invariant is worded *configuration* rather than *`process.env`* |
 | files mapping storage columns | **1** (`submission`); `operator` maps inline — see above |
-| domains | **9** |
-| tables | **7** |
+| domains | **10** |
+| tables | **8** |
 
 ---
 

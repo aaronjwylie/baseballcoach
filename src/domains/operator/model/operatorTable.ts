@@ -21,7 +21,12 @@ import { operatorRole } from "./operatorRoleEnum";
 export const operatorTable = pgTable("operator", {
   id: uuid().defaultRandom().primaryKey(),
   email: text().notNull().unique(),
-  passwordHash: text().notNull(),
+  /**
+   * **Vestigial — the credential lives in `operator_credential` since
+   * migration `0013`.** Nullable now so a new operator can be created without
+   * it; the next migration drops it once this deploy is live. Nothing reads it.
+   */
+  passwordHash: text(),
   role: operatorRole().notNull(),
   name: text().notNull(),
   /*

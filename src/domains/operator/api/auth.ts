@@ -8,7 +8,8 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { setSessionCookie, clearSessionCookie } from "@/shared/auth";
-import { verifyCredentials, changePassword } from "./operatorCredentialApi";
+import { changePassword } from "@/domains/account";
+import { verifyCredentials } from "./operatorCredentialApi";
 import { requireSession } from "./dal";
 import {
   HOME_FOR_ROLE,

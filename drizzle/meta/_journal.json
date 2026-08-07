@@ -92,6 +92,20 @@
       "when": 1786068721082,
       "tag": "0012_trail_clock_timestamp",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786071608057,
+      "tag": "0013_operator_credential",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786071759476,
+      "tag": "0014_password_hash_nullable",
+      "breakpoints": true
     }
   ]
 }
