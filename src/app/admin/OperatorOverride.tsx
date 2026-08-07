@@ -34,12 +34,11 @@ export function OperatorOverride({
 }: {
   submissionId: string;
   status: SubmissionStatus;
-  purgeAction: (formData: FormData) => Promise<void>;
+  purgeAction: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
   resetAction: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   /*
     Starts on the current rung so the dropdown reads as "where it is", and the
     button below is disabled until that changes. Previously it started here too
@@ -61,12 +60,14 @@ export function OperatorOverride({
   // can still download.
   const canReset = status !== "purged";
 
-  async function run(action: (fd: FormData) => Promise<void>, fd: FormData) {
-    setBusy(true);
-    await action(fd);
-    setBusy(false);
-    router.refresh();
-  }
+  const [purge, purgeSubmit, purging] = useActionState<ActionResult, FormData>(
+    purgeAction,
+    undefined,
+  );
+
+  useEffect(() => {
+    if (succeeded(purge)) router.refresh();
+  }, [purge, router]);
 
   const unchanged = target === status;
 
@@ -183,7 +184,7 @@ export function OperatorOverride({
 
       <form
         className="flex flex-wrap items-center gap-2 rounded-lg border border-rose-300 bg-rose-50/60 p-3"
-        action={(fd) => run(purgeAction, fd)}
+        action={purgeSubmit}
       >
         <input type="hidden" name="submissionId" value={submissionId} />
         <label className="text-[11px] text-rose-800">
@@ -201,7 +202,7 @@ export function OperatorOverride({
         </label>
         <button
           type="submit"
-          disabled={busy}
+          disabled={purging}
           className="rounded-md border border-rose-400 px-2 py-0.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
         >
           Purge folder

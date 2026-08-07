@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { failed, succeeded, type ActionResult } from "@/shared/lib/actionResult";
 import type { FileSet } from "@/domains/submission/model/submissionFile";
 
 const LABELS: Record<FileSet, string> = {
@@ -24,6 +25,11 @@ const LABELS: Record<FileSet, string> = {
  * `availableSets`, which only returns more than one entry when both an original
  * and a translation actually exist.
  *
+ * **The action's result is rendered, not swallowed.** This hand-rolled its own
+ * submit and threw the return value away, which was invisible while actions
+ * returned `void` and was exactly how "there are no files in that set to send"
+ * came out as nothing happening at all.
+ *
  * Client-side so it can `router.refresh()` after the action: `revalidatePath`
  * alone left the page serving its cached RSC, so the row wouldn't move until a
  * manual reload.
@@ -35,13 +41,21 @@ export function SendWithFileSet({
   label,
   className,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
   submissionId: string;
   sets: FileSet[];
   label: string;
   className?: string;
 }) {
   const router = useRouter();
+  const [state, submit, pending] = useActionState<ActionResult, FormData>(
+    action,
+    undefined,
+  );
+
+  useEffect(() => {
+    if (succeeded(state)) router.refresh();
+  }, [state, router]);
   // Default to the first offered set — `availableSets` returns them in the
   // order original · translation · both, so the originals win when both exist.
   const [fileSet, setFileSet] = useState<FileSet>(sets[0] ?? "original");
@@ -51,10 +65,7 @@ export function SendWithFileSet({
   return (
     <form
       className="flex flex-col items-start gap-2"
-      action={async (formData) => {
-        await action(formData);
-        router.refresh();
-      }}
+      action={submit}
     >
       <input type="hidden" name="submissionId" value={submissionId} />
       <input type="hidden" name="fileSet" value={fileSet} />
@@ -81,9 +92,12 @@ export function SendWithFileSet({
         </fieldset>
       )}
 
-      <button type="submit" className={className}>
-        {label}
+      <button type="submit" disabled={pending} className={className}>
+        {pending ? "Sending…" : label}
       </button>
+      {failed(state) && (
+        <p className="max-w-xs text-[13px] text-rose-700">{state.error}</p>
+      )}
     </form>
   );
 }

@@ -30,30 +30,38 @@ import { approveAndComplete, resolveSubmission } from "@/domains/feedback";
 import { getSettings } from "@/domains/settings";
 import { storage, translationFileKey } from "@/shared/storage";
 
-export async function archiveSubmissionAction(formData: FormData): Promise<void> {
+export async function archiveSubmissionAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   const submission = await getSubmission(id);
   // Only completed work is archivable, and never twice.
-  if (!submission || !isReleased(submission) || submission.archivedAt) {
-    return;
+  if (!submission) return { error: "That submission no longer exists." };
+  if (!isReleased(submission)) {
+    return { error: "Only delivered work can be archived — this hasn't reached the customer yet." };
   }
+  if (submission.archivedAt) return { error: "It is already archived." };
 
   await archiveSubmission(id);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 export async function unarchiveSubmissionAction(
+  _prev: ActionResult,
   formData: FormData,
-): Promise<void> {
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   await unarchiveSubmission(id);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /**
@@ -73,28 +81,35 @@ export async function unarchiveSubmissionAction(
  * into it.
  */
 export async function uploadTranslationAction(
+  _prev: ActionResult,
   formData: FormData,
-): Promise<void> {
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
   const rawKind = String(formData.get("kind") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   // Only the two translation folders are writable here. The originals are the
   // customer's and the coach's own uploads; an admin overwriting either would
   // destroy the record of what was actually submitted.
   if (rawKind !== "intake_translation" && rawKind !== "feedback_translation") {
-    return;
+    return {
+      error:
+        "Only the two translation folders accept uploads here — the originals are the customer's and the coach's own.",
+    };
   }
   const kind: FileKind = rawKind;
 
   const submission = await getSubmission(id);
-  if (!submission || !isPaid(submission)) return;
+  if (!submission) return { error: "That submission no longer exists." };
+  if (!isPaid(submission)) {
+    return { error: "Nothing can be attached before the payment clears." };
+  }
 
   const files = formData
     .getAll("files")
     .filter((entry): entry is File => entry instanceof File && entry.size > 0);
-  if (files.length === 0) return;
+  if (files.length === 0) return { error: "Choose at least one file." };
 
   for (const file of files) {
     const bytes = new Uint8Array(await file.arrayBuffer());
@@ -146,6 +161,7 @@ export async function uploadTranslationAction(
   }
 
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /**
@@ -161,12 +177,17 @@ export async function uploadTranslationAction(
  * what was there. Every purge writes an event, because a submission that lost
  * its files with no explanation is worse than one that still has them.
  */
-export async function purgeFolderAction(formData: FormData): Promise<void> {
+export async function purgeFolderAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
   const rawKind = String(formData.get("kind") ?? "");
-  if (!id) return;
-  if (!FILE_KINDS.includes(rawKind as FileKind)) return;
+  if (!id) return { error: "No submission — reload and try again." };
+  if (!FILE_KINDS.includes(rawKind as FileKind)) {
+    return { error: `“${rawKind}” is not one of the four folders.` };
+  }
   const kind = rawKind as FileKind;
 
   const submission = await getSubmission(id);
@@ -185,7 +206,9 @@ export async function purgeFolderAction(formData: FormData): Promise<void> {
       console.error(`[admin] purging ${file.id} failed:`, err);
     }
   }
-  if (removed === 0) return;
+  if (removed === 0) {
+    return { error: "Nothing to delete — that folder is already empty." };
+  }
 
   await noteSubmissionAction(
     id,
@@ -193,6 +216,7 @@ export async function purgeFolderAction(formData: FormData): Promise<void> {
     `purged ${removed} file${removed === 1 ? "" : "s"} from ${kind}`,
   );
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /**
@@ -300,15 +324,17 @@ async function noteSubmissionAction(
  * needed. Automating it later stays cheap.
  */
 export async function resolveSubmissionAction(
+  _prev: ActionResult,
   formData: FormData,
-): Promise<void> {
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   const settings = await getSettings();
   await resolveSubmission(id, settings.retainCollectedDays);
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 /**
@@ -324,14 +350,15 @@ export async function resolveSubmissionAction(
  * from a click would put submissions out for translation nobody sent.
  */
 export async function sendForTranslationAction(
+  _prev: ActionResult,
   formData: FormData,
-): Promise<void> {
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   const submission = await getSubmission(id);
-  if (!submission) return;
+  if (!submission) return { error: "That submission no longer exists." };
 
   /*
     Each side can only be sent from the rung that precedes it.
@@ -352,18 +379,25 @@ export async function sendForTranslationAction(
       : submission.status === "feedback_translator_assigned"
         ? "sent_to_feedback_translator"
         : null;
-  if (!next) return;
+  if (!next) {
+    return {
+      error:
+        "Pick a translator first — sending is only possible once one is chosen, and only from the rung before it.",
+    };
+  }
 
   await updateSubmission(id, { status: next });
   revalidatePath("/admin");
+  return { ok: true };
 }
 
 export async function completeSubmissionAction(
+  _prev: ActionResult,
   formData: FormData,
-): Promise<void> {
+): Promise<ActionResult> {
   await requireRole("admin");
   const id = String(formData.get("submissionId") ?? "");
-  if (!id) return;
+  if (!id) return { error: "No submission — reload and try again." };
 
   // Same fallback as step 8: an unrecognised choice sends the originals, which
   // are the set that always exists.
@@ -374,4 +408,5 @@ export async function completeSubmissionAction(
 
   await approveAndComplete(id, fileSet);
   revalidatePath("/admin");
+  return { ok: true };
 }

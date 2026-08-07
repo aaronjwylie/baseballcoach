@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { failed, succeeded, type ActionResult } from "@/shared/lib/actionResult";
 import {
   formatFileSize,
   type FileKind,
@@ -63,7 +64,7 @@ export function FileFolders({
 }: {
   submissionId: string;
   folders: Record<FileKind, SubmissionFile[]>;
-  uploadAction: (formData: FormData) => Promise<void>;
+  uploadAction: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -116,10 +117,17 @@ function Folder({
   hint: string;
   writable: boolean;
   files: SubmissionFile[];
-  uploadAction: (formData: FormData) => Promise<void>;
+  uploadAction: (state: ActionResult, formData: FormData) => Promise<ActionResult>;
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [state, submit, busy] = useActionState<ActionResult, FormData>(
+    uploadAction,
+    undefined,
+  );
+
+  useEffect(() => {
+    if (succeeded(state)) router.refresh();
+  }, [state, router]);
 
   // Swept files keep their row but lose their bytes, so they're listed and not
   // fetchable — counting them would promise a download that 410s.
@@ -183,12 +191,7 @@ function Folder({
       {writable && (
         <form
           className="mt-3"
-          action={async (formData) => {
-            setBusy(true);
-            await uploadAction(formData);
-            setBusy(false);
-            router.refresh();
-          }}
+          action={submit}
         >
           <input type="hidden" name="submissionId" value={submissionId} />
           <input type="hidden" name="kind" value={kind} />
@@ -206,6 +209,9 @@ function Folder({
           >
             {busy ? "Uploading…" : "Upload"}
           </button>
+          {failed(state) && (
+            <p className="mt-1 text-[13px] text-rose-700">{state.error}</p>
+          )}
         </form>
       )}
     </section>

@@ -94,10 +94,13 @@ export async function assignCoachAction(
  * It stops at "sent". `in_review` is earned when the coach actually downloads
  * something — see `noteCoachCollected`.
  */
-export async function notifyCoachAction(formData: FormData): Promise<void> {
+export async function notifyCoachAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
   await requireRole("admin");
   const submissionId = String(formData.get("submissionId") ?? "");
-  if (!submissionId) return;
+  if (!submissionId) return { error: "No submission — reload and try again." };
 
   const submission = await getSubmission(submissionId);
   /*
@@ -111,13 +114,21 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   */
   const handOffable =
     submission?.status === "assigned" || submission?.status === "intake_translated";
-  if (!submission || !handOffable) return;
+  if (!submission) return { error: "That submission no longer exists." };
+  if (!handOffable) {
+    return {
+      error:
+        "It is not at a rung the coach can be handed it from. Move the status back to Assigned first.",
+    };
+  }
 
   const assignee = await assigneeFor(submissionId, "feedback");
-  if (!assignee) return;
+  if (!assignee) return { error: "Assign a coach before handing it over." };
 
   const coach = await getCoach(assignee);
-  if (!coach) return;
+  if (!coach) {
+    return { error: "The assigned operator is no longer a coach — reassign it." };
+  }
 
   /*
     Step 8's curation, and the reason the radio can't live on assignment: at
@@ -136,7 +147,9 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
     submissionId,
     kindsForSet("intake", fileSet),
   );
-  if (files.length === 0) return;
+  if (files.length === 0) {
+    return { error: "There are no files in that set to send." };
+  }
 
   // Best-effort mail (ADR 004) — the hand-off proceeds even if it fails, but
   // the trail records whether it actually landed.
@@ -154,4 +167,5 @@ export async function notifyCoachAction(formData: FormData): Promise<void> {
   await updateSubmission(submissionId, { coachFileSet: fileSet });
   await markSubmissionSentToCoach(submissionId);
   revalidatePath("/admin");
+  return { ok: true };
 }
