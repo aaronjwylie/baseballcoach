@@ -1,16 +1,19 @@
 /**
- * Notify a coach that a submission has been assigned to them.
+ * The hand-off messages — work arriving on someone's desk, and being picked up.
  *
- * An operator email, not a customer one, but best-effort like the rest: a mail
- * failure logs and never blocks the hand-off (ADR 004). It carries everything
- * the coach needs to start — the customer's details and a download link per
- * file — so the review can begin from the inbox. The links resolve through the
- * operator-gated `/api/files/[id]`, so the coach signs in once (the CTA) and the
- * links work for the session.
+ * **Neither of these is about coaching.** One says "a submission is ready for
+ * you", the other tells the admin someone collected it, and both are true of a
+ * translator word for word. They lived in `coachEmail.ts` until 2026-08-06, and
+ * the missing `translatorEmail.ts` beside it was the evidence: a counterpart
+ * that ought to exist and doesn't usually means the original was filed under
+ * the wrong noun rather than that the second party needs no mail
+ * (`_StructureLaw.md` §3a).
  *
- * Customer- and admin-supplied text (notes, filenames, names) is HTML-escaped —
- * this email interpolates free text a customer typed, which the customer-facing
- * emails never did.
+ * So the recipient's **role is a parameter**, not a filename. Adding a fourth
+ * role changes a string, not this file's existence.
+ *
+ * **Escape customer-supplied values.** Player names and filenames land in HTML;
+ * `esc` is applied to every interpolation and any new template needs the same.
  */
 import { emailShell, sendEmail } from "@/shared/email";
 import { site } from "@/shared/config/site";
@@ -27,7 +30,17 @@ function esc(value: string): string {
 
 interface AssignmentEmailInput {
   to: string;
-  coachName: string;
+  /** Who the work is going to. */
+  recipientName: string;
+  /**
+   * Their role, and the portal it names.
+   *
+   * Both the word in the copy and the path in the button derive from this, so a
+   * translator is never told to sign in to the coach portal — a link to the
+   * wrong portal bounces them straight back out by `proxy.ts`, which routes each
+   * role to its own.
+   */
+  role: "coach" | "translator";
   submission: Submission;
   files: SubmissionFile[];
 }
@@ -36,7 +49,7 @@ interface AssignmentEmailInput {
 export function buildAssignmentEmail(
   opts: AssignmentEmailInput,
 ): { subject: string; html: string } {
-  const { coachName, submission, files } = opts;
+  const { recipientName, role, submission, files } = opts;
 
   const details = [
     `<strong>Player:</strong> ${esc(submission.playerName)}${
@@ -70,12 +83,12 @@ export function buildAssignmentEmail(
     subject: `${site.name} — a new review is assigned to you`,
     html: emailShell(
       "You have a new review",
-      `<p>Hi ${esc(coachName)}, a submission is ready for your feedback.</p>
+      `<p>Hi ${esc(recipientName)}, a submission is ready for your feedback.</p>
        ${details}
        ${notes}
        ${filesHtml}
-       <p style="margin:16px 0 0">Sign in to the coach portal to upload your breakdown when it's ready.</p>`,
-      { label: "Open the coach portal", url: `${env.siteUrl}/coach` },
+       <p style="margin:16px 0 0">Sign in to the ${role} portal to upload your work when it's ready.</p>`,
+      { label: `Open the ${role} portal`, url: `${env.siteUrl}/${role}` },
     ),
   };
 }
@@ -97,23 +110,32 @@ export function sendAssignmentEmail(opts: AssignmentEmailInput) {
  * Best-effort — the status already moved, and a missed notification is a smaller
  * problem than a failed download.
  */
-export function sendCoachCollectedEmail(opts: {
+/**
+ * Someone collected their work — told to the admin.
+ *
+ * `role` is the word the admin reads ("the coach", "the translator"), which is
+ * why it is a plain string on the way in rather than the `Role` enum: this is
+ * copy, and copy that happens to match an enum today is copy that breaks the
+ * day the enum grows a value nobody wants printed.
+ */
+export function sendCollectedEmail(opts: {
   to: string[];
-  coachName: string;
+  collectorName: string;
+  role: string;
   playerName: string;
   submissionUrl: string;
 }) {
   // Nobody to tell — an install with no admin row. Reported as a
   // non-send rather than thrown, so a webhook never fails over it.
   if (opts.to.length === 0) return Promise.resolve({ ok: false });
-  const coach = esc(opts.coachName);
+  const who = esc(opts.collectorName);
   const player = esc(opts.playerName);
   return sendEmail({
     to: opts.to.join(", "),
-    subject: `${site.name} — ${opts.coachName} picked up ${opts.playerName}`,
+    subject: `${site.name} — ${opts.collectorName} picked up ${opts.playerName}`,
     html: emailShell(
-      "The coach has the files",
-      `<p><strong>${coach}</strong> has downloaded the files for <strong>${player}</strong>, so the review is under way.</p>
+      `The ${opts.role} has the files`,
+      `<p><strong>${who}</strong> has downloaded the files for <strong>${player}</strong>, so the review is under way.</p>
        <p>Nothing to do — this is just the hand-off closing.</p>`,
       { label: "Open the queue", url: opts.submissionUrl },
     ),

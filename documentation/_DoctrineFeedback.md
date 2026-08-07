@@ -24,6 +24,7 @@ in an `⟨INHERITED EVIDENCE⟩` block — so they can be lifted verbatim.
 | § | Rule | Why it belongs in the law |
 |---|---|---|
 | **3a** | *Two slices for parallel concepts should be roughly the same size* — when they aren't, the shared part is living inside one of them | It is a **diagnostic**, which the pack is otherwise short on. Most rules tell you what to do; this one tells you how to *notice* you didn't, from a directory listing, without opening a file |
+| **3b** | *The third file, not the thin wrapper* — when two like kinds need the same machinery, extract it to a file neither owns; never make one the home and the other a wrapper | §3a diagnoses; this resolves. It also pins the word **streamlining**, which otherwise reads as permission to reduce file count at the cost of symmetry. Carries the project owner's own formulation: *if an extra barrel or a third file is what buys separation and symmetry, take it every time* |
 | **5b** | *A shared table is not a reason to share a folder* — the constraint is evidence about the table, not a verdict about the folder | The existing rules (cross-domain barrels + the declaration plane) have a **consequence nobody had written down**: two concerns sharing a table cannot be two domains. That silently makes the schema the author of the folder tree, and the rules then defend a schema mistake as a structural fact |
 
 §5b is the more important of the two. Its general form — *a constraint that arrives from the schema

@@ -3,12 +3,13 @@
 import { useActionState } from "react";
 import { Button, Field, inputClass } from "@/shared/ui";
 import { FOCUS_OPTIONS } from "@/domains/submission/model/submission";
-import { DEFAULT_LANGUAGE_CHOICE } from "../model/coach";
+import { DEFAULT_LANGUAGE_CHOICE } from "../model/operatorProfile";
 import { LanguageChoiceField } from "@/domains/submission/ui/LanguageChoiceField";
-import { createCoachAction, type CoachFormState } from "../api/coachActions";
+import { createCoachAction } from "../api/coachActions";
+import type { OperatorProfileFormState } from "../api/operatorProfileActions";
 
 export function AddCoachForm() {
-  const [state, action, pending] = useActionState<CoachFormState, FormData>(
+  const [state, action, pending] = useActionState<OperatorProfileFormState, FormData>(
     createCoachAction,
     undefined,
   );

@@ -1,125 +1,63 @@
 /**
- * Coach queries + creation.
+ * Coaches — the reviewers in Japan.
  *
- * A coach is an **operator with a profile** (ADR 018) — the login row says who
- * they are and what role they hold, the profile row says what they cover. There
- * is no coach table any more, and `Coach.id` is the operator's id: one person,
- * one identifier, whichever way you arrived at them.
+ * A coach is an **operator with a profile** (ADR 018), which is a shape
+ * `translatorApi` also has. Everything both roles share lives in
+ * `operatorProfileApi`; what is left here is only what is a *coach's* alone.
  *
- * This file is the only place those two rows are turned into a `Coach`.
+ * **This file used to hold the shared machinery**, which made `translatorApi` a
+ * wrapper around coach functions and stated a hierarchy between two peers that
+ * does not exist. `_StructureLaw.md` §3b — the third file, not the thin
+ * wrapper. Read the two files side by side: they should be about the same size,
+ * and §3a says so out loud.
  */
-import { eq } from "drizzle-orm";
-import { db } from "@/shared/db";
-import { operatorTable } from "../model/operatorTable";
-import { operatorProfileTable } from "../model/operatorProfileTable";
+import { listByRole, getByRole, createProfiledOperator, updateProfiledOperator } from "./operatorProfileApi";
 import { listAdminEmails } from "./operatorApi";
-import { listByRole, getByRole, toProfile } from "./operatorProfileApi";
-import { createOperator, setOperatorPassword } from "./operatorCredentialApi";
-import {
-  markCoachCollected,
-  noteEmailSent,
-  type Focus,
-  isAssignedTo,
-} from "@/domains/submission";
+import { isAssignedTo, markCoachCollected, noteEmailSent } from "@/domains/submission";
 import { env } from "@/shared/config/env";
-import type { Coach, NewCoach } from "../model/coach";
-import { sendCoachCollectedEmail } from "./coachEmail";
+import { sendCollectedEmail } from "./handoffEmail";
+import type { OperatorProfile, NewOperatorProfile } from "../model/operatorProfile";
+import type { OperatorProfilePatch } from "./operatorProfileApi";
 
-export function listCoaches(): Promise<Coach[]> {
+export function listCoaches(): Promise<OperatorProfile[]> {
   return listByRole("coach");
 }
 
-export function getCoach(id: string): Promise<Coach | null> {
+export function getCoach(id: string): Promise<OperatorProfile | null> {
   return getByRole(id, "coach");
 }
-
 
 /**
  * Kept for the callers that hold a session's operator id.
  *
- * It is the same lookup now — `Coach.id` *is* the operator id — but the name
- * still says which id the caller has in hand, which is worth more than removing
- * one line.
+ * It is the same lookup — an `OperatorProfile.id` *is* the operator id — but the
+ * name still says which id the caller has in hand, which is worth more than
+ * removing one line.
  */
-export function getCoachByOperatorId(operatorId: string): Promise<Coach | null> {
+export function getCoachByOperatorId(operatorId: string): Promise<OperatorProfile | null> {
   return getCoach(operatorId);
 }
 
-export async function createCoach(input: NewCoach): Promise<Coach> {
-  const operator = await createOperator(
-    input.email,
-    input.password,
-    "coach",
-    input.name,
-  );
-  const [profile] = await db
-    .insert(operatorProfileTable)
-    .values({
-      operatorId: operator.id,
-      specialties: input.specialties,
-      languages: input.languages,
-      bio: input.bio,
-    })
-    .returning();
-  const [row] = await db
-    .select()
-    .from(operatorTable)
-    .where(eq(operatorTable.id, operator.id))
-    .limit(1);
-  return toProfile(row, profile);
+export function createCoach(input: NewOperatorProfile): Promise<OperatorProfile> {
+  return createProfiledOperator("coach", input);
 }
 
-export interface CoachPatch {
-  name?: string;
-  /** The login email, on the operator row. */
-  email?: string;
-  /** A new login password. Omit to leave it unchanged. */
-  password?: string;
-  /** Storage locator for the coach's photo. */
-  imageUrl?: string;
-  /** Public bio blurb. */
-  bio?: string;
-  specialties?: Focus[];
-  languages?: string[];
-  isActive?: boolean;
-}
-
-/**
- * A patch now lands on two rows, so it's split by *which* of the two facts it
- * changes: who they are (name, email, whether they may sign in) against what
- * they cover (languages, specialties, and the public page).
- */
-export async function updateCoach(id: string, patch: CoachPatch): Promise<Coach> {
-  const { email, password, name, isActive, ...profile } = patch;
-
-  const operatorPatch = {
-    ...(email !== undefined ? { email: email.trim().toLowerCase() } : {}),
-    ...(name !== undefined ? { name } : {}),
-    ...(isActive !== undefined ? { isActive } : {}),
-  };
-
-  // A unique-constraint violation on the email surfaces to the action as a
-  // caught error, which is why this is not wrapped here.
-  if (Object.keys(operatorPatch).length) {
-    await db.update(operatorTable).set(operatorPatch).where(eq(operatorTable.id, id));
-  }
-  if (Object.keys(profile).length) {
-    await db
-      .update(operatorProfileTable)
-      .set(profile)
-      .where(eq(operatorProfileTable.operatorId, id));
-  }
-
-  // An admin reset — no current-password check; the admin's authority is the guard.
-  if (password) await setOperatorPassword(id, password);
-
-  const coach = await getCoach(id);
-  if (!coach) throw new Error(`coach ${id} vanished mid-update`);
-  return coach;
+export function updateCoach(
+  id: string,
+  patch: OperatorProfilePatch,
+): Promise<OperatorProfile> {
+  return updateProfiledOperator(id, "coach", patch);
 }
 
 /**
  * Step 9 — the coach has collected the intake. Stamp it and tell the admin.
+ *
+ * **Coach-specific, and the asymmetry here is real rather than an oversight.**
+ * A translator's collection moves a rung too (`markTranslatorCollected`), but
+ * announces nothing: the admin is waiting on a *coach* to start, and a
+ * translation leg is short enough that a notification per hand-off would be
+ * noise. If that stops being true, the counterpart belongs beside this one, not
+ * folded into it.
  *
  * **The submission must be this coach's**, not merely any coach's: the download
  * route can only see that *a* coach is logged in, and someone opening a
@@ -145,9 +83,10 @@ export async function noteCoachCollected(
     const collected = await markCoachCollected(submissionId);
     if (!collected) return;
 
-    const result = await sendCoachCollectedEmail({
+    const result = await sendCollectedEmail({
       to: await listAdminEmails(),
-      coachName: coach.name,
+      collectorName: coach.name,
+      role: "coach",
       playerName: collected.playerName,
       submissionUrl: `${env.siteUrl}/admin`,
     });

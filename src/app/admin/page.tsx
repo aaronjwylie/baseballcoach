@@ -30,7 +30,7 @@ import {
   notifyCoachAction,
   AssignCoachSelect,
   AssignTranslatorSelect,
-  type Coach,
+  type OperatorProfile,
 } from "@/domains/operator";
 import { requireRole } from "@/domains/operator";
 import { RowActionForm } from "./RowActionForm";
@@ -292,8 +292,8 @@ function SubmissionRow({
     assignees: Partial<Record<FileKind, string>>;
   };
   events: SubmissionEvent[];
-  coaches: Coach[];
-  translators: Coach[];
+  coaches: OperatorProfile[];
+  translators: OperatorProfile[];
 }) {
   const assignedCoachId = progress?.assignees.feedback;
   const assignedCoach = coaches.find((c) => c.id === assignedCoachId);

@@ -109,6 +109,43 @@ what remains in each is only what is genuinely that variant's own.
 > into the files named for the role that came first, so the second role could only ever be a wrapper
 > importing from it.
 
+### 3b · The third file, not the thin wrapper
+
+§3a says how to *notice* the asymmetry. This says how to resolve it, and which way to resolve it when
+the two options cost differently.
+
+When two like kinds need the same machinery, there are only two shapes available:
+
+```
+✗  kindA.ts  ← holds the shared machinery, and kindA's own specifics
+   kindB.ts  ← a wrapper that imports from kindA
+
+✓  shared.ts ← the machinery, owned by neither
+   kindA.ts  ← kindA's own specifics       ┐ both thin,
+   kindB.ts  ← kindB's own specifics       ┘ both import shared.ts
+```
+
+**Take the second, every time.** Three files beat two, and the third file is not overhead — it is the
+only place the shared thing can live without one sibling being subordinate to the other.
+
+The first shape is tempting because it is one file fewer *today*. What it actually buys is a permanent
+lie about the relationship: `kindB` reads as a special case of `kindA` when they are peers, and every
+future reader has to discover otherwise. It also decides, silently, that `kindA` is where new shared
+behaviour goes — so the imbalance compounds rather than staying still.
+
+**The same answer applies to a barrel.** If an extra `index.ts` is what keeps two domains from
+reaching into each other, add it. A barrel that exists only to preserve a boundary is a barrel doing
+its whole job.
+
+> **"Streamlining" is not a synonym for fewer files.** A refactor that reduces file count while
+> introducing an asymmetry has made the codebase smaller and worse. **Prefer symmetry and clear
+> ownership over brevity, always** — the cost of one more file is paid once, by the person adding it;
+> the cost of a false hierarchy is paid by every reader afterwards.
+
+The test, in one question: *if a third kind arrived tomorrow, where would the shared thing live?* If
+the honest answer is "we'd extract it then", extract it now — the extraction is cheapest before there
+are two callers, and it is the second caller that makes it look optional.
+
 ---
 
 ## 4 · The HTTP surface — where routes live, and what may be in them

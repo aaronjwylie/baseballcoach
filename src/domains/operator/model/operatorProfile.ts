@@ -1,0 +1,69 @@
+/**
+ * An operator who can be given work — the shape a coach and a translator both
+ * are.
+ *
+ * A **view over two rows** since ADR 018: the `operator` that logs them in, and
+ * the `operator_profile` that says what they cover. Not a record of its own,
+ * which is why `id` here is the operator's id — one person, one identifier,
+ * whichever way you arrived at them.
+ *
+ * **It was called `Coach` until 2026-08-06**, and that was a role wearing an
+ * entity's name. A translator has every field on it — languages, specialties,
+ * the lot — so `translatorApi` had to import `Coach` to say what it returned,
+ * which is the tell `_NomenclatureLaw.md` §4 describes: a file about one role
+ * reaching into its sibling for the shape they both are.
+ *
+ * **What separates them is `role`, which is a column** — the right home for a
+ * value that varies per row. A type name can only be changed by a rename.
+ *
+ * The admin has no profile row at all, and that absence is load-bearing: it is
+ * what distinguishes *is an admin* from *is a coach whose languages nobody has
+ * filled in yet*, and it keeps the admin out of every assignment list by the
+ * shape of the query rather than by a check someone has to remember.
+ */
+import type { Focus, LanguageChoice } from "@/domains/submission/model/submission";
+
+export interface OperatorProfile {
+  /** The operator's id. They *are* an operator, so there is only the one. */
+  id: string;
+  /** Their login, from the operator row. */
+  email: string;
+  name: string;
+  specialties: Focus[];
+  languages: string[];
+  isActive: boolean;
+  /** Storage locator for their photo; absent until one is uploaded. Shown on
+   *  the landing page for a coach; unused for a translator, who has no public
+   *  presence — an empty column rather than a second table. */
+  imageUrl?: string;
+  /** A short public bio blurb. */
+  bio?: string;
+}
+
+/** What the admin submits to add one, whichever role they will hold. */
+export interface NewOperatorProfile {
+  name: string;
+  email: string;
+  password: string;
+  specialties: Focus[];
+  languages: string[];
+  bio?: string;
+}
+
+/*
+ * `needsTranslation` used to live here, asking only whether *this coach* reads
+ * English. It assumed the customer's side, which worked while the platform was
+ * the only English speaker in the room and derived nothing useful the moment a
+ * Japanese-speaking parent appeared.
+ *
+ * The rule is symmetric now — intersect both declared sets, empty means
+ * translate — so it belongs with the submission, which is the thing that holds
+ * both sides. See `domains/submission/model/submission.ts`.
+ */
+
+/**
+ * Japanese, because the coaches are in Japan — the one thing about the choice
+ * that is a coach fact rather than a language fact. The vocabulary itself lives
+ * in `domains/submission`, beside the rule that consumes it.
+ */
+export const DEFAULT_LANGUAGE_CHOICE: LanguageChoice = "Japanese";
